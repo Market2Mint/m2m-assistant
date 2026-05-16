@@ -1153,11 +1153,11 @@ export default function App() {
                 id={`service-tile-${i}`}
                 initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0, transition: { delay: i * 0.1 } }}
-                className="bg-zinc-900 rounded-[3rem] shadow-2xl overflow-hidden border border-zinc-800 group hover:border-zinc-600 transition-all snap-start h-[72vh] flex flex-col"
+                className="bg-zinc-900 rounded-[3rem] shadow-2xl overflow-hidden border border-zinc-800 group hover:border-zinc-600 transition-all snap-start h-[68vh] flex flex-col"
               >
-                <div className="p-10 space-y-8 flex-1 overflow-hidden flex flex-col">
-                  <div className="shrink-0 space-y-6">
-                    <div className="flex justify-between items-center gap-12">
+                <div className="p-8 space-y-6 flex-1 overflow-hidden flex flex-col">
+                  <div className="shrink-0 space-y-4">
+                    <div className="flex justify-between items-center gap-10">
                       <h3 className="text-4xl font-black leading-tight text-white uppercase italic tracking-tight">{service.name}</h3>
                       <div className="text-m2m-green font-black text-6xl leading-none">
                         {cardShowMode && service.name.toLowerCase().includes('pregrading') 
@@ -1178,7 +1178,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1 overflow-hidden">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 overflow-hidden">
                     <div className="space-y-4 flex flex-col overflow-hidden">
                       <h4 className="text-sm font-black uppercase tracking-[0.3em] text-m2m-green border-l-4 border-m2m-green pl-4 shrink-0 italic">Service Description</h4>
                       <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar">
@@ -1189,7 +1189,7 @@ export default function App() {
                     </div>
                     <div className="space-y-4 flex flex-col">
                       <h4 className="text-sm font-black uppercase tracking-[0.3em] text-m2m-green border-l-4 border-m2m-green pl-4 shrink-0 italic">ESTIMATED COMPLETION DATE</h4>
-                      <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 flex items-center justify-between shrink-0">
+                      <div className="bg-zinc-950 p-4 rounded-3xl border border-zinc-800 flex items-center justify-between shrink-0">
                         <div>
                           <p className="text-3xl font-black text-white">{getEstimatedDate(service.turnaround)}</p>
                         </div>
@@ -1197,7 +1197,7 @@ export default function App() {
                       </div>
                       
                       {service.details && (
-                        <div className="p-6 bg-zinc-950/50 rounded-3xl border border-dashed border-zinc-800 flex-1 overflow-y-auto custom-scrollbar">
+                        <div className="p-4 bg-zinc-950/50 rounded-3xl border border-dashed border-zinc-800 flex-1 overflow-y-auto custom-scrollbar">
                           <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-m2m-green mb-2 italic">Additional Details</h4>
                           <p className="text-base text-white leading-relaxed italic">{service.details}</p>
                         </div>
@@ -1206,7 +1206,7 @@ export default function App() {
                   </div>
                 </div>
                 
-                <div className="bg-zinc-950 p-8 flex gap-6 items-center border-t border-zinc-800 shrink-0">
+                <div className="bg-zinc-950 p-6 flex gap-6 items-center border-t border-zinc-800 shrink-0">
                   {remainingServices.length > 1 && (
                     <button 
                       onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}

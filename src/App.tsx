@@ -86,19 +86,73 @@ const parseCSV = (csv: string): Service[] => {
     }
     parts.push(current.trim());
 
-    if (parts.length >= 6) {
+    if (parts.length >= 7 && parts[0] && parts[6]) {
+      const firstCol = parts[0].toLowerCase();
+      // Skip the descriptive header lines
+      if (
+        firstCol.includes('what can we help') ||
+        firstCol.includes('option 1') ||
+        firstCol.includes('make the below')
+      ) {
+        continue;
+      }
       services.push({
-        questions: [parts[0], parts[1], parts[2], parts[3], parts[4]],
-        name: parts[5],
-        cost: parts[6] || 'N/A',
-        turnaround: parts[7] || 'N/A',
-        // Column 8 is the completion date, column 9 is the max insured value
+        questions: [parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]],
+        name: parts[6],
+        cost: parts[7] || 'N/A',
+        turnaround: parts[8] || 'N/A',
         maxValue: parts[9] || 'N/A',
         description: parts[10] || '',
-        details: ''
+        details: parts[11] || ''
       });
     }
   }
+
+  // Backfill missing descriptions and details by matching non-empty ones for the same service name or its base name
+  const getBaseName = (name: string): string => {
+    return name.replace(/\s+w\/Auto.*/gi, '').trim();
+  };
+
+  const descriptionMap = new Map<string, string>();
+  const detailsMap = new Map<string, string>();
+
+  for (const s of services) {
+    if (s.description && !descriptionMap.has(s.name)) {
+      descriptionMap.set(s.name, s.description);
+    }
+    if (s.details && !detailsMap.has(s.name)) {
+      detailsMap.set(s.name, s.details);
+    }
+  }
+
+  for (const s of services) {
+    const base = getBaseName(s.name);
+    if (s.description && !descriptionMap.has(base)) {
+      descriptionMap.set(base, s.description);
+    }
+    if (s.details && !detailsMap.has(base)) {
+      detailsMap.set(base, s.details);
+    }
+  }
+
+  for (const s of services) {
+    const base = getBaseName(s.name);
+    if (!s.description) {
+      if (descriptionMap.has(s.name)) {
+        s.description = descriptionMap.get(s.name)!;
+      } else if (descriptionMap.has(base)) {
+        s.description = descriptionMap.get(base)!;
+      }
+    }
+    if (!s.details) {
+      if (detailsMap.has(s.name)) {
+        s.details = detailsMap.get(s.name)!;
+      } else if (detailsMap.has(base)) {
+        s.details = detailsMap.get(base)!;
+      }
+    }
+  }
+
   return services;
 };
 
@@ -184,6 +238,144 @@ export default function App() {
   const playerRef = useRef<any>(null);
   const progressTracked = useRef<{ [key: number]: boolean }>({});
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
+
+  // --- Automatic Update Checker & Global Idle Reload (within Guided Access) ---
+  const getRunningBundleUrl = (): string | null => {
+    try {
+      const scripts = Array.from(document.getElementsByTagName('script'));
+      for (const script of scripts) {
+        const src = script.getAttribute('src');
+        if (src) {
+          if (src.includes('assets/index-') || src.includes('index-') || src.includes('main.tsx')) {
+            return src;
+          }
+        }
+      }
+      for (const script of scripts) {
+        const src = script.getAttribute('src');
+        if (src && !src.includes('youtube.com') && !src.includes('ytimg.com')) {
+          return src;
+        }
+      }
+    } catch (e) {
+      console.error('Error reading script tags:', e);
+    }
+    return null;
+  };
+
+  const currentBundleUrlRef = useRef<string | null>(getRunningBundleUrl());
+  const [updateDetected, setUpdateDetected] = useState(false);
+  const updateDetectedRef = useRef(false);
+  const lastInteractionRef = useRef<number>(Date.now());
+
+  // Keep state ref in sync
+  useEffect(() => {
+    updateDetectedRef.current = updateDetected;
+  }, [updateDetected]);
+
+  // Track global user interactions across window frame
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      lastInteractionRef.current = Date.now();
+    };
+
+    const interactionEvents = [
+      'mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'
+    ];
+    
+    interactionEvents.forEach(event => {
+      window.addEventListener(event, handleUserInteraction, { passive: true });
+    });
+
+    return () => {
+      interactionEvents.forEach(event => {
+        window.removeEventListener(event, handleUserInteraction);
+      });
+    };
+  }, []);
+
+  const checkForUpdate = async () => {
+    try {
+      const res = await fetch(`/index.html?cb=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const htmlText = await res.text();
+      
+      // Extract main Vite JS bundle filename from index.html content
+      const scriptRegex = /<script\b[^>]*src=["']([^"']+)["']/gi;
+      let match;
+      let fetchedUrl: string | null = null;
+      
+      while ((match = scriptRegex.exec(htmlText)) !== null) {
+        const src = match[1];
+        if (src.includes('assets/index-') || src.includes('index-') || src.includes('main.tsx')) {
+          fetchedUrl = src;
+          break;
+        }
+      }
+      
+      // Fallback: If no script matches, take the first local relative JS or TS script
+      if (!fetchedUrl) {
+        const fallbackRegex = /<script\b[^>]*src=["']([^"']+\.(?:js|tsx|ts))["']/gi;
+        let fbMatch;
+        while ((fbMatch = fallbackRegex.exec(htmlText)) !== null) {
+          const src = fbMatch[1];
+          if (!src.includes('youtube.com') && !src.includes('ytimg.com')) {
+            fetchedUrl = src;
+            break;
+          }
+        }
+      }
+
+      if (!fetchedUrl) return;
+
+      if (!currentBundleUrlRef.current) {
+        currentBundleUrlRef.current = fetchedUrl;
+        addLog(`VERSION_CHECK_INIT: Base bundle is ${fetchedUrl}`);
+        console.log(`Version Check Baseline set to: ${fetchedUrl}`);
+        return;
+      }
+
+      const current = currentBundleUrlRef.current;
+      if (fetchedUrl !== current) {
+        addLog(`VERSION_CHECK_UPDATE: Detected new bundle ${fetchedUrl} (Running: ${current})`);
+        setUpdateDetected(true);
+        console.log(`Version Check: New bundle detected! (${fetchedUrl})`);
+      } else {
+        addLog(`VERSION_CHECK_OK: Kiosk is up-to-date (Running: ${current})`);
+        console.log(`Version Check: Kiosk is up-to-date.`);
+      }
+    } catch (e) {
+      console.error('Failed to run version update check:', e);
+      addLog('VERSION_CHECK_FAILED');
+    }
+  };
+
+  // Poll for bundle updates periodically (every 15 mins) & check idle reload triggers (every 10 seconds)
+  useEffect(() => {
+    // 1. Poll every 15 minutes for new Vercel/GitHub/Server builds
+    const updatePollInterval = setInterval(() => {
+      addLog('VERSION_CHECK_START: Querying server index');
+      checkForUpdate();
+    }, 15 * 60 * 1000); // 15 minutes
+
+    // 2. Check every 10 seconds if kiosk is idle with an update pending
+    const idleCheckInterval = setInterval(() => {
+      if (updateDetectedRef.current) {
+        const timeSinceLastInteraction = Date.now() - lastInteractionRef.current;
+        if (timeSinceLastInteraction >= 5 * 60 * 1000) { // 5 minutes (300,000ms)
+          addLog('VERSION_AUTO_RELOAD: Kiosk has been idle for 5 mins with update pending. Reloading.');
+          clearInterval(updatePollInterval);
+          clearInterval(idleCheckInterval);
+          window.location.reload();
+        }
+      }
+    }, 10000); // 10 seconds
+
+    return () => {
+      clearInterval(updatePollInterval);
+      clearInterval(idleCheckInterval);
+    };
+  }, []);
 
   // Global Inactivity Timer (120s)
   useEffect(() => {
@@ -489,6 +681,7 @@ export default function App() {
     "Preferred grading company.",
     "Is the item autographed?",
     "Pack-Pulled or Aftermarket?",
+    "Select the Card Release Year",
     "Which variation?"
   ];
 
@@ -507,16 +700,31 @@ export default function App() {
       "Pack-pulled": "A hand-signed signature from an athlete or celebrity that is officially inserted into a sealed, commercial, or retail pack by the manufacturer.",
       "Aftermarket": "A signature added to a trading card or collectible by the signer after its initial release."
     },
+    null,
     null
   ];
 
   // --- Logic ---
 
   const getOptionsForQuestion = (idx: number, services: Service[]) => {
+    if (idx === 4) {
+      // Release Year step: show year options if any remaining service requires a specific year choice
+      const hasYearRestriction = services.some(s => {
+        const val = s.questions[4];
+        if (!val) return false;
+        const normalized = val.toLowerCase();
+        return normalized !== 'x' && normalized !== 'skip question' && normalized !== 'either';
+      });
+      if (hasYearRestriction) {
+        return ['1999 - Newer', '1998 - Older'];
+      }
+      return [];
+    }
+
     const options = new Set<string>();
     services.forEach(s => {
       const val = s.questions[idx];
-      if (val && val.toUpperCase() !== 'X') {
+      if (val && val.toUpperCase() !== 'X' && val.toLowerCase() !== 'skip question' && val.toLowerCase() !== 'either') {
         options.add(val);
       }
     });
@@ -524,11 +732,11 @@ export default function App() {
   };
 
   const findNextValidQuestionIdx = (startIdx: number, services: Service[]): number => {
-    for (let i = startIdx; i < 5; i++) {
+    for (let i = startIdx; i < 6; i++) {
       const options = getOptionsForQuestion(i, services);
       if (options.length > 0) return i;
     }
-    return 5; // Results
+    return 6; // Results
   };
 
   const handleStart = () => {
@@ -544,36 +752,26 @@ export default function App() {
   const handleAnswer = (answer: string) => {
     addLog(`Answered Q${currentQuestionIdx + 1}: ${answer}`);
     
-    // PSA 1999 Rule Logic Gate
-    if (currentQuestionIdx === 3 && answer === 'Pack-pulled') {
-      setShowYearQuestion(true);
-      return;
-    }
-
     const nextServices = remainingServices.filter(s => {
       const val = s.questions[currentQuestionIdx];
+      if (!val) return false;
       
-      // Special mapping for Step 5 (Variation)
-      if (currentQuestionIdx === 4) {
-        const isAutographPath = selectedAnswers.some(a => a.toLowerCase().includes('yes'));
-        const isAftermarketOrVintage = selectedAnswers.some(a => 
-          a.toLowerCase() === 'aftermarket' || 
-          a.toLowerCase().includes('1998 & older')
-        );
+      const normalizedVal = val.toLowerCase();
+      if (normalizedVal === 'x' || normalizedVal === 'skip question' || normalizedVal === 'either') {
+        return true;
+      }
 
-        if (answer === 'Card Grade / Auto Auth') {
-          if (isAftermarketOrVintage) return val === 'Card & Autograph Grade';
-          return val === 'Card Grade Only';
+      if (currentQuestionIdx === 4) {
+        // Dynamic year matching logic
+        if (answer === '1999 - Newer') {
+          return normalizedVal.includes('1999') || normalizedVal.includes('2000') || normalizedVal === 'either';
         }
-        if (answer === 'Grading' && !isAutographPath) {
-          return val === 'Card Grade Only';
-        }
-        if (answer === 'Authentication' && !isAutographPath) {
-          return val === 'Authenticate Only';
+        if (answer === '1998 - Older') {
+          return normalizedVal.includes('1998') || normalizedVal.includes('1974') || normalizedVal.includes('1975') || normalizedVal === 'either';
         }
       }
 
-      return val.toUpperCase() === 'X' || val.toLowerCase() === answer.toLowerCase();
+      return val.toLowerCase() === answer.toLowerCase();
     });
 
     setHistory([...history, { questionIdx: currentQuestionIdx, services: remainingServices }]);
@@ -583,7 +781,7 @@ export default function App() {
     
     console.log(`Answer: ${answer}. Remaining services: ${nextServices.length}. Next question index: ${nextIdx}`);
     
-    if (nextIdx >= 5) {
+    if (nextIdx >= 6) {
       setRemainingServices(nextServices);
       setStep('results');
     } else {
@@ -593,41 +791,7 @@ export default function App() {
   };
 
   const handleYearAnswer = (yearOption: string) => {
-    addLog(`Selected Year: ${yearOption}`);
-    
-    const nextServices = remainingServices.filter(s => {
-      const val = s.questions[3];
-      const variation = s.questions[4] || '';
-      const isCardGradeOnly = variation.toLowerCase() === 'card grade only';
-      const isDual = variation.toLowerCase().includes('dual') || s.name.toLowerCase().includes('dual');
-      const isAutoAuth = variation.toLowerCase().includes('autograph authentication') || variation.toLowerCase().includes('auto auth') || s.name.toLowerCase().includes('auto auth');
-      
-      if (yearOption === '1998 & OLDER') {
-        // For 1998 & Older, we must include all Dual Service (Aftermarket) options
-        // AND we must include "Card Grade Only" options even if they are marked as Pack-pulled
-        // AND include services where serviceType includes 'Dual' OR 'Autograph Authentication'
-        return val.toUpperCase() === 'X' || 
-               val.toLowerCase() === 'aftermarket' || 
-               (val.toLowerCase() === 'pack-pulled' && (isCardGradeOnly || isDual || isAutoAuth));
-      } else {
-        // For 1999 to Present, we use standard Pack-pulled services
-        return val.toUpperCase() === 'X' || val.toLowerCase() === 'pack-pulled';
-      }
-    });
-
-    setHistory([...history, { questionIdx: 3, services: remainingServices, wasYearQuestion: true }]);
-    setSelectedAnswers([...selectedAnswers, `Pack-pulled (${yearOption})`]);
-    
-    const nextIdx = findNextValidQuestionIdx(4, nextServices);
-    
-    setRemainingServices(nextServices);
-    setShowYearQuestion(false);
-    
-    if (nextIdx >= 5) {
-      setStep('results');
-    } else {
-      setCurrentQuestionIdx(nextIdx);
-    }
+    // Deprecated legacy handler, bypassed in 6-step dynamic mode
   };
 
   const handleBack = () => {
@@ -693,12 +857,12 @@ export default function App() {
     setStep('questions');
   };
 
-  // --- Render Helpers ---
-
-  const renderLanding = () => (
+  // --- BACKUP ORIGINAL LANDSCAPE STYLES ---
+  /*
+  const renderLandingBackup = () => (
     <div className="landscape-container p-8 lg:p-12 overflow-y-auto">
       <div className="max-w-4xl mx-auto space-y-12 pt-8 pb-32">
-        {/* Branding Section */}
+        {-- Branding Section --}
         <div className="text-center space-y-6">
           <div className="space-y-4">
             <h1 className="text-white uppercase italic leading-none text-6xl">
@@ -709,7 +873,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Policy & Action Section */}
+        {-- Policy & Action Section --}
         <div className="bg-zinc-900/50 rounded-[3rem] p-12 border border-zinc-800 shadow-2xl space-y-10">
           <div className="space-y-6">
             <h2 className="text-3xl font-black uppercase italic text-white flex items-center justify-center gap-4 border-b border-zinc-800 pb-8">
@@ -727,7 +891,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Video Tutorial Section */}
+          {-- Video Tutorial Section --}
           <div className="max-w-3xl mx-auto w-full">
             <div className="bg-zinc-950/50 border-2 border-zinc-800 rounded-[2.5rem] p-8 flex flex-col md:flex-row items-center gap-8 hover:border-m2m-green/50 transition-colors group">
               <div className="flex-1 text-center md:text-left space-y-2">
@@ -850,33 +1014,171 @@ export default function App() {
       </div>
     </div>
   );
+  */
+
+  const renderLanding = () => (
+    <div className="landscape-container p-8 lg:p-12 overflow-y-auto">
+      <div className="max-w-[1240px] w-full mx-auto space-y-14 pt-8 pb-32">
+        {/* Branding Section */}
+        <div className="text-center space-y-6">
+          <div className="space-y-4">
+            <h1 className="text-white uppercase italic leading-none text-7xl md:text-8xl">
+              M2M Assistant
+              <span className="block text-m2m-green not-italic text-5xl mt-5">Service Concierge</span>
+            </h1>
+            <p className="text-zinc-400 text-3xl font-medium mt-2">Market 2 Mint Grading Services</p>
+          </div>
+        </div>
+
+        {/* Policy & Action Section */}
+        <div className="bg-zinc-900/50 rounded-[3rem] p-12 lg:p-16 border border-zinc-800 shadow-2xl space-y-12">
+          <div className="space-y-8">
+            <h2 className="text-4xl md:text-5xl font-black uppercase italic text-white flex items-center justify-center gap-5 border-b border-zinc-800 pb-10">
+              <Shield className="text-m2m-green w-12 h-12" />
+              Submission Essentials
+            </h2>
+            
+            <div className="grid grid-cols-1 gap-8 max-w-[1100px] mx-auto">
+              {POLICY.map((item, i) => (
+                <div key={i} className="flex gap-6 text-2xl leading-relaxed text-zinc-300 items-start">
+                  <CheckCircle2 className="w-10 h-10 text-m2m-green shrink-0 mt-1" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Video Tutorial Section */}
+          <div className="max-w-[1100px] mx-auto w-full">
+            <div className="bg-zinc-950/50 border-2 border-zinc-800 rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center gap-8 hover:border-m2m-green/50 transition-colors group">
+              <div className="flex-1 text-center md:text-left space-y-3">
+                <h3 className="text-3xl font-black text-m2m-green uppercase italic tracking-tight">New to M2M?</h3>
+                <p className="text-zinc-400 text-xl md:text-2xl font-medium">Watch our 1-minute guide to get started.</p>
+              </div>
+              <button 
+                onClick={() => setActiveModal('video')}
+                className="w-full md:w-auto flex items-center justify-center gap-4 bg-zinc-800 hover:bg-zinc-700 text-white px-10 py-6 rounded-2xl font-black text-lg md:text-xl uppercase tracking-widest transition-all active:scale-95 group-hover:bg-m2m-green group-hover:text-black"
+              >
+                <Play className="w-8 h-8 fill-current" />
+                Watch How It Works
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-10 pt-8 border-t border-zinc-800">
+            <label className="flex items-center gap-8 p-10 bg-zinc-950/50 rounded-3xl cursor-pointer transition-all active:scale-[0.99] border-2 border-transparent has-[:checked]:border-m2m-green group max-w-[1100px] mx-auto">
+              <div className="relative flex items-center justify-center">
+                <input 
+                  type="checkbox" 
+                  checked={policyAccepted}
+                  onChange={(e) => setPolicyAccepted(e.target.checked)}
+                  className="w-12 h-12 accent-m2m-green rounded-xl scale-150 bg-zinc-900 border-zinc-700"
+                />
+              </div>
+              <span className="text-xl md:text-2xl font-black select-none text-zinc-100 group-hover:text-white transition-colors uppercase italic tracking-tight leading-tight">
+                I ACKNOWLEDGE AND AGREE TO ALL <span className="whitespace-nowrap">MARKET 2 MINT</span> SERVICE POLICIES
+              </span>
+            </label>
+
+            <button 
+              onClick={handleStart}
+              disabled={!policyAccepted}
+              className={`w-full max-w-[1100px] mx-auto h-28 rounded-3xl text-4xl font-black uppercase tracking-[0.2em] transition-all shadow-2xl flex items-center justify-center gap-5 ${
+                policyAccepted 
+                  ? 'bg-m2m-green text-black hover:bg-emerald-400 active:bg-emerald-500 active:scale-95 hover:shadow-m2m-green/40' 
+                  : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+              }`}
+            >
+              Start Submission
+              <ChevronRight className="w-12 h-12" />
+            </button>
+          </div>
+
+          <div className="pt-12 border-t border-zinc-800">
+            <div className="bg-zinc-950/85 border border-zinc-800 rounded-[2rem] overflow-hidden flex flex-col h-[550px] shadow-2xl max-w-[1100px] mx-auto w-full">
+              <div className="p-8 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
+                <div className="flex items-center gap-5">
+                  <div className="p-4 bg-zinc-800 rounded-xl">
+                    <MessageSquare className="w-8 h-8 text-m2m-green" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl md:text-3xl font-black uppercase italic text-white leading-none">Hobby Reference Tool</h3>
+                    <p className="text-sm text-zinc-500 font-bold uppercase tracking-widest mt-2">Knowledge Base v5.0</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setChatMessages([{ role: 'model', text: 'Hello! I am your Hobby Reference Assistant. How can I help you with industry info or terminology today?' }])}
+                  className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-xl transition-all text-zinc-400 hover:text-m2m-green active:scale-95 flex items-center gap-3 group"
+                >
+                  <RotateCcw className="w-5 h-5 group-hover:rotate-[-45deg] transition-transform" />
+                  <span className="text-xs font-black uppercase tracking-widest">Reset Tool</span>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 space-y-5 custom-scrollbar">
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] p-5 rounded-2xl text-xl md:text-2xl leading-relaxed ${
+                      msg.role === 'user' 
+                        ? 'bg-m2m-green text-black font-bold rounded-tr-none' 
+                        : 'bg-zinc-800 text-zinc-100 rounded-tl-none border border-zinc-700'
+                    }`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-zinc-800 text-zinc-400 p-5 rounded-2xl rounded-tl-none border border-zinc-700 flex items-center gap-3">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      <span className="text-lg font-bold uppercase tracking-widest">Assistant is thinking...</span>
+                    </div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              <div className="p-6 bg-zinc-900/50 border-t border-zinc-800">
+                <form 
+                  onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
+                  className="flex gap-4"
+                >
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Ask about industry terms, grading standards, or hobby info..."
+                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-6 py-5 text-white focus:outline-none focus:border-m2m-green transition-colors text-xl"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || isTyping}
+                    className="p-5 bg-m2m-green text-black rounded-xl hover:bg-emerald-400 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
+                  >
+                    <Send className="w-8 h-8" />
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-center gap-14 text-2xl font-black text-zinc-500 uppercase tracking-[0.1em] pt-8">
+          <button onClick={() => setActiveModal('terms')} className="hover:text-m2m-green transition-colors">Terms of Use</button>
+          <button onClick={() => setActiveModal('privacy')} className="hover:text-m2m-green transition-colors">Privacy Policy</button>
+          <button onClick={() => setActiveModal('submission')} className="hover:text-m2m-green transition-colors">Submission Policy</button>
+        </div>
+      </div>
+    </div>
+  );
 
   const renderQuestions = () => {
     const rawOptions = showYearQuestion ? ['1998 & OLDER', '1999 TO PRESENT'] : getOptionsForQuestion(currentQuestionIdx, remainingServices);
     const definitions = showYearQuestion ? null : questionDefinitions[currentQuestionIdx];
     const currentQuestionText = showYearQuestion ? 'Select the Card Release Year' : getQuestionText(currentQuestionIdx, selectedAnswers);
 
-    // Map options for Step 5
-    const options = rawOptions.map(opt => {
-      if (currentQuestionIdx === 4 && !showYearQuestion) {
-        const isAutographPath = selectedAnswers.some(a => a.toLowerCase().includes('yes'));
-        const isAftermarketOrVintage = selectedAnswers.some(a => 
-          a.toLowerCase() === 'aftermarket' || 
-          a.toLowerCase().includes('1998 & older')
-        );
-
-        if (opt === 'Card Grade Only') {
-          return isAutographPath ? 'Card Grade / Auto Auth' : 'Grading';
-        }
-        if (opt === 'Authenticate Only' && !isAutographPath) {
-          return 'Authentication';
-        }
-        if (opt === 'Card & Autograph Grade' && isAftermarketOrVintage) {
-          return 'Card Grade / Auto Auth';
-        }
-      }
-      return opt;
-    });
+    // Map options for Step 6 (index 5)
+    const options = rawOptions;
 
     // Deduplicate mapped options
     const uniqueOptions = Array.from(new Set(options));
@@ -892,7 +1194,7 @@ export default function App() {
             Back
           </button>
           <div className="flex gap-3">
-            {[0, 1, 2, 3, 4].map(i => (
+            {[0, 1, 2, 3, 4, 5].map(i => (
               <div 
                 key={i} 
                 className={`h-3 rounded-full transition-all duration-500 ${
@@ -922,7 +1224,7 @@ export default function App() {
               exit={{ opacity: 0, y: 20 }}
               className="text-center space-y-6"
             >
-              <span className="text-m2m-green font-black uppercase tracking-[0.4em] text-sm">Step {currentQuestionIdx + 1} of 5</span>
+              <span className="text-m2m-green font-black uppercase tracking-[0.4em] text-sm">Step {currentQuestionIdx + 1} of 6</span>
               <h2 className={`font-black text-white leading-tight uppercase italic tracking-tight ${
                 currentQuestionText.length > 20 ? 'text-5xl' : 'text-6xl'
               }`}>
@@ -1187,13 +1489,13 @@ export default function App() {
                         </p>
                       </div>
                     </div>
-                    <div className="space-y-4 flex flex-col">
-                      <h4 className="text-sm font-black uppercase tracking-[0.3em] text-m2m-green border-l-4 border-m2m-green pl-4 shrink-0 italic">ESTIMATED COMPLETION DATE</h4>
-                      <div className="bg-zinc-950 p-4 rounded-3xl border border-zinc-800 flex items-center justify-between shrink-0">
+                    <div className="space-y-2 flex flex-col overflow-hidden">
+                      <h4 className="text-xs font-black uppercase tracking-[0.3em] text-m2m-green border-l-4 border-m2m-green pl-4 shrink-0 italic">ESTIMATED COMPLETION DATE</h4>
+                      <div className="bg-zinc-950 px-4 py-2.5 rounded-2xl border border-zinc-800 flex items-center justify-between shrink-0">
                         <div>
-                          <p className="text-3xl font-black text-white">{getEstimatedDate(service.turnaround)}</p>
+                          <p className="text-xl font-black text-white">{getEstimatedDate(service.turnaround)}</p>
                         </div>
-                        <CheckCircle2 className="w-10 h-10 text-white opacity-100" />
+                        <CheckCircle2 className="w-6 h-6 text-white opacity-100" />
                       </div>
                       
                       {service.details && (
@@ -1259,7 +1561,43 @@ export default function App() {
   );
 
   const renderHandoff = () => {
-    const serviceList = encodeURIComponent(cart.map(item => item.service.name).join(', '));
+    const formattedServices = cart.map(item => {
+      const name = item.service.name;
+      let unitCostVal = parseFloat(item.service.cost.replace(/[^0-9.]/g, '')) || 0;
+      if (cardShowMode && name.toLowerCase().includes('pregrading')) {
+        unitCostVal = showPregradingPrice;
+      }
+      const itemTotalStr = `$${(unitCostVal * item.quantity).toFixed(2)}`;
+      const estDate = getEstimatedDate(item.service.turnaround);
+      const val = item.service.questions[5];
+      const variationStr = (val && val.toLowerCase() !== 'skip question' && val.toLowerCase() !== 'either' && val.toLowerCase() !== 'x')
+        ? ` (${val})`
+        : '';
+      return `• ${name}${variationStr} - ${itemTotalStr} (x${item.quantity}) — EST: ${estDate}`;
+    });
+    
+    // Helper to detect if a service is CGC or SGC
+    const isCgcOrSgc = (itemService: Service): boolean => {
+      const company = (itemService.questions[1] || '').toLowerCase();
+      const n = (itemService.name || '').toLowerCase();
+      return company.includes('cgc') || company.includes('sgc') || n.includes('cgc') || n.includes('sgc');
+    };
+
+    // Helper to detect if a service is PSA, BGS, or JSA
+    const isPsaBgsOrJsa = (itemService: Service): boolean => {
+      const company = (itemService.questions[1] || '').toLowerCase();
+      const n = (itemService.name || '').toLowerCase();
+      return company.includes('psa') || company.includes('bgs') || company.includes('jsa') || n.includes('psa') || n.includes('bgs') || n.includes('jsa');
+    };
+
+    const hasCgcOrSgcInCart = cart.some(item => isCgcOrSgc(item.service));
+    const hasPsaBgsOrJsaInCart = cart.some(item => isPsaBgsOrJsa(item.service));
+
+    const extraFeeAmt = (hasCgcOrSgcInCart && hasPsaBgsOrJsaInCart) ? 29.00 : 24.00;
+    const shippingAndInsuranceLine = `• Shipping & Insurance - $${extraFeeAmt.toFixed(2)}`;
+
+    const servicesPlainString = [...formattedServices, shippingAndInsuranceLine].join('\n');
+    const serviceList = encodeURIComponent(servicesPlainString);
     const cartTotal = total.toFixed(2);
     const savedStoreCode = storeCode || 'NOT_SET';
     const notes = encodeURIComponent(customerNotes);

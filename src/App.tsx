@@ -240,30 +240,36 @@ export default function App() {
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
 
   // --- Automatic Update Checker & Global Idle Reload (within Guided Access) ---
-  const getRunningBundleUrl = (): string | null => {
+  const getBundleFromDoc = (docToScan: Document | any): string | null => {
     try {
-      const scripts = Array.from(document.getElementsByTagName('script'));
+      const scripts = Array.from(docToScan.getElementsByTagName('script')) as HTMLScriptElement[];
       for (const script of scripts) {
         const src = script.getAttribute('src');
         if (src) {
           if (src.includes('assets/index-') || src.includes('index-') || src.includes('main.tsx')) {
-            return src;
+            return new URL(src, window.location.href).href;
           }
         }
       }
       for (const script of scripts) {
         const src = script.getAttribute('src');
         if (src && !src.includes('youtube.com') && !src.includes('ytimg.com')) {
-          return src;
+          return new URL(src, window.location.href).href;
         }
       }
     } catch (e) {
-      console.error('Error reading script tags:', e);
+      console.error('Error scanning document scripts:', e);
     }
     return null;
   };
 
-  const currentBundleUrlRef = useRef<string | null>(getRunningBundleUrl());
+  const currentBundleUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    currentBundleUrlRef.current = getBundleFromDoc(document);
+    addLog(`VERSION_INITIAL: Running bundle is ${currentBundleUrlRef.current}`);
+  }, []);
+
   const [updateDetected, setUpdateDetected] = useState(false);
   const updateDetectedRef = useRef(false);
   const lastInteractionRef = useRef<number>(Date.now());
@@ -296,35 +302,21 @@ export default function App() {
 
   const checkForUpdate = async () => {
     try {
-      const res = await fetch(`/index.html?cb=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`/index.html?cb=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        cache: 'no-store'
+      });
       if (!res.ok) return;
       const htmlText = await res.text();
       
-      // Extract main Vite JS bundle filename from index.html content
-      const scriptRegex = /<script\b[^>]*src=["']([^"']+)["']/gi;
-      let match;
-      let fetchedUrl: string | null = null;
-      
-      while ((match = scriptRegex.exec(htmlText)) !== null) {
-        const src = match[1];
-        if (src.includes('assets/index-') || src.includes('index-') || src.includes('main.tsx')) {
-          fetchedUrl = src;
-          break;
-        }
-      }
-      
-      // Fallback: If no script matches, take the first local relative JS or TS script
-      if (!fetchedUrl) {
-        const fallbackRegex = /<script\b[^>]*src=["']([^"']+\.(?:js|tsx|ts))["']/gi;
-        let fbMatch;
-        while ((fbMatch = fallbackRegex.exec(htmlText)) !== null) {
-          const src = fbMatch[1];
-          if (!src.includes('youtube.com') && !src.includes('ytimg.com')) {
-            fetchedUrl = src;
-            break;
-          }
-        }
-      }
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlText, 'text/html');
+      const fetchedUrl = getBundleFromDoc(doc);
 
       if (!fetchedUrl) return;
 
@@ -350,13 +342,13 @@ export default function App() {
     }
   };
 
-  // Poll for bundle updates periodically (every 15 mins) & check idle reload triggers (every 10 seconds)
+  // Poll for bundle updates periodically (every 5 mins) & check idle reload triggers (every 10 seconds)
   useEffect(() => {
-    // 1. Poll every 15 minutes for new Vercel/GitHub/Server builds
+    // 1. Poll every 5 minutes for new Vercel/GitHub/Server builds
     const updatePollInterval = setInterval(() => {
       addLog('VERSION_CHECK_START: Querying server index');
       checkForUpdate();
-    }, 15 * 60 * 1000); // 15 minutes
+    }, 5 * 60 * 1000); // 5 minutes
 
     // 2. Check every 10 seconds if kiosk is idle with an update pending
     const idleCheckInterval = setInterval(() => {

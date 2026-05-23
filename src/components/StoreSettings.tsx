@@ -28,6 +28,53 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { getLogs, clearLogs, addLog, type LogEntry } from '../utils/logger';
 
+const STORE_OPTIONS = [
+  "HH - Escondido, CA.",
+  "HH - Petco Park, CA.",
+  "HH - Mission Valley, CA.",
+  "HH - Temecula, CA.",
+  "CC - Carlsbad, CA.", 
+  "BOI - Meridian, ID.",
+  "TCS - El Cajon, CA.",
+  "CBD - Carlsbad, CA.",
+  "BOX - Frisco, TX.",
+  "MEX - Albuquerque, NM.",
+  "LBC - Signal Hill, CA.",
+  "AIR - Clairemont, CA.",
+  "WAX - Linwood, NJ.",
+  "ALL - Greenville, SC",
+  "AND - Anderson, SC",
+  "NJA - Carlsbad, CA.",
+  "HOC - Metairie, LA.",
+  "P&P - New Orleans, LA.",
+  "RJD - McKinney, TX."
+];
+
+const playVolumePreview = (volValue: number) => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08); // A5
+    
+    gainNode.gain.setValueAtTime((volValue / 100) * 0.15, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.25);
+  } catch (err) {
+    console.warn('Audio play failed:', err);
+  }
+};
+
 interface StoreSettingsProps {
   onUpdate: (settings: { 
     storeCode: string; 
@@ -36,14 +83,13 @@ interface StoreSettingsProps {
     cardShowMode: boolean;
     showPregradingPrice: number;
     globalDiscount: number;
+    showName: string;
   }) => void;
   onReset?: () => void;
 }
 
 const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [password, setPassword] = useState('');
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [storeCode, setStoreCode] = useState('');
   const [shopName, setShopName] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
@@ -60,11 +106,16 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
   const [cardShowMode, setCardShowMode] = useState(false);
   const [showPregradingPrice, setShowPregradingPrice] = useState(5.00);
   const [globalDiscount, setGlobalDiscount] = useState(10);
+  const [showName, setShowName] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showLog, setShowLog] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [error, setError] = useState('');
   const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  // Advanced settings password protection (232323)
+  const [advancedPassword, setAdvancedPassword] = useState('');
+  const [isAdvancedAuthorized, setIsAdvancedAuthorized] = useState(false);
+  const [advancedError, setAdvancedError] = useState('');
 
   useEffect(() => {
     const savedCode = localStorage.getItem('storeCode') || '';
@@ -82,6 +133,7 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
     const savedCardShowMode = localStorage.getItem('cardShowMode') === 'true';
     const savedShowPregradingPrice = localStorage.getItem('showPregradingPrice') || '5.00';
     const savedGlobalDiscount = localStorage.getItem('globalDiscount') || '10';
+    const savedShowName = localStorage.getItem('showName') || '';
 
     setStoreCode(savedCode);
     setShopName(savedName);
@@ -98,6 +150,7 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
     setCardShowMode(savedCardShowMode);
     setShowPregradingPrice(parseFloat(savedShowPregradingPrice));
     setGlobalDiscount(parseFloat(savedGlobalDiscount));
+    setShowName(savedShowName);
 
     onUpdate({ 
       storeCode: savedCode, 
@@ -105,7 +158,8 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
       volume: parseInt(savedVolume),
       cardShowMode: savedCardShowMode,
       showPregradingPrice: parseFloat(savedShowPregradingPrice),
-      globalDiscount: parseFloat(savedGlobalDiscount)
+      globalDiscount: parseFloat(savedGlobalDiscount),
+      showName: savedShowName
     });
 
     const handleOnline = () => setIsOnline(true);
@@ -119,17 +173,6 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
       window.removeEventListener('offline', handleOffline);
     };
   }, [onUpdate]);
-
-  const handlePasswordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === 'StoreCode') {
-      setIsAuthorized(true);
-      setError('');
-    } else {
-      setError('Incorrect password');
-      setPassword('');
-    }
-  };
 
   const handleSave = () => {
     const trimmedCode = storeCode.trim();
@@ -149,6 +192,8 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
     localStorage.setItem('showPregradingPrice', showPregradingPrice.toString());
     localStorage.setItem('globalDiscount', globalDiscount.toString());
     
+    localStorage.setItem('showName', showName.trim());
+    
     // Reporting Logic: Log data to System Log
     const profileData = {
       storeCode: trimmedCode,
@@ -163,7 +208,8 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
       employees: employees.trim(),
       cardShowMode,
       showPregradingPrice,
-      globalDiscount
+      globalDiscount,
+      showName: showName.trim()
     };
     
     addLog(`STORE_PROFILE_CHECKIN: ${JSON.stringify(profileData)}`);
@@ -174,18 +220,20 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
       volume,
       cardShowMode,
       showPregradingPrice,
-      globalDiscount
+      globalDiscount,
+      showName: showName.trim()
     });
     setIsOpen(false);
-    setIsAuthorized(false);
-    setPassword('');
+    setIsAdvancedAuthorized(false);
+    setAdvancedPassword('');
+    setAdvancedError('');
   };
 
   const handleClose = () => {
     setIsOpen(false);
-    setIsAuthorized(false);
-    setPassword('');
-    setError('');
+    setIsAdvancedAuthorized(false);
+    setAdvancedPassword('');
+    setAdvancedError('');
     setShowLog(false);
   };
 
@@ -278,347 +326,301 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                 </div>
               </div>
 
-              <div className="p-8 space-y-8 overflow-y-auto max-h-[70vh] custom-scrollbar">
-                {!isAuthorized ? (
-                  <form onSubmit={handlePasswordSubmit} className="space-y-4">
+               <div className="p-8 space-y-8 overflow-y-auto max-h-[70vh] custom-scrollbar">
+                <div className="space-y-10">
+                  {/* Store Identity */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
+                      <Home className="w-4 h-4 text-m2m-green" />
+                      Store Identity
+                    </h3>
                     <div className="space-y-2">
-                      <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Admin Password</label>
-                      <input 
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter password"
-                        autoFocus
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors"
-                      />
-                      {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
+                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Store Location Code</label>
+                      <select 
+                        value={storeCode}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setStoreCode(val);
+                          localStorage.setItem('storeCode', val);
+                          onUpdate({ 
+                            storeCode: val, 
+                            brightness, 
+                            volume,
+                            cardShowMode,
+                            showPregradingPrice,
+                            globalDiscount,
+                            showName
+                          });
+                        }}
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors text-sm"
+                      >
+                        <option value="">Select Store Location...</option>
+                        {STORE_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
                     </div>
-                    <button 
-                      type="submit"
-                      className="w-full bg-m2m-green text-black font-black uppercase tracking-widest py-3 rounded-xl hover:bg-emerald-400 transition-all active:scale-95"
-                    >
-                      Authenticate
-                    </button>
-                  </form>
-                ) : (
-                  <div className="space-y-10">
-                    {/* Store Identity */}
+                  </div>
+
+                  {/* Device Adjustments */}
+                  <div className="space-y-6 pt-6 border-t border-zinc-800">
+                    <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
+                      <Cpu className="w-4 h-4 text-m2m-green" />
+                      Device Adjustments
+                    </h3>
+                    
                     <div className="space-y-4">
-                      <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
-                        <Home className="w-4 h-4 text-m2m-green" />
-                        Store Identity
-                      </h3>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Shop Name</label>
+                      {/* Brightness Adjuster */}
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                            <Sun className="w-3.5 h-3.5 text-zinc-400" />
+                            Screen Brightness
+                          </label>
+                          <span className="text-[10px] font-black text-white">{brightness}%</span>
+                        </div>
                         <input 
-                          type="text"
-                          value={shopName}
-                          onChange={(e) => setShopName(e.target.value)}
-                          placeholder="e.g., Market 2 Mint HQ"
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors"
+                          type="range"
+                          min="10"
+                          max="100"
+                          value={brightness}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            setBrightness(val);
+                            localStorage.setItem('brightness', val.toString());
+                            onUpdate({ 
+                              storeCode, 
+                              brightness: val, 
+                              volume, 
+                              cardShowMode, 
+                              showPregradingPrice, 
+                              globalDiscount,
+                              showName
+                            });
+                          }}
+                          className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-m2m-green"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Store Location Code</label>
+
+                      {/* Volume Adjuster */}
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
+                            <Volume2 className="w-3.5 h-3.5 text-zinc-400" />
+                            Kiosk Sound Volume
+                          </label>
+                          <span className="text-[10px] font-black text-white">{volume}%</span>
+                        </div>
                         <input 
-                          type="text"
-                          value={storeCode}
-                          onChange={(e) => setStoreCode(e.target.value)}
-                          placeholder="Enter store code, e.g., HH - Escondido, CA"
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors"
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={volume}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            setVolume(val);
+                            localStorage.setItem('volume', val.toString());
+                            onUpdate({ 
+                              storeCode, 
+                              brightness, 
+                              volume: val, 
+                              cardShowMode, 
+                              showPregradingPrice, 
+                              globalDiscount,
+                              showName
+                            });
+                          }}
+                          onPointerUp={(e) => {
+                            const val = parseInt((e.target as HTMLInputElement).value);
+                            playVolumePreview(val);
+                          }}
+                          className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-m2m-green"
                         />
-                        <p className="text-[10px] text-zinc-500 italic">Format: [CODE] - [Location]</p>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Store Profile */}
-                    <div className="space-y-6 pt-6 border-t border-zinc-800">
-                      <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
-                        <ClipboardList className="w-4 h-4 text-m2m-green" />
-                        Store Profile
-                      </h3>
-                      
-                      {/* Identity Details */}
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                            <MapPin className="w-3 h-3" />
-                            Store Physical Address
-                          </label>
-                          <textarea 
-                            value={storeAddress}
-                            onChange={(e) => setStoreAddress(e.target.value)}
-                            placeholder="Enter full physical address"
-                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors h-20 resize-none text-sm"
-                          />
+                  {/* Advanced Settings Protection */}
+                  <div className="pt-6 border-t border-zinc-800 space-y-6">
+                    {!isAdvancedAuthorized ? (
+                      <div className="p-5 bg-zinc-950 border border-zinc-800 rounded-2xl space-y-4">
+                        <div className="flex items-center gap-2.5">
+                          <Shield className="w-5 h-5 text-m2m-green" />
+                          <h4 className="text-xs font-black uppercase tracking-widest text-white leading-none">Advanced Controls</h4>
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                            <Phone className="w-3 h-3" />
-                            Store Public Phone
-                          </label>
+                        <p className="text-[10px] text-zinc-500 leading-relaxed">Enter security credential key to edit diagnostics, hardware parameters, and system configs.</p>
+                        <div className="space-y-3">
                           <input 
-                            type="tel"
-                            value={storePhone}
-                            onChange={(e) => setStorePhone(e.target.value)}
-                            placeholder="(555) 000-0000"
-                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors"
+                            type="password"
+                            placeholder="Enter advanced password"
+                            value={advancedPassword}
+                            onChange={(e) => setAdvancedPassword(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (advancedPassword === '232323') {
+                                  setIsAdvancedAuthorized(true);
+                                  setAdvancedError('');
+                                } else {
+                                  setAdvancedError('Incorrect advanced password');
+                                  setAdvancedPassword('');
+                                }
+                              }
+                            }}
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-m2m-green transition-colors"
                           />
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              if (advancedPassword === '232323') {
+                                setIsAdvancedAuthorized(true);
+                                setAdvancedError('');
+                              } else {
+                                setAdvancedError('Incorrect advanced password');
+                                setAdvancedPassword('');
+                              }
+                            }}
+                            className="w-full bg-m2m-green text-black font-black uppercase tracking-widest py-3 rounded-xl hover:bg-emerald-400 transition-all active:scale-95 text-xs text-center"
+                          >
+                            Unlock Settings
+                          </button>
                         </div>
+                        {advancedError && <p className="text-red-500 text-[10px] font-bold">{advancedError}</p>}
                       </div>
+                    ) : (
+                      <div className="space-y-10">
+                        {/* Diagnostics & Hardware */}
+                        <div className="space-y-6">
+                          <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
+                            <Cpu className="w-4 h-4 text-m2m-green" />
+                            System Diagnostics
+                          </h3>
 
-                      {/* Owner Info */}
-                      <div className="space-y-4 pt-4 border-t border-zinc-800/50">
-                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                          <User className="w-3 h-3" />
-                          Owner Information
-                        </h4>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Owner Name</label>
-                            <input 
-                              type="text"
-                              value={ownerName}
-                              onChange={(e) => setOwnerName(e.target.value)}
-                              placeholder="Full Name"
-                              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors"
-                            />
-                          </div>
                           <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                                <Mail className="w-3 h-3" />
-                                Owner Email
-                              </label>
-                              <input 
-                                type="email"
-                                value={ownerEmail}
-                                onChange={(e) => setOwnerEmail(e.target.value)}
-                                placeholder="email@example.com"
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors text-xs"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                                <Phone className="w-3 h-3" />
-                                Owner Mobile
-                              </label>
-                              <input 
-                                type="tel"
-                                value={ownerMobile}
-                                onChange={(e) => setOwnerMobile(e.target.value)}
-                                placeholder="(555) 000-0000"
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors text-xs"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Authorized Employees */}
-                      <div className="space-y-4 pt-4 border-t border-zinc-800/50">
-                        <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                          <Users className="w-3 h-3" />
-                          Authorized Employees
-                        </h4>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Employee Names & Emails</label>
-                          <textarea 
-                            value={employees}
-                            onChange={(e) => setEmployees(e.target.value)}
-                            placeholder="e.g., John Doe (john@example.com), Jane Smith (jane@example.com)"
-                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors h-24 resize-none text-sm"
-                          />
-                          <p className="text-[10px] text-zinc-500 italic">Enter one per line or separated by commas.</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Network & Connectivity */}
-                    <div className="space-y-4 pt-6 border-t border-zinc-800">
-                      <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
-                        <Wifi className="w-4 h-4 text-m2m-green" />
-                        Network & Connectivity
-                      </h3>
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Store Wi-Fi Name</label>
-                          <input 
-                            type="text"
-                            value={wifiName}
-                            onChange={(e) => setWifiName(e.target.value)}
-                            placeholder="SSID"
-                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Wi-Fi Password</label>
-                          <div className="relative">
-                            <input 
-                              type={showWifiPassword ? "text" : "password"}
-                              value={wifiPassword}
-                              onChange={(e) => setWifiPassword(e.target.value)}
-                              placeholder="Password"
-                              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors pr-12"
-                            />
                             <button 
-                              onClick={() => setShowWifiPassword(!showWifiPassword)}
-                              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                              type="button"
+                              onClick={handleViewLog}
+                              className="bg-zinc-800 text-white font-black uppercase tracking-widest py-3 rounded-xl hover:bg-zinc-700 transition-all active:scale-95 flex items-center justify-center gap-2 border border-zinc-700"
                             >
-                              {showWifiPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              <ClipboardList className="w-4 h-4 text-m2m-green" />
+                              System Log
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={handleForceReload}
+                              className="bg-zinc-800 text-red-500 font-black uppercase tracking-widest py-3 rounded-xl hover:bg-zinc-700 transition-all active:scale-95 flex items-center justify-center gap-2 border border-zinc-700"
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                              Reload App
                             </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 gap-4">
-                          <button 
-                            onClick={handleTestConnectivity}
-                            disabled={testStatus === 'loading'}
-                            className={`w-full font-black uppercase tracking-widest py-3 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 border ${
-                              testStatus === 'loading' ? 'bg-zinc-800 text-zinc-500 border-zinc-700' :
-                              testStatus === 'success' ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/50' :
-                              testStatus === 'error' ? 'bg-red-500/20 text-red-500 border-red-500/50' :
-                              'bg-zinc-800 text-white border-zinc-700 hover:bg-zinc-700'
-                            }`}
-                          >
-                            {testStatus === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
-                            {testStatus === 'loading' ? 'Testing...' : 
-                             testStatus === 'success' ? 'System Connectivity Verified' : 
-                             testStatus === 'error' ? 'Connectivity Test Failed' : 
-                             'Test System Connectivity'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Diagnostics & Hardware */}
-                    <div className="space-y-6 pt-6 border-t border-zinc-800">
-                      <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
-                        <Cpu className="w-4 h-4 text-m2m-green" />
-                        Diagnostics & Hardware
-                      </h3>
-                      
-                      <div className="space-y-4">
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                              <Sun className="w-3 h-3" />
-                              Brightness
+                        {/* Card Show Mode */}
+                        <div className="space-y-6 pt-6 border-t border-zinc-800">
+                          <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
+                            <ShoppingBag className="w-4 h-4 text-m2m-green" />
+                            Card Show Mode
+                          </h3>
+                          
+                          <div className="space-y-4">
+                            <label className="flex items-center justify-between p-4 bg-zinc-950 border border-zinc-800 rounded-xl cursor-pointer group">
+                              <span className="text-xs font-black uppercase tracking-widest text-zinc-400 group-hover:text-white transition-colors">Activate Card Show Mode</span>
+                              <div className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                  type="checkbox" 
+                                  checked={cardShowMode}
+                                  onChange={(e) => {
+                                    const val = e.target.checked;
+                                    setCardShowMode(val);
+                                    localStorage.setItem('cardShowMode', val.toString());
+                                    onUpdate({ storeCode, brightness, volume, cardShowMode: val, showPregradingPrice, globalDiscount, showName });
+                                  }}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-m2m-green"></div>
+                              </div>
                             </label>
-                            <span className="text-[10px] font-black text-white">{brightness}%</span>
-                          </div>
-                          <input 
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={brightness}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value);
-                              setBrightness(val);
-                              onUpdate({ storeCode, brightness: val, volume });
-                            }}
-                            className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-m2m-green"
-                          />
-                        </div>
 
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-2">
-                              <Volume2 className="w-3 h-3" />
-                              Volume
-                            </label>
-                            <span className="text-[10px] font-black text-white">{volume}%</span>
+                            {/* Show Name text field directly in Card Show Mode area */}
+                            {cardShowMode && (
+                              <div className="space-y-2 p-4 bg-zinc-950 border border-zinc-800 rounded-2xl animate-fade-in shadow-inner">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 flex items-center gap-1.5">
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-m2m-green"></span>
+                                  Show Name
+                                </label>
+                                <input 
+                                  type="text"
+                                  value={showName}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setShowName(val);
+                                    localStorage.setItem('showName', val);
+                                    onUpdate({ 
+                                      storeCode, 
+                                      brightness, 
+                                      volume, 
+                                      cardShowMode, 
+                                      showPregradingPrice, 
+                                      globalDiscount,
+                                      showName: val
+                                    });
+                                  }}
+                                  placeholder="Enter custom show name (e.g., Dallas Card Show)"
+                                  className="w-full bg-zinc-900 border border-zinc-805 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-m2m-green transition-colors font-medium placeholder:text-zinc-650"
+                                />
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Show Pregrading Price ($)</label>
+                              <input 
+                                type="number"
+                                step="0.01"
+                                value={showPregradingPrice}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  setShowPregradingPrice(val);
+                                  localStorage.setItem('showPregradingPrice', val.toString());
+                                  onUpdate({ storeCode, brightness, volume, cardShowMode, showPregradingPrice: val, globalDiscount, showName });
+                                }}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Global Percentage Discount (%)</label>
+                              <input 
+                                type="number"
+                                step="0.1"
+                                value={globalDiscount}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  setGlobalDiscount(val);
+                                  localStorage.setItem('globalDiscount', val.toString());
+                                  onUpdate({ storeCode, brightness, volume, cardShowMode, showPregradingPrice, globalDiscount: val, showName });
+                                }}
+                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors"
+                              />
+                            </div>
                           </div>
-                          <input 
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={volume}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value);
-                              setVolume(val);
-                              onUpdate({ storeCode, brightness, volume: val });
-                            }}
-                            className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-m2m-green"
-                          />
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <button 
-                          onClick={handleViewLog}
-                          className="bg-zinc-800 text-white font-black uppercase tracking-widest py-3 rounded-xl hover:bg-zinc-700 transition-all active:scale-95 flex items-center justify-center gap-2 border border-zinc-700"
-                        >
-                          <ClipboardList className="w-4 h-4 text-m2m-green" />
-                          System Log
-                        </button>
-                        <button 
-                          onClick={handleForceReload}
-                          className="bg-zinc-800 text-red-500 font-black uppercase tracking-widest py-3 rounded-xl hover:bg-zinc-700 transition-all active:scale-95 flex items-center justify-center gap-2 border border-zinc-700"
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                          Reload App
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Card Show Mode */}
-                    <div className="space-y-6 pt-6 border-t border-zinc-800">
-                      <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
-                        <ShoppingBag className="w-4 h-4 text-m2m-green" />
-                        Card Show Mode
-                      </h3>
-                      
-                      <div className="space-y-4">
-                        <label className="flex items-center justify-between p-4 bg-zinc-950 border border-zinc-800 rounded-xl cursor-pointer group">
-                          <span className="text-xs font-black uppercase tracking-widest text-zinc-400 group-hover:text-white transition-colors">Activate Card Show Mode</span>
-                          <div className="relative inline-flex items-center cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              checked={cardShowMode}
-                              onChange={(e) => setCardShowMode(e.target.checked)}
-                              className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-m2m-green"></div>
-                          </div>
-                        </label>
-
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Show Pregrading Price ($)</label>
-                          <input 
-                            type="number"
-                            step="0.01"
-                            value={showPregradingPrice}
-                            onChange={(e) => setShowPregradingPrice(parseFloat(e.target.value) || 0)}
-                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Global Percentage Discount (%)</label>
-                          <input 
-                            type="number"
-                            step="0.1"
-                            value={globalDiscount}
-                            onChange={(e) => setGlobalDiscount(parseFloat(e.target.value) || 0)}
-                            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <button 
-                      onClick={handleSave}
-                      className="w-full bg-m2m-green text-black font-black uppercase tracking-widest py-4 rounded-xl hover:bg-emerald-400 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl"
-                    >
-                      <Save className="w-5 h-5" />
-                      Save & Close
-                    </button>
-
-                    <div className="pt-8 text-center">
-                      <p className="text-[10px] font-black text-zinc-700 uppercase tracking-[0.2em]">M2M Kiosk v1.0.6</p>
-                    </div>
+                    )}
                   </div>
-                )}
+
+                  <button 
+                    onClick={handleSave}
+                    className="w-full bg-m2m-green text-black font-black uppercase tracking-widest py-4 rounded-xl hover:bg-emerald-400 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl"
+                  >
+                    <Save className="w-5 h-5" />
+                    Save & Close
+                  </button>
+
+                  <div className="pt-8 text-center">
+                    <p className="text-[10px] font-black text-zinc-700 uppercase tracking-[0.2em]">M2M Kiosk v1.0.7</p>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </div>

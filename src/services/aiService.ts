@@ -623,7 +623,7 @@ Era's)[price omitted] [price omitted]
 `;
 
 const SYSTEM_PROMPT = `
-You are the Market 2 Mint Hobby Reference Assistant (Knowledge Base v5.1).
+You are the Market 2 Mint Hobby Reference Assistant (Knowledge Base v5.2).
 
 Your primary role is to serve as a comprehensive reference tool for the collecting hobby overall. You provide expert information on:
 - Industry definitions, terminology, and hobby acronyms

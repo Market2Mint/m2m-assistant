@@ -217,12 +217,54 @@ export default function App() {
   const [cardShowMode, setCardShowMode] = useState(() => localStorage.getItem('cardShowMode') === 'true');
   const [showPregradingPrice, setShowPregradingPrice] = useState(() => parseFloat(localStorage.getItem('showPregradingPrice') || '5.00'));
   const [globalDiscount, setGlobalDiscount] = useState(() => parseFloat(localStorage.getItem('globalDiscount') || '10'));
+  const [showName, setShowName] = useState(() => localStorage.getItem('showName') || '');
   const [cart, setCart] = useState<{ service: Service; quantity: number }[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [customerNotes, setCustomerNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'cart' | 'video' | null>(null);
   const [showScrollIndicator, setShowScrollIndicator] = useState(true);
+
+  const playUIAudio = (frequency = 600, duration = 0.08) => {
+    try {
+      const savedVolume = localStorage.getItem('volume');
+      const currentVal = savedVolume !== null ? parseInt(savedVolume) : volume;
+      if (currentVal === 0) return;
+      
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+      
+      const val = currentVal / 100;
+      gainNode.gain.setValueAtTime(val * 0.05, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch (e) {
+      console.warn('UI Audio click failed:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (step === 'results') {
+      playUIAudio(650, 0.12);
+    } else if (step === 'handoff') {
+      playUIAudio(880, 0.2);
+    } else if (step === 'questions') {
+      playUIAudio(580, 0.1);
+    } else if (step === 'landing') {
+      playUIAudio(500, 0.1); 
+    }
+  }, [step]);
 
   useEffect(() => {
     if (step === 'results') {
@@ -647,6 +689,7 @@ export default function App() {
   };
 
   const addToCart = (service: Service) => {
+    playUIAudio(700, 0.08);
     addLog(`Added ${service.name} to Cart`);
     const qty = quantities[service.name] || 1;
     setCart(prev => {
@@ -665,6 +708,7 @@ export default function App() {
   };
 
   const removeFromCart = (serviceName: string) => {
+    playUIAudio(450, 0.08);
     setCart(prev => prev.filter(item => item.service.name !== serviceName));
   };
 
@@ -938,7 +982,7 @@ export default function App() {
                   </div>
                   <div>
                     <h3 className="text-xl font-black uppercase italic text-white leading-none">Hobby Reference Tool</h3>
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">Knowledge Base v5.1</p>
+                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">Knowledge Base v5.2</p>
                   </div>
                 </div>
                 <button 
@@ -1095,7 +1139,7 @@ export default function App() {
                   </div>
                   <div>
                     <h3 className="text-2xl md:text-3xl font-black uppercase italic text-white leading-none">Hobby Reference Tool</h3>
-                    <p className="text-sm text-zinc-500 font-bold uppercase tracking-widest mt-2">Knowledge Base v5.1</p>
+                    <p className="text-sm text-zinc-500 font-bold uppercase tracking-widest mt-2">Knowledge Base v5.2</p>
                   </div>
                 </div>
                 <button 
@@ -1559,7 +1603,15 @@ export default function App() {
       if (cardShowMode && name.toLowerCase().includes('pregrading')) {
         unitCostVal = showPregradingPrice;
       }
-      const itemTotalStr = `$${(unitCostVal * item.quantity).toFixed(2)}`;
+      const rawSubtotal = unitCostVal * item.quantity;
+      let itemTotalStr = `$${rawSubtotal.toFixed(2)}`;
+      
+      if (cardShowMode && globalDiscount > 0 && !name.toLowerCase().includes('pregrading')) {
+        const itemDiscount = rawSubtotal * (globalDiscount / 100);
+        const finalItemTotal = rawSubtotal - itemDiscount;
+        itemTotalStr = `$${rawSubtotal.toFixed(2)} / $${itemDiscount.toFixed(2)} / $${finalItemTotal.toFixed(2)}`;
+      }
+      
       const estDate = getEstimatedDate(item.service.turnaround);
       const val = item.service.questions[5];
       const variationStr = (val && val.toLowerCase() !== 'skip question' && val.toLowerCase() !== 'either' && val.toLowerCase() !== 'x')
@@ -1591,7 +1643,7 @@ export default function App() {
     const servicesPlainString = [...formattedServices, shippingAndInsuranceLine].join('\n');
     const serviceList = encodeURIComponent(servicesPlainString);
     const cartTotal = total.toFixed(2);
-    const savedStoreCode = storeCode || 'NOT_SET';
+    const savedStoreCode = (cardShowMode && showName.trim()) ? showName.trim() : (storeCode || 'NOT_SET');
     const notes = encodeURIComponent(customerNotes);
     
     const baseUrl = (cardShowMode && paymentMethod === 'cash') 
@@ -1685,13 +1737,14 @@ export default function App() {
     >
       {step === 'landing' && (
         <StoreSettings 
-          onUpdate={({ storeCode, brightness, volume, cardShowMode, showPregradingPrice, globalDiscount }) => {
+          onUpdate={({ storeCode, brightness, volume, cardShowMode, showPregradingPrice, globalDiscount, showName }) => {
             setStoreCode(storeCode);
             setBrightness(brightness);
             setVolume(volume);
             setCardShowMode(cardShowMode);
             setShowPregradingPrice(showPregradingPrice);
             setGlobalDiscount(globalDiscount);
+            setShowName(showName);
           }} 
           onReset={handleReset} 
         />
@@ -1700,9 +1753,9 @@ export default function App() {
       <main className="h-screen w-full flex flex-col">
         {step === 'landing' && cardShowMode && (
           <div className="fixed top-0 left-0 z-[60]">
-            <div className="bg-m2m-green text-black px-4 py-2 rounded-br-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2 border-r-2 border-b-2 border-black/10">
-              <ShoppingBag className="w-3 h-3" />
-              SHOW PRICING ENABLED
+            <div className="bg-m2m-green text-black px-5 py-2.5 rounded-br-2xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2 border-r border-b border-black/10">
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>SHOW MODE {showName ? `: ${showName.toUpperCase()}` : 'ENABLED'}</span>
             </div>
           </div>
         )}
@@ -1873,6 +1926,18 @@ export default function App() {
                                   return (cost * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                 })()}
                               </span>
+                              {cardShowMode && globalDiscount > 0 && !item.service.name.toLowerCase().includes('pregrading') && (() => {
+                                let cost = parseFloat(item.service.cost.replace(/[^0-9.]/g, '')) || 0;
+                                const originalTotal = cost * item.quantity;
+                                const discountAmount = originalTotal * (globalDiscount / 100);
+                                const finalTotal = originalTotal - discountAmount;
+                                return (
+                                  <div className="text-m2m-green font-black text-lg uppercase tracking-wider mt-1.5 flex items-center gap-1.5">
+                                    <span>CALC:</span>
+                                    <span>${originalTotal.toFixed(2)} / ${discountAmount.toFixed(2)} / ${finalTotal.toFixed(2)}</span>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                           <div className="flex gap-4">
@@ -2006,6 +2071,13 @@ export default function App() {
           </Modal>
         )}
       </AnimatePresence>
+      {brightness < 100 && (
+        <div 
+          id="screen-brightness-dimmer"
+          className="fixed inset-0 pointer-events-none z-[99999] bg-black transition-opacity duration-200"
+          style={{ opacity: ((100 - brightness) / 100) * 0.85 }}
+        />
+      )}
     </div>
   );
 }

@@ -938,7 +938,7 @@ export default function App() {
                   </div>
                   <div>
                     <h3 className="text-xl font-black uppercase italic text-white leading-none">Hobby Reference Tool</h3>
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">Knowledge Base v5.0</p>
+                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">Knowledge Base v5.1</p>
                   </div>
                 </div>
                 <button 
@@ -1095,7 +1095,7 @@ export default function App() {
                   </div>
                   <div>
                     <h3 className="text-2xl md:text-3xl font-black uppercase italic text-white leading-none">Hobby Reference Tool</h3>
-                    <p className="text-sm text-zinc-500 font-bold uppercase tracking-widest mt-2">Knowledge Base v5.0</p>
+                    <p className="text-sm text-zinc-500 font-bold uppercase tracking-widest mt-2">Knowledge Base v5.1</p>
                   </div>
                 </div>
                 <button 

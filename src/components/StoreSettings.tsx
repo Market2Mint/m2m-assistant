@@ -30,9 +30,9 @@ import { getLogs, clearLogs, addLog, type LogEntry } from '../utils/logger';
 
 const STORE_OPTIONS = [
   "HH - Escondido, CA.",
-  "HH - Petco Park, CA.",
-  "HH - Mission Valley, CA.",
-  "HH - Temecula, CA.",
+  "PET - Petco Park, CA.",
+  "MV - Mission Valley, CA.",
+  "TEM - Temecula, CA.",
   "CC - Carlsbad, CA.", 
   "BOI - Meridian, ID.",
   "TCS - El Cajon, CA.",
@@ -44,6 +44,7 @@ const STORE_OPTIONS = [
   "WAX - Linwood, NJ.",
   "ALL - Greenville, SC",
   "AND - Anderson, SC",
+  "B&B - Laurens, SC.",
   "NJA - Carlsbad, CA.",
   "HOC - Metairie, LA.",
   "P&P - New Orleans, LA.",

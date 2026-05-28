@@ -96,6 +96,25 @@ const parseCSV = (csv: string): Service[] => {
       ) {
         continue;
       }
+      
+      const isPSA = parts[1] === 'PSA';
+      const serviceName = parts[6];
+      const sNameNorm = serviceName.toLowerCase();
+      
+      // Temporarily suspend and hide PSA Value tier services in high demand
+      if (isPSA) {
+        if (
+          sNameNorm.includes('value bulk') || 
+          sNameNorm.includes('value (1980') ||
+          sNameNorm.includes('value & vintage') ||
+          sNameNorm === 'value plus' ||
+          sNameNorm.includes('value plus') ||
+          sNameNorm.includes('value max')
+        ) {
+          continue;
+        }
+      }
+
       services.push({
         questions: [parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]],
         name: parts[6],

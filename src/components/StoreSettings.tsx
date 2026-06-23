@@ -48,7 +48,8 @@ const STORE_OPTIONS = [
   "NJA - Carlsbad, CA.",
   "HOC - Metairie, LA.",
   "P&P - New Orleans, LA.",
-  "RJD - McKinney, TX."
+  "RJD - McKinney, TX.",
+  "XPs - Flowery Branch, GA."
 ];
 
 const playVolumePreview = (volValue: number) => {
@@ -92,6 +93,7 @@ interface StoreSettingsProps {
 const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [storeCode, setStoreCode] = useState('');
+  const [isManual, setIsManual] = useState(false);
   const [shopName, setShopName] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
   const [storePhone, setStorePhone] = useState('');
@@ -137,6 +139,9 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
     const savedShowName = localStorage.getItem('showName') || '';
 
     setStoreCode(savedCode);
+    if (savedCode && !STORE_OPTIONS.includes(savedCode)) {
+      setIsManual(true);
+    }
     setShopName(savedName);
     setStoreAddress(savedAddress);
     setStorePhone(savedPhone);
@@ -331,35 +336,87 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                 <div className="space-y-10">
                   {/* Store Identity */}
                   <div className="space-y-4">
-                    <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
-                      <Home className="w-4 h-4 text-m2m-green" />
-                      Store Identity
-                    </h3>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Store Location Code</label>
-                      <select 
-                        value={storeCode}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setStoreCode(val);
-                          localStorage.setItem('storeCode', val);
-                          onUpdate({ 
-                            storeCode: val, 
-                            brightness, 
-                            volume,
-                            cardShowMode,
-                            showPregradingPrice,
-                            globalDiscount,
-                            showName
-                          });
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-sm font-black text-white uppercase italic tracking-widest flex items-center gap-2">
+                        <Home className="w-4 h-4 text-m2m-green" />
+                        Store Identity
+                      </h3>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const nextManual = !isManual;
+                          setIsManual(nextManual);
+                          if (!nextManual) {
+                            if (!STORE_OPTIONS.includes(storeCode)) {
+                              setStoreCode('');
+                              localStorage.setItem('storeCode', '');
+                              onUpdate({ 
+                                storeCode: '', 
+                                brightness, 
+                                volume,
+                                cardShowMode,
+                                showPregradingPrice,
+                                globalDiscount,
+                                showName
+                              });
+                            }
+                          }
                         }}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors text-sm"
+                        className="text-[10px] font-black uppercase tracking-widest text-m2m-green hover:text-emerald-400 transition-colors focus:outline-none flex items-center gap-1 bg-zinc-800/50 hover:bg-zinc-800 px-2 py-1 rounded-md"
                       >
-                        <option value="">Select Store Location...</option>
-                        {STORE_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
+                        {isManual ? "Use List" : "Manual Entry"}
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                        {isManual ? "Custom Store Name (Manual)" : "Store Location Code"}
+                      </label>
+                      {isManual ? (
+                        <input 
+                          type="text"
+                          value={storeCode}
+                          placeholder="e.g., XPs - Flowery Branch, GA."
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setStoreCode(val);
+                            localStorage.setItem('storeCode', val);
+                            onUpdate({ 
+                              storeCode: val, 
+                              brightness, 
+                              volume,
+                              cardShowMode,
+                              showPregradingPrice,
+                              globalDiscount,
+                              showName
+                            });
+                          }}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors text-sm"
+                        />
+                      ) : (
+                        <select 
+                          value={storeCode}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setStoreCode(val);
+                            localStorage.setItem('storeCode', val);
+                            onUpdate({ 
+                              storeCode: val, 
+                              brightness, 
+                              volume,
+                              cardShowMode,
+                              showPregradingPrice,
+                              globalDiscount,
+                              showName
+                            });
+                          }}
+                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-m2m-green transition-colors text-sm"
+                        >
+                          <option value="">Select Store Location...</option>
+                          {STORE_OPTIONS.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   </div>
 

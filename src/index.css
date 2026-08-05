@@ -1,10 +1,28 @@
 @import "tailwindcss";
 
+/*
+ * BRAND v6 TOKENS — source of truth is M2M_BRAND_FOUNDATION_v6.md §1.
+ *
+ * THE GREEN IS #00C805, measured off the master logo art. It is the ONLY M2M green.
+ * Seven others are dead — the six on the kill list in M2M_BRAND_FOUNDATION_v6.md §1,
+ * plus the Tailwind mint this app shipped as `m2m-green` until 2026-08-05. Any file
+ * containing one fails brand review; the CI-style grep for them lives in
+ * Kiosk v3/00_PROMPT_CLAUDE_CODE_LANDING_REBUILD_2026-08-05.md, so do not paste a dead
+ * hex into this repo even inside a comment.
+ * Every variant is DERIVED from #00C805 by lowering HSV value at hue 121°, saturation
+ * 100% — never eyedropped from an existing file. That is how six greens happened.
+ *
+ * Green is an ACCENT, never a large field. No gold, amber or bronze.
+ */
 @theme {
-  --color-m2m-green: #22c55e;
-  --color-m2m-bg: #0a0a0a;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  
+  --color-m2m-green: #00c805;      /* accents, the "2", prices, active states — on dark only */
+  --color-m2m-green-ink: #007002;  /* derived: the only green for type on light, and for green-button hover/press */
+  --color-m2m-jet: #0d0f0e;        /* primary dark surface */
+  --color-m2m-charcoal: #2f3031;   /* secondary dark surface */
+  --color-m2m-ivory: #f2efe6;      /* reversed type on dark — never pure #FFFFFF in layouts */
+  --color-m2m-bg: #0d0f0e;         /* = jet */
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+
   /* iPad Landscape Typography */
   --text-headline: 2.5rem; /* 40px */
   --text-section-title: 1.75rem; /* 28px */

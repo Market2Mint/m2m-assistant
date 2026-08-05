@@ -362,7 +362,7 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                             }
                           }
                         }}
-                        className="text-[10px] font-black uppercase tracking-widest text-m2m-green hover:text-emerald-400 transition-colors focus:outline-none flex items-center gap-1 bg-zinc-800/50 hover:bg-zinc-800 px-2 py-1 rounded-md"
+                        className="text-[10px] font-black uppercase tracking-widest text-m2m-green hover:text-m2m-green-ink transition-colors focus:outline-none flex items-center gap-1 bg-zinc-800/50 hover:bg-zinc-800 px-2 py-1 rounded-md"
                       >
                         {isManual ? "Use List" : "Manual Entry"}
                       </button>
@@ -538,7 +538,7 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                                 setAdvancedPassword('');
                               }
                             }}
-                            className="w-full bg-m2m-green text-black font-black uppercase tracking-widest py-3 rounded-xl hover:bg-emerald-400 transition-all active:scale-95 text-xs text-center"
+                            className="w-full bg-m2m-green text-black font-black uppercase tracking-widest py-3 rounded-xl hover:bg-m2m-green-ink hover:text-m2m-ivory transition-all active:scale-95 text-xs text-center"
                           >
                             Unlock Settings
                           </button>
@@ -669,7 +669,7 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
 
                   <button 
                     onClick={handleSave}
-                    className="w-full bg-m2m-green text-black font-black uppercase tracking-widest py-4 rounded-xl hover:bg-emerald-400 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl"
+                    className="w-full bg-m2m-green text-black font-black uppercase tracking-widest py-4 rounded-xl hover:bg-m2m-green-ink hover:text-m2m-ivory transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl"
                   >
                     <Save className="w-5 h-5" />
                     Save & Close

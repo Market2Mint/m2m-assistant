@@ -252,8 +252,12 @@ export const SUBMISSION_POLICY_SECTIONS = [
     content: "Grading companies may assess upcharges if the declared value or service tier does not match the card’s determined value.\n\nCustomers are responsible for paying all grading company upcharges prior to release of graded items."
   },
   {
+    // Rewritten 2026-08-05 to match what the software actually charges and what every
+    // piece of M2M artwork states. It previously described a "waived when bundled"
+    // discount the code never applied, and a $5.00 grader-mix surcharge that was removed
+    // from the cart on 2026-08-05 — three different numbers for one fee.
     title: "Shipping & Logistics",
-    content: "Standard flat-rate shipping is $24.00. M2M internal service shipping is waived when bundled with any other grading submission (PSA, BGS, CGC, or SGC). A $5.00 surcharge applies if Local Group services (PSA, BGS) are mixed with Florida Group services (CGC, SGC), or if both Florida Group services are ordered together."
+    content: "Shipping and insurance is a flat $24.00 per order. $24.00 covers your whole order, however many cards. It is charged one time per order, never per card, and does not change with the number of services or grading companies included in the order."
   },
   {
     title: "Handling and Packaging",

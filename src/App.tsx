@@ -7,34 +7,32 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
-import { 
-  ChevronRight, 
-  ChevronLeft, 
+import {
+  ChevronRight,
+  ChevronLeft,
   ChevronDown,
   ChevronUp,
   Home,
-  RotateCcw, 
-  HelpCircle, 
-  FileText, 
-  Shield, 
-  CheckCircle2, 
+  HelpCircle,
+  Shield,
+  CheckCircle2,
   X,
-  ExternalLink,
   ShoppingBag,
   Plus,
   PlusCircle,
   Minus,
   Trash2,
-  Search,
-  Settings,
-  Send,
-  MessageSquare,
-  Loader2,
-  Save,
   Play
 } from 'lucide-react';
-import { CSV_DATA, POLICY, RECOMMENDATIONS, TERMS_OF_USE_SECTIONS, PRIVACY_POLICY_SECTIONS, SUBMISSION_POLICY_SECTIONS } from './data';
-import { sendMessage, type Message } from './services/aiService';
+import { CSV_DATA, POLICY, TERMS_OF_USE_SECTIONS, PRIVACY_POLICY_SECTIONS, SUBMISSION_POLICY_SECTIONS } from './data';
+import badgeUrl from './assets/M2M_badge.png';
+import {
+  PREGRADE_PRICE_KIOSK,
+  SHIPPING_DISCLOSURE,
+  SUBMISSION_FROM_PRICE,
+  formatUSD,
+  shippingFeeForCart,
+} from './pricing';
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
 
@@ -241,7 +239,8 @@ export default function App() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [customerNotes, setCustomerNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
-  const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'cart' | 'video' | null>(null);
+  // 'submission' was already being set and read but was missing from this union.
+  const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'submission' | 'cart' | 'video' | null>(null);
   const [showScrollIndicator, setShowScrollIndicator] = useState(true);
 
   const playUIAudio = (frequency = 600, duration = 0.08) => {
@@ -558,36 +557,11 @@ export default function App() {
     }
   };
 
-  // AI Chat State
-  const [chatMessages, setChatMessages] = useState<Message[]>([
-    { role: 'model', text: 'Hello! I am your M2M Assistant. How can I help you with your grading submission today?' }
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const chatEndRef = React.useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
-
-  const handleSendMessage = async () => {
-    if (!chatInput.trim() || isTyping) return;
-
-    const userMessage: Message = { role: 'user', text: chatInput };
-    setChatMessages(prev => [...prev, userMessage]);
-    setChatInput('');
-    setIsTyping(true);
-
-    try {
-      const response = await sendMessage(chatInput, chatMessages);
-      setChatMessages(prev => [...prev, { role: 'model', text: response }]);
-    } catch (error) {
-      console.error("Chat Error:", error);
-      setChatMessages(prev => [...prev, { role: 'model', text: 'Sorry, I encountered an error. Please try again or contact support.' }]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
+  // The AI chat box that used to live here was removed on 2026-08-05 (Cayden's decision).
+  // It sat on the landing screen, 550px tall, below a wall of disclaimers, and it was the
+  // only reason the app shipped a Gemini API key into a public bundle. It is recoverable
+  // from git history — `git log -S sendMessage` — if it is ever wanted back, but it would
+  // need a server-side proxy first.
 
   const subtotal = useMemo(() => {
     return cart.reduce((sum, item) => {
@@ -612,20 +586,9 @@ export default function App() {
   }, [cart, cardShowMode, globalDiscount]);
 
   // Shipping & insurance — $24.00 FLAT, once per order, however many cards.
-  //
-  // RULED BY CAYDEN 2026-08-03, reaffirmed 2026-08-05. This is the ONLY place the fee is
-  // calculated; renderHandoff reuses this value. Do not add a second calculation anywhere.
-  //
-  // History, so it isn't "rediscovered" and reintroduced: this used to charge $29 when a
-  // Florida grader (CGC Lakewood Ranch / SGC Boca Raton) was mixed with a local one
-  // (PSA/BGS), or when both Florida graders appeared together — a +$5 second-shipping-leg
-  // surcharge. The underlying cost is real, but the $24 fee runs at ~55% margin and absorbs
-  // it. The tier was also inconsistent with every piece of M2M artwork, which states
-  // "$24.00 covers your whole order, however many cards."
-  const shippingFee = useMemo(() => {
-    if (cart.length === 0) return 0;
-    return 24;
-  }, [cart]);
+  // The rule, its history and its tests live in src/pricing.ts. This is the only place
+  // the app calls it, and renderHandoff reuses this value rather than recomputing it.
+  const shippingFee = useMemo(() => shippingFeeForCart(cart.length), [cart]);
 
   const total = subtotal + shippingFee - showDiscount;
 
@@ -789,7 +752,10 @@ export default function App() {
   };
 
   const handleStart = () => {
-    if (!policyAccepted) return;
+    // The policy acknowledgement no longer gates this button. It gates "Complete Order"
+    // at checkout instead (2026-08-05), where the customer is already committed and the
+    // liability copy is relevant. Leading a stranger with five disclaimers is what made
+    // people ask "what is Market 2 Mint?" while standing in front of the kiosk.
     addLog('START_SUBMISSION');
     const firstIdx = findNextValidQuestionIdx(0, allServices);
     setCurrentQuestionIdx(firstIdx);
@@ -906,316 +872,140 @@ export default function App() {
     setStep('questions');
   };
 
-  // --- BACKUP ORIGINAL LANDSCAPE STYLES ---
-  /*
-  const renderLandingBackup = () => (
-    <div className="landscape-container p-8 lg:p-12 overflow-y-auto">
-      <div className="max-w-4xl mx-auto space-y-12 pt-8 pb-32">
-        {-- Branding Section --}
-        <div className="text-center space-y-6">
-          <div className="space-y-4">
-            <h1 className="text-white uppercase italic leading-none text-6xl">
-              M2M Assistant
-              <span className="block text-m2m-green not-italic text-4xl mt-4">Service Concierge</span>
-            </h1>
-            <p className="text-zinc-400 text-2xl font-medium">Market 2 Mint Grading Services</p>
-          </div>
-        </div>
-
-        {-- Policy & Action Section --}
-        <div className="bg-zinc-900/50 rounded-[3rem] p-12 border border-zinc-800 shadow-2xl space-y-10">
-          <div className="space-y-6">
-            <h2 className="text-3xl font-black uppercase italic text-white flex items-center justify-center gap-4 border-b border-zinc-800 pb-8">
-              <Shield className="text-m2m-green w-10 h-10" />
-              Submission Essentials
-            </h2>
-            
-            <div className="grid grid-cols-1 gap-6 max-w-3xl mx-auto">
-              {POLICY.map((item, i) => (
-                <div key={i} className="flex gap-6 text-xl leading-relaxed text-zinc-300 items-start">
-                  <CheckCircle2 className="w-8 h-8 text-m2m-green shrink-0 mt-1" />
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {-- Video Tutorial Section --}
-          <div className="max-w-3xl mx-auto w-full">
-            <div className="bg-zinc-950/50 border-2 border-zinc-800 rounded-[2.5rem] p-8 flex flex-col md:flex-row items-center gap-8 hover:border-m2m-green/50 transition-colors group">
-              <div className="flex-1 text-center md:text-left space-y-2">
-                <h3 className="text-2xl font-black text-m2m-green uppercase italic tracking-tight">New to M2M?</h3>
-                <p className="text-zinc-400 text-lg font-medium">Watch our 1-minute guide to get started.</p>
-              </div>
-              <button 
-                onClick={() => setActiveModal('video')}
-                className="w-full md:w-auto flex items-center justify-center gap-3 bg-zinc-800 hover:bg-zinc-700 text-white px-8 py-5 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 group-hover:bg-m2m-green group-hover:text-black"
-              >
-                <Play className="w-6 h-6 fill-current" />
-                Watch How It Works
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-8 pt-6 border-t border-zinc-800">
-            <label className="flex items-center gap-6 p-8 bg-zinc-950/50 rounded-3xl cursor-pointer transition-all active:scale-[0.99] border-2 border-transparent has-[:checked]:border-m2m-green group max-w-3xl mx-auto">
-              <div className="relative flex items-center justify-center">
-                <input 
-                  type="checkbox" 
-                  checked={policyAccepted}
-                  onChange={(e) => setPolicyAccepted(e.target.checked)}
-                  className="w-10 h-10 accent-m2m-green rounded-xl scale-150 bg-zinc-900 border-zinc-700"
-                />
-              </div>
-              <span className="text-lg md:text-xl font-black select-none text-zinc-100 group-hover:text-white transition-colors uppercase italic tracking-tight leading-tight">
-                I ACKNOWLEDGE AND AGREE TO ALL <span className="whitespace-nowrap">MARKET 2 MINT</span> SERVICE POLICIES
-              </span>
-            </label>
-
-            <button 
-              onClick={handleStart}
-              disabled={!policyAccepted}
-              className={`w-full max-w-3xl mx-auto h-24 rounded-3xl text-3xl font-black uppercase tracking-[0.2em] transition-all shadow-2xl flex items-center justify-center gap-4 ${
-                policyAccepted 
-                  ? 'bg-m2m-green text-black hover:bg-emerald-400 active:bg-emerald-500 active:scale-95 hover:shadow-m2m-green/40' 
-                  : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-              }`}
-            >
-              Start Submission
-              <ChevronRight className="w-10 h-10" />
-            </button>
-          </div>
-
-          <div className="pt-10 border-t border-zinc-800">
-            <div className="bg-zinc-950/80 border border-zinc-800 rounded-[2rem] overflow-hidden flex flex-col h-[500px] shadow-2xl max-w-3xl mx-auto w-full">
-              <div className="p-6 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-zinc-800 rounded-xl">
-                    <MessageSquare className="w-6 h-6 text-m2m-green" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black uppercase italic text-white leading-none">Hobby Reference Tool</h3>
-                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-1">Knowledge Base v5.2</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setChatMessages([{ role: 'model', text: 'Hello! I am your Hobby Reference Assistant. How can I help you with industry info or terminology today?' }])}
-                  className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-xl transition-all text-zinc-400 hover:text-m2m-green active:scale-95 flex items-center gap-2 group"
-                >
-                  <RotateCcw className="w-4 h-4 group-hover:rotate-[-45deg] transition-transform" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Reset Tool</span>
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                {chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] p-4 rounded-2xl text-lg ${
-                      msg.role === 'user' 
-                        ? 'bg-m2m-green text-black font-bold rounded-tr-none' 
-                        : 'bg-zinc-800 text-zinc-100 rounded-tl-none border border-zinc-700'
-                    }`}>
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-                {isTyping && (
-                  <div className="flex justify-start">
-                    <div className="bg-zinc-800 text-zinc-400 p-4 rounded-2xl rounded-tl-none border border-zinc-700 flex items-center gap-2">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span className="text-sm font-bold uppercase tracking-widest">Assistant is thinking...</span>
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              <div className="p-4 bg-zinc-900/50 border-t border-zinc-800">
-                <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
-                  className="flex gap-3"
-                >
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask about industry terms, grading standards, or hobby info..."
-                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-6 py-4 text-white focus:outline-none focus:border-m2m-green transition-colors text-lg"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!chatInput.trim() || isTyping}
-                    className="p-4 bg-m2m-green text-black rounded-xl hover:bg-emerald-400 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
-                  >
-                    <Send className="w-6 h-6" />
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-center gap-12 text-xl font-black text-zinc-500 uppercase tracking-[0.1em] pt-8">
-          <button onClick={() => setActiveModal('terms')} className="hover:text-m2m-green transition-colors">Terms of Use</button>
-          <button onClick={() => setActiveModal('privacy')} className="hover:text-m2m-green transition-colors">Privacy Policy</button>
-          <button onClick={() => setActiveModal('submission')} className="hover:text-m2m-green transition-colors">Submission Policy</button>
-        </div>
-      </div>
-    </div>
-  );
-  */
+  /**
+   * LANDING — the attract screen.
+   *
+   * It has exactly one job: tell a stranger standing a few feet away what Market 2 Mint
+   * does, what it costs, and how to start — in that order. Customers kept asking "what is
+   * Market 2 Mint?" while looking straight at this screen, because it used to open with
+   * the app's own name, then five liability statements under the heading "Submission
+   * Essentials", then a mandatory acknowledgement checkbox, then a 550px AI chat box.
+   * There was no price anywhere on it.
+   *
+   * Rules this screen is built to (CLAUDE.md + M2M_BRAND_FOUNDATION_v6.md):
+   *  · Liability copy belongs at checkout, not on the attract screen. POLICY now renders
+   *    in the cart, where the acknowledgement gates "Complete Order".
+   *  · Pregrade-led, but NEVER pregrade-only — submissions stay visible alongside it.
+   *  · $7.00 kiosk pregrade. The $5.00 show price may only appear when show mode is
+   *    explicitly enabled, and never on kiosk artwork.
+   *  · The $24.00 line is disclosed early and verbatim, because customers assume it is
+   *    charged per card.
+   *  · Wordmark is set in type — Inter 800, words in ivory, the "2" in green. The live
+   *    physical panel has this inverted; do not copy it. The badge is the real asset,
+   *    never redrawn.
+   *  · No phone numbers, and no partner logos (rights uncleared in writing) — naming the
+   *    grading companies in plain body text is fine and is what tells a stranger what
+   *    this is.
+   *
+   * Sized for the actual device: an iPad in landscape (~1180×820), panel-mounted at
+   * counter height. The whole screen fits without scrolling there; `overflow-y-auto` is
+   * only a safety net so a shorter viewport scrolls instead of clipping.
+   */
+  const landingPregradePrice = cardShowMode ? showPregradingPrice : PREGRADE_PRICE_KIOSK;
 
   const renderLanding = () => (
-    <div className="landscape-container p-8 lg:p-12 overflow-y-auto">
-      <div className="max-w-[1240px] w-full mx-auto space-y-14 pt-8 pb-32">
-        {/* Branding Section */}
-        <div className="text-center space-y-6">
-          <div className="space-y-4">
-            <h1 className="text-white uppercase italic leading-none text-7xl md:text-8xl">
-              M2M Assistant
-              <span className="block text-m2m-green not-italic text-5xl mt-5">Service Concierge</span>
-            </h1>
-            <p className="text-zinc-400 text-3xl font-medium mt-2">Market 2 Mint Grading Services</p>
+    <div className="landscape-container px-8 pt-10 pb-6 lg:px-12 overflow-y-auto">
+      <div className="min-h-full w-full max-w-[1240px] mx-auto flex flex-col justify-between gap-5">
+
+        {/* ── WHO ── lateral lockup: badge left, wordmark right. */}
+        <header className="flex items-center gap-5 shrink-0">
+          {/* The real badge asset, embedded. Never redrawn, never recoloured. */}
+          <img src={badgeUrl} alt="" className="h-16 w-auto" />
+          <div>
+            <p className="text-4xl font-extrabold tracking-tight text-m2m-ivory leading-none">
+              MARKET<span className="text-m2m-green">2</span>MINT
+            </p>
+            <p className="mt-2 text-xs font-bold uppercase tracking-[0.4em] text-zinc-500">
+              Your cards. Our passion.
+            </p>
           </div>
+        </header>
+
+        {/* ── WHAT IS THIS? ── */}
+        <div className="shrink-0">
+          <h1 className="text-5xl font-extrabold uppercase tracking-tight text-m2m-ivory leading-[1.05]">
+            We get your cards<br />professionally graded.
+          </h1>
+          <p className="mt-3 max-w-[1000px] text-xl text-zinc-400 leading-snug">
+            Leave your cards with us at this counter. We prepare and submit them to PSA, BGS, CGC
+            or SGC, track every step, and return them sealed in a protective case with an
+            official grade.
+          </p>
         </div>
 
-        {/* Policy & Action Section */}
-        <div className="bg-zinc-900/50 rounded-[3rem] p-12 lg:p-16 border border-zinc-800 shadow-2xl space-y-12">
-          <div className="space-y-8">
-            <h2 className="text-4xl md:text-5xl font-black uppercase italic text-white flex items-center justify-center gap-5 border-b border-zinc-800 pb-10">
-              <Shield className="text-m2m-green w-12 h-12" />
-              Submission Essentials
-            </h2>
-            
-            <div className="grid grid-cols-1 gap-8 max-w-[1100px] mx-auto">
-              {POLICY.map((item, i) => (
-                <div key={i} className="flex gap-6 text-2xl leading-relaxed text-zinc-300 items-start">
-                  <CheckCircle2 className="w-10 h-10 text-m2m-green shrink-0 mt-1" />
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Video Tutorial Section */}
-          <div className="max-w-[1100px] mx-auto w-full">
-            <div className="bg-zinc-950/50 border-2 border-zinc-800 rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center gap-8 hover:border-m2m-green/50 transition-colors group">
-              <div className="flex-1 text-center md:text-left space-y-3">
-                <h3 className="text-3xl font-black text-m2m-green uppercase italic tracking-tight">New to M2M?</h3>
-                <p className="text-zinc-400 text-xl md:text-2xl font-medium">Watch our 1-minute guide to get started.</p>
-              </div>
-              <button 
-                onClick={() => setActiveModal('video')}
-                className="w-full md:w-auto flex items-center justify-center gap-4 bg-zinc-800 hover:bg-zinc-700 text-white px-10 py-6 rounded-2xl font-black text-lg md:text-xl uppercase tracking-widest transition-all active:scale-95 group-hover:bg-m2m-green group-hover:text-black"
-              >
-                <Play className="w-8 h-8 fill-current" />
-                Watch How It Works
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-10 pt-8 border-t border-zinc-800">
-            <label className="flex items-center gap-8 p-10 bg-zinc-950/50 rounded-3xl cursor-pointer transition-all active:scale-[0.99] border-2 border-transparent has-[:checked]:border-m2m-green group max-w-[1100px] mx-auto">
-              <div className="relative flex items-center justify-center">
-                <input 
-                  type="checkbox" 
-                  checked={policyAccepted}
-                  onChange={(e) => setPolicyAccepted(e.target.checked)}
-                  className="w-12 h-12 accent-m2m-green rounded-xl scale-150 bg-zinc-900 border-zinc-700"
-                />
-              </div>
-              <span className="text-xl md:text-2xl font-black select-none text-zinc-100 group-hover:text-white transition-colors uppercase italic tracking-tight leading-tight">
-                I ACKNOWLEDGE AND AGREE TO ALL <span className="whitespace-nowrap">MARKET 2 MINT</span> SERVICE POLICIES
+        {/* ── WHAT DOES IT COST? ── pregrade leads; submissions stay visible beside it. */}
+        <div className="grid grid-cols-2 gap-5 shrink-0">
+          <div className="rounded-3xl border-2 border-m2m-green bg-m2m-green/10 px-7 py-6">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold uppercase tracking-[0.25em] text-m2m-green">Pregrade</span>
+              <span className="rounded-full bg-m2m-green px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-black">
+                Start here
               </span>
-            </label>
-
-            <button 
-              onClick={handleStart}
-              disabled={!policyAccepted}
-              className={`w-full max-w-[1100px] mx-auto h-28 rounded-3xl text-4xl font-black uppercase tracking-[0.2em] transition-all shadow-2xl flex items-center justify-center gap-5 ${
-                policyAccepted 
-                  ? 'bg-m2m-green text-black hover:bg-emerald-400 active:bg-emerald-500 active:scale-95 hover:shadow-m2m-green/40' 
-                  : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-              }`}
-            >
-              Start Submission
-              <ChevronRight className="w-12 h-12" />
-            </button>
+            </div>
+            <div className="mt-3 flex items-baseline gap-3">
+              <span className="tabular-nums text-6xl font-extrabold leading-none text-m2m-green">
+                {formatUSD(landingPregradePrice)}
+              </span>
+              <span className="text-lg font-semibold uppercase tracking-widest text-zinc-400">per card</span>
+            </div>
+            <p className="mt-3 text-lg text-m2m-ivory leading-snug">
+              <span className="font-bold">Know before you commit.</span> We evaluate centering,
+              corners, edges and surfaces and project a grade — before you pay for grading.
+            </p>
           </div>
 
-          <div className="pt-12 border-t border-zinc-800">
-            <div className="bg-zinc-950/85 border border-zinc-800 rounded-[2rem] overflow-hidden flex flex-col h-[550px] shadow-2xl max-w-[1100px] mx-auto w-full">
-              <div className="p-8 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
-                <div className="flex items-center gap-5">
-                  <div className="p-4 bg-zinc-800 rounded-xl">
-                    <MessageSquare className="w-8 h-8 text-m2m-green" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl md:text-3xl font-black uppercase italic text-white leading-none">Hobby Reference Tool</h3>
-                    <p className="text-sm text-zinc-500 font-bold uppercase tracking-widest mt-2">Knowledge Base v5.2</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setChatMessages([{ role: 'model', text: 'Hello! I am your Hobby Reference Assistant. How can I help you with industry info or terminology today?' }])}
-                  className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-xl transition-all text-zinc-400 hover:text-m2m-green active:scale-95 flex items-center gap-3 group"
-                >
-                  <RotateCcw className="w-5 h-5 group-hover:rotate-[-45deg] transition-transform" />
-                  <span className="text-xs font-black uppercase tracking-widest">Reset Tool</span>
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-8 space-y-5 custom-scrollbar">
-                {chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[85%] p-5 rounded-2xl text-xl md:text-2xl leading-relaxed ${
-                      msg.role === 'user' 
-                        ? 'bg-m2m-green text-black font-bold rounded-tr-none' 
-                        : 'bg-zinc-800 text-zinc-100 rounded-tl-none border border-zinc-700'
-                    }`}>
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-                {isTyping && (
-                  <div className="flex justify-start">
-                    <div className="bg-zinc-800 text-zinc-400 p-5 rounded-2xl rounded-tl-none border border-zinc-700 flex items-center gap-3">
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                      <span className="text-lg font-bold uppercase tracking-widest">Assistant is thinking...</span>
-                    </div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              <div className="p-6 bg-zinc-900/50 border-t border-zinc-800">
-                <form 
-                  onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
-                  className="flex gap-4"
-                >
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask about industry terms, grading standards, or hobby info..."
-                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-6 py-5 text-white focus:outline-none focus:border-m2m-green transition-colors text-xl"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!chatInput.trim() || isTyping}
-                    className="p-5 bg-m2m-green text-black rounded-xl hover:bg-emerald-400 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
-                  >
-                    <Send className="w-8 h-8" />
-                  </button>
-                </form>
-              </div>
+          <div className="rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 px-7 py-6">
+            <span className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-400">Full submission</span>
+            <div className="mt-3 flex items-baseline gap-3">
+              <span className="tabular-nums text-6xl font-extrabold leading-none text-m2m-ivory">
+                <span className="text-3xl align-baseline">From </span>{formatUSD(SUBMISSION_FROM_PRICE)}
+              </span>
+              <span className="text-lg font-semibold uppercase tracking-widest text-zinc-500">per card</span>
             </div>
+            <p className="mt-3 text-lg text-zinc-300 leading-snug">
+              Graded, authenticated and sealed by PSA, BGS, CGC or SGC. You choose the company and
+              the turnaround at the next step.
+            </p>
           </div>
         </div>
 
-        <div className="flex justify-center gap-14 text-2xl font-black text-zinc-500 uppercase tracking-[0.1em] pt-8">
-          <button onClick={() => setActiveModal('terms')} className="hover:text-m2m-green transition-colors">Terms of Use</button>
-          <button onClick={() => setActiveModal('privacy')} className="hover:text-m2m-green transition-colors">Privacy Policy</button>
-          <button onClick={() => setActiveModal('submission')} className="hover:text-m2m-green transition-colors">Submission Policy</button>
+        {/* ── The $24.00, disclosed early and verbatim. Customers assume it is per card. ── */}
+        <div className="flex items-center justify-between gap-6 rounded-3xl border border-m2m-green/40 bg-m2m-green/[0.08] px-7 py-4 shrink-0">
+          <p className="tabular-nums text-2xl font-bold text-m2m-ivory leading-tight">
+            {SHIPPING_DISCLOSURE}
+          </p>
+          <p className="shrink-0 text-sm font-bold uppercase tracking-widest text-m2m-green text-right leading-tight">
+            Shipping &amp; insurance<br />
+            <span className="text-zinc-500">One time per order</span>
+          </p>
+        </div>
+
+        {/* ── HOW DO I START? ── one obvious action; the video is secondary. ── */}
+        <div className="flex gap-5 shrink-0">
+          <button
+            onClick={handleStart}
+            className="flex h-24 flex-[3] items-center justify-center gap-5 rounded-3xl bg-m2m-green text-3xl font-extrabold uppercase tracking-[0.15em] text-black shadow-2xl transition-all hover:bg-m2m-green-ink hover:text-m2m-ivory active:scale-[0.98]"
+          >
+            Start your order
+            <ChevronRight className="w-10 h-10" />
+          </button>
+          <button
+            onClick={() => setActiveModal('video')}
+            className="flex h-24 flex-1 items-center justify-center gap-4 rounded-3xl border-2 border-zinc-800 bg-zinc-900 text-lg font-bold uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98]"
+          >
+            <Play className="w-7 h-7 fill-current" />
+            How it works
+          </button>
+        </div>
+
+        {/* ── Footer: policies stay reachable, they just stop leading. No phone numbers. ── */}
+        <div className="flex items-center justify-between gap-6 text-xs font-bold uppercase tracking-[0.2em] text-zinc-600 shrink-0">
+          <div className="flex gap-8">
+            <button onClick={() => setActiveModal('terms')} className="hover:text-m2m-green transition-colors">Terms of Use</button>
+            <button onClick={() => setActiveModal('privacy')} className="hover:text-m2m-green transition-colors">Privacy Policy</button>
+            <button onClick={() => setActiveModal('submission')} className="hover:text-m2m-green transition-colors">Submission Policy</button>
+          </div>
+          <span className="text-zinc-500 tracking-[0.2em]">market2mint.com</span>
         </div>
       </div>
     </div>
@@ -1247,7 +1037,7 @@ export default function App() {
               <div 
                 key={i} 
                 className={`h-3 rounded-full transition-all duration-500 ${
-                  i === currentQuestionIdx ? 'w-16 bg-m2m-green shadow-[0_0_20px_rgba(34,197,94,0.4)]' : 
+                  i === currentQuestionIdx ? 'w-16 bg-m2m-green shadow-[0_0_20px_rgba(0,200,5,0.4)]' : 
                   i < currentQuestionIdx ? 'w-6 bg-m2m-green/30' : 'w-6 bg-zinc-800'
                 }`} 
               />
@@ -1385,7 +1175,7 @@ export default function App() {
             <h2 className="text-3xl font-black text-white uppercase italic tracking-tight">
               Recommended Services
             </h2>
-            <div className="inline-flex items-center bg-zinc-950 border border-m2m-green/50 px-8 py-3 rounded-full shadow-[0_0_20px_rgba(34,197,94,0.1)]">
+            <div className="inline-flex items-center bg-zinc-950 border border-m2m-green/50 px-8 py-3 rounded-full shadow-[0_0_20px_rgba(0,200,5,0.1)]">
               <p className="text-m2m-green font-black uppercase tracking-widest text-sm">
                 {remainingServices.length} Matching Service(s) Found
               </p>
@@ -1402,7 +1192,7 @@ export default function App() {
               </div>
               <button 
                 onClick={() => setActiveModal('cart')}
-                className="bg-m2m-green text-black font-black uppercase tracking-widest px-6 py-3 rounded-xl hover:bg-emerald-400 transition-all active:scale-95 flex items-center gap-3"
+                className="bg-m2m-green text-black font-black uppercase tracking-widest px-6 py-3 rounded-xl hover:bg-m2m-green-ink hover:text-m2m-ivory transition-all active:scale-95 flex items-center gap-3"
               >
                 <ShoppingBag className="w-5 h-5" />
                 Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)})
@@ -1488,10 +1278,10 @@ export default function App() {
                       }}
                       className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-50 pointer-events-none"
                     >
-                      <span className="text-m2m-green text-2xl font-black uppercase tracking-[0.5em] italic block drop-shadow-[0_0_10px_rgba(34,197,94,0.5)]">
+                      <span className="text-m2m-green text-2xl font-black uppercase tracking-[0.5em] italic block drop-shadow-[0_0_10px_rgba(0,200,5,0.5)]">
                         SCROLL FOR FULL DETAILS
                       </span>
-                      <ChevronDown className="w-12 h-12 text-m2m-green drop-shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                      <ChevronDown className="w-12 h-12 text-m2m-green drop-shadow-[0_0_10px_rgba(0,200,5,0.5)]" />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1595,7 +1385,7 @@ export default function App() {
 
                   <button 
                     onClick={() => addToCart(service)}
-                    className="flex-1 flex items-center justify-center gap-4 bg-m2m-green text-black py-5 rounded-[1.5rem] font-black text-lg uppercase tracking-[0.1em] hover:bg-emerald-400 transition-all shadow-2xl active:scale-95"
+                    className="flex-1 flex items-center justify-center gap-4 bg-m2m-green text-black py-5 rounded-[1.5rem] font-black text-lg uppercase tracking-[0.1em] hover:bg-m2m-green-ink hover:text-m2m-ivory transition-all shadow-2xl active:scale-95"
                   >
                     Add to Cart
                     <ShoppingBag className="w-6 h-6" />
@@ -1669,7 +1459,7 @@ export default function App() {
               <h2 className="text-3xl font-black text-white uppercase italic tracking-tight">
                 Order Completion
               </h2>
-              <div className="inline-flex items-center bg-zinc-950 border border-m2m-green/50 px-8 py-3 rounded-full shadow-[0_0_20px_rgba(34,197,94,0.1)]">
+              <div className="inline-flex items-center bg-zinc-950 border border-m2m-green/50 px-8 py-3 rounded-full shadow-[0_0_20px_rgba(0,200,5,0.1)]">
                 <p className="text-m2m-green font-black uppercase tracking-widest text-sm">
                   Store: {savedStoreCode}
                 </p>
@@ -1700,7 +1490,7 @@ export default function App() {
             </p>
           </div>
 
-          <div className="bg-white p-8 rounded-[3rem] shadow-[0_0_60px_rgba(34,197,94,0.2)] inline-block border-[10px] border-zinc-800 relative">
+          <div className="bg-white p-8 rounded-[3rem] shadow-[0_0_60px_rgba(0,200,5,0.2)] inline-block border-[10px] border-zinc-800 relative">
             <QRCodeSVG 
               value={jotformUrl} 
               size={320}
@@ -1983,7 +1773,7 @@ export default function App() {
                         <div className="flex justify-between items-center">
                           <div className="space-y-1">
                             <span className="text-m2m-green font-black uppercase tracking-widest text-lg">Shipping &amp; Insurance</span>
-                            <p className="text-xs text-white leading-tight uppercase font-black tracking-widest">Charged once per order, however many cards</p>
+                            <p className="text-xs text-white leading-tight uppercase font-black tracking-widest">{SHIPPING_DISCLOSURE}</p>
                           </div>
                           <span className="text-2xl font-black text-white">
                             ${shippingFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -2023,7 +1813,7 @@ export default function App() {
                                 onClick={() => setPaymentMethod('card')}
                                 className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 border-2 ${
                                   paymentMethod === 'card' 
-                                    ? 'bg-m2m-green text-black border-m2m-green shadow-[0_0_20px_rgba(34,197,94,0.3)]' 
+                                    ? 'bg-m2m-green text-black border-m2m-green shadow-[0_0_20px_rgba(0,200,5,0.3)]' 
                                     : 'bg-zinc-800 text-white border-zinc-700 hover:border-zinc-600'
                                 }`}
                               >
@@ -2033,7 +1823,7 @@ export default function App() {
                                 onClick={() => setPaymentMethod('cash')}
                                 className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 border-2 ${
                                   paymentMethod === 'cash' 
-                                    ? 'bg-m2m-green text-black border-m2m-green shadow-[0_0_20px_rgba(34,197,94,0.3)]' 
+                                    ? 'bg-m2m-green text-black border-m2m-green shadow-[0_0_20px_rgba(0,200,5,0.3)]' 
                                     : 'bg-zinc-800 text-white border-zinc-700 hover:border-zinc-600'
                                 }`}
                               >
@@ -2043,23 +1833,61 @@ export default function App() {
                           </div>
                         </div>
                       )}
+                      {/*
+                        SUBMISSION ESSENTIALS — moved here from the landing screen on
+                        2026-08-05. This is a real liability control and it stays, but it
+                        belongs at the point of commitment, not in front of a stranger who
+                        does not yet know what Market 2 Mint is. The acknowledgement still
+                        gates completion — it now gates THIS button instead of Start.
+                      */}
+                      <div className="space-y-5 pt-6 border-t border-zinc-800">
+                        <h3 className="flex items-center gap-3 text-xl font-black uppercase italic tracking-tight text-white">
+                          <Shield className="w-6 h-6 text-m2m-green" />
+                          Submission Essentials
+                        </h3>
+                        <div className="space-y-3">
+                          {POLICY.map((item, i) => (
+                            <div key={i} className="flex gap-3 text-base leading-snug text-zinc-300 items-start">
+                              <CheckCircle2 className="w-5 h-5 text-m2m-green shrink-0 mt-0.5" />
+                              <span>{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <label className="flex items-center gap-5 p-5 bg-zinc-950/60 rounded-2xl cursor-pointer transition-all active:scale-[0.99] border-2 border-transparent has-[:checked]:border-m2m-green">
+                          <input
+                            type="checkbox"
+                            checked={policyAccepted}
+                            onChange={(e) => setPolicyAccepted(e.target.checked)}
+                            className="w-8 h-8 accent-m2m-green rounded-lg scale-125 bg-zinc-900 border-zinc-700"
+                          />
+                          <span className="text-base md:text-lg font-black select-none text-zinc-100 uppercase italic tracking-tight leading-tight">
+                            I acknowledge and agree to all <span className="whitespace-nowrap">Market 2 Mint</span> service policies
+                          </span>
+                        </label>
+                      </div>
                     </div>
 
                     <div className="flex gap-6 pt-4">
-                      <button 
+                      <button
                         onClick={() => setActiveModal(null)}
                         className="flex-1 bg-zinc-800 text-white py-5 rounded-[1.5rem] font-black text-lg uppercase tracking-[0.1em] hover:bg-zinc-700 transition-all shadow-2xl active:scale-95"
                       >
                         Back
                       </button>
-                      <button 
-                        className="flex-[2] bg-m2m-green text-black py-5 rounded-[1.5rem] font-black text-lg uppercase tracking-[0.1em] hover:bg-emerald-400 transition-all shadow-2xl active:scale-95"
+                      <button
+                        disabled={!policyAccepted}
+                        className={`flex-[2] py-5 rounded-[1.5rem] font-black text-lg uppercase tracking-[0.1em] transition-all shadow-2xl ${
+                          policyAccepted
+                            ? 'bg-m2m-green text-black hover:bg-m2m-green-ink hover:text-m2m-ivory active:scale-95'
+                            : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                        }`}
                         onClick={() => {
+                          if (!policyAccepted) return;
                           setStep('handoff');
                           setActiveModal(null);
                         }}
                       >
-                        Complete Order
+                        {policyAccepted ? 'Complete Order' : 'Acknowledge to continue'}
                       </button>
                     </div>
                     <p className="text-center text-base text-white uppercase font-black tracking-[0.3em]">Secure Checkout Powered by M2M</p>

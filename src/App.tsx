@@ -611,44 +611,20 @@ export default function App() {
     return eligibleSubtotal * (globalDiscount / 100);
   }, [cart, cardShowMode, globalDiscount]);
 
+  // Shipping & insurance — $24.00 FLAT, once per order, however many cards.
+  //
+  // RULED BY CAYDEN 2026-08-03, reaffirmed 2026-08-05. This is the ONLY place the fee is
+  // calculated; renderHandoff reuses this value. Do not add a second calculation anywhere.
+  //
+  // History, so it isn't "rediscovered" and reintroduced: this used to charge $29 when a
+  // Florida grader (CGC Lakewood Ranch / SGC Boca Raton) was mixed with a local one
+  // (PSA/BGS), or when both Florida graders appeared together — a +$5 second-shipping-leg
+  // surcharge. The underlying cost is real, but the $24 fee runs at ~55% margin and absorbs
+  // it. The tier was also inconsistent with every piece of M2M artwork, which states
+  // "$24.00 covers your whole order, however many cards."
   const shippingFee = useMemo(() => {
     if (cart.length === 0) return 0;
-    
-    const companies = new Set<string>();
-    cart.forEach(item => {
-      const name = item.service.name.toUpperCase();
-      if (name.includes('PSA')) companies.add('PSA');
-      else if (name.includes('BGS')) companies.add('BGS');
-      else if (name.includes('CGC')) companies.add('CGC');
-      else if (name.includes('SGC')) companies.add('SGC');
-      else if (name.includes('M2M')) companies.add('M2M');
-    });
-    
-    const hasPSA = companies.has('PSA');
-    const hasBGS = companies.has('BGS');
-    const hasCGC = companies.has('CGC');
-    const hasSGC = companies.has('SGC');
-    const hasM2M = companies.has('M2M');
-
-    const hasLocal = hasPSA || hasBGS;
-    const hasFlorida = hasCGC || hasSGC;
-    const hasOthers = hasLocal || hasFlorida;
-
-    // Rule: M2M Standalone ($24.00)
-    if (hasM2M && !hasOthers) return 24;
-
-    // Rule: M2M Bundle ($0.00) - M2M shipping is waived when bundled.
-    // Base rate is $24 for any combination of Others.
-    let fee = 24;
-
-    // Rule: The +$5 Surcharge ($29.00)
-    // - Florida mixed with Local
-    // - Both Florida together
-    if ((hasFlorida && hasLocal) || (hasCGC && hasSGC)) {
-      fee = 29;
-    }
-
-    return fee;
+    return 24;
   }, [cart]);
 
   const total = subtotal + shippingFee - showDiscount;

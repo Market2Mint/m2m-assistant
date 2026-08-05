@@ -654,7 +654,13 @@ export default function App() {
   const total = subtotal + shippingFee - showDiscount;
 
   const addBusinessDays = (startDate: Date, days: number) => {
+    // ⚠️ MAINTENANCE REQUIRED ANNUALLY.
+    // These are US federal holidays (observed). When the calendar runs out, estimated
+    // completion dates do NOT error — they silently drift, counting holidays as business
+    // days. Extend this list before the last year listed expires.
+    // Proper fix: compute federal holidays algorithmically so this can never lapse.
     const holidays = [
+      // 2026
       "2026-01-01", // New Year's Day
       "2026-01-19", // MLK Day
       "2026-02-16", // Presidents' Day
@@ -666,6 +672,18 @@ export default function App() {
       "2026-11-11", // Veterans Day
       "2026-11-26", // Thanksgiving Day
       "2026-12-25", // Christmas Day
+      // 2027
+      "2027-01-01", // New Year's Day
+      "2027-01-18", // MLK Day
+      "2027-02-15", // Presidents' Day
+      "2027-05-31", // Memorial Day
+      "2027-06-18", // Juneteenth (Observed — Jun 19 is a Saturday)
+      "2027-07-05", // Independence Day (Observed — Jul 4 is a Sunday)
+      "2027-09-06", // Labor Day
+      "2027-10-11", // Columbus Day
+      "2027-11-11", // Veterans Day
+      "2027-11-25", // Thanksgiving Day
+      "2027-12-24", // Christmas Day (Observed — Dec 25 is a Saturday)
     ];
 
     let date = new Date(startDate);
@@ -1639,25 +1657,11 @@ export default function App() {
       return `• ${name}${variationStr} - ${itemTotalStr} (x${item.quantity}) — EST: ${estDate}`;
     });
     
-    // Helper to detect if a service is CGC or SGC
-    const isCgcOrSgc = (itemService: Service): boolean => {
-      const company = (itemService.questions[1] || '').toLowerCase();
-      const n = (itemService.name || '').toLowerCase();
-      return company.includes('cgc') || company.includes('sgc') || n.includes('cgc') || n.includes('sgc');
-    };
-
-    // Helper to detect if a service is PSA, BGS, or JSA
-    const isPsaBgsOrJsa = (itemService: Service): boolean => {
-      const company = (itemService.questions[1] || '').toLowerCase();
-      const n = (itemService.name || '').toLowerCase();
-      return company.includes('psa') || company.includes('bgs') || company.includes('jsa') || n.includes('psa') || n.includes('bgs') || n.includes('jsa');
-    };
-
-    const hasCgcOrSgcInCart = cart.some(item => isCgcOrSgc(item.service));
-    const hasPsaBgsOrJsaInCart = cart.some(item => isPsaBgsOrJsa(item.service));
-
-    const extraFeeAmt = (hasCgcOrSgcInCart && hasPsaBgsOrJsaInCart) ? 29.00 : 24.00;
-    const shippingAndInsuranceLine = `• Shipping & Insurance - $${extraFeeAmt.toFixed(2)}`;
+    // Shipping & insurance is computed in exactly ONE place — the `shippingFee` memo above —
+    // and reused here. It previously had a second, DIFFERENT implementation at this spot, which
+    // meant a CGC+SGC cart (no PSA/BGS) charged $29 in the total while printing "$24.00" on the
+    // handoff the customer scanned. Do not reintroduce a local calculation here.
+    const shippingAndInsuranceLine = `• Shipping & Insurance - $${shippingFee.toFixed(2)}`;
 
     const servicesPlainString = [...formattedServices, shippingAndInsuranceLine].join('\n');
     const serviceList = encodeURIComponent(servicesPlainString);
@@ -2002,8 +2006,8 @@ export default function App() {
                         )}
                         <div className="flex justify-between items-center">
                           <div className="space-y-1">
-                            <span className="text-m2m-green font-black uppercase tracking-widest text-lg">Shipping & Insurance</span>
-                            <p className="text-xs text-white leading-tight uppercase font-black tracking-widest">M2M shipping waived when bundled with other services</p>
+                            <span className="text-m2m-green font-black uppercase tracking-widest text-lg">Shipping &amp; Insurance</span>
+                            <p className="text-xs text-white leading-tight uppercase font-black tracking-widest">Charged once per order, however many cards</p>
                           </div>
                           <span className="text-2xl font-black text-white">
                             ${shippingFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

@@ -23,6 +23,11 @@ export default defineConfig(() => {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+      // Dev server only — no effect on `npm run build` or on anything the kiosks run.
+      // It lets you open `npm run dev` on a real iPad via the Mac's Bonjour name
+      // (http://<mac-name>.local:3000) instead of its IP, which DHCP changes without
+      // warning. Vite blocks non-IP Host headers by default.
+      allowedHosts: ['.local'],
     },
   };
 });

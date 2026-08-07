@@ -32,6 +32,7 @@ import {
   SHIPPING_DISCLOSURE,
   SUBMISSION_FROM_PRICE,
   formatUSD,
+  lineTotal,
   shippingFeeForCart,
 } from './pricing';
 import StoreSettings from './components/StoreSettings';
@@ -47,6 +48,8 @@ interface Service {
   maxValue: string;
   /** The price is a starting figure, quoted before the item has been assessed. */
   priceIsMinimum: boolean;
+  /** Flat per-card upcharge for an oversized card, or null if not offered. */
+  oversizedSurcharge: number | null;
   description: string;
   details: string;
 }
@@ -75,6 +78,7 @@ const toService = (r: ServiceRecord): Service => ({
   turnaround: String(r.businessDays),
   maxValue: r.maxInsuredValue,
   priceIsMinimum: r.priceIsMinimum,
+  oversizedSurcharge: r.oversizedSurcharge,
   ...copyFor(r.name),
 });
 
@@ -174,8 +178,12 @@ export default function App() {
   const [showPregradingPrice, setShowPregradingPrice] = useState(() => parseFloat(localStorage.getItem('showPregradingPrice') || '5.00'));
   const [globalDiscount, setGlobalDiscount] = useState(() => parseFloat(localStorage.getItem('globalDiscount') || '10'));
   const [showName, setShowName] = useState(() => localStorage.getItem('showName') || '');
-  const [cart, setCart] = useState<{ service: Service; quantity: number }[]>([]);
+  // `oversized` is a per-line flag, not a separate service, so a customer can order two
+  // standard cards and one oversized in the same visit. Lines are keyed on service AND
+  // flag for that reason.
+  const [cart, setCart] = useState<{ service: Service; quantity: number; oversized: boolean }[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [oversizedSel, setOversizedSel] = useState<Record<string, boolean>>({});
   const [customerNotes, setCustomerNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
   // 'submission' was already being set and read but was missing from this union.
@@ -502,27 +510,34 @@ export default function App() {
   // from git history — `git log -S sendMessage` — if it is ever wanted back, but it would
   // need a server-side proxy first.
 
-  const subtotal = useMemo(() => {
-    return cart.reduce((sum, item) => {
-      let cost = parseFloat(item.service.cost.replace(/[^0-9.]/g, '')) || 0;
-      if (cardShowMode && item.service.name.toLowerCase().includes('pregrading')) {
-        cost = showPregradingPrice;
-      }
-      return sum + (cost * item.quantity);
-    }, 0);
-  }, [cart, cardShowMode, showPregradingPrice]);
+  /** The per-card price of a line, before any oversized upcharge. */
+  const unitPriceOf = (service: Service) =>
+    cardShowMode && service.name.toLowerCase().includes('pregrading')
+      ? showPregradingPrice
+      : parseFloat(service.cost.replace(/[^0-9.]/g, '')) || 0;
+
+  /** The oversized upcharge actually applying to a line — 0 unless the customer chose it. */
+  const surchargeOf = (item: { service: Service; oversized: boolean }) =>
+    item.oversized ? item.service.oversizedSurcharge : null;
+
+  const subtotal = useMemo(
+    () => cart.reduce((sum, item) => sum + lineTotal(unitPriceOf(item.service), item.quantity, surchargeOf(item)), 0),
+    [cart, cardShowMode, showPregradingPrice],
+  );
 
   const showDiscount = useMemo(() => {
     if (!cardShowMode) return 0;
+    // The show discount applies to the SERVICE price only. The oversized upcharge is a
+    // pass-through of what BGS charges, carrying $1.50 of margin — discounting it 10%
+    // would sell it at a loss.
     const eligibleSubtotal = cart.reduce((sum, item) => {
       if (!item.service.name.toLowerCase().includes('pregrading')) {
-        const cost = parseFloat(item.service.cost.replace(/[^0-9.]/g, '')) || 0;
-        return sum + (cost * item.quantity);
+        return sum + unitPriceOf(item.service) * item.quantity;
       }
       return sum;
     }, 0);
     return eligibleSubtotal * (globalDiscount / 100);
-  }, [cart, cardShowMode, globalDiscount]);
+  }, [cart, cardShowMode, globalDiscount, showPregradingPrice]);
 
   // Shipping & insurance — $24.00 FLAT, once per order, however many cards.
   // The rule, its history and its tests live in src/pricing.ts. This is the only place
@@ -605,26 +620,30 @@ export default function App() {
 
   const addToCart = (service: Service) => {
     playUIAudio(700, 0.08);
-    addLog(`Added ${service.name} to Cart`);
+    const oversized = !!oversizedSel[service.name] && service.oversizedSurcharge !== null;
+    addLog(`Added ${service.name}${oversized ? ' (oversized)' : ''} to Cart`);
     const qty = quantities[service.name] || 1;
     setCart(prev => {
-      const existing = prev.find(item => item.service.name === service.name);
+      // Merge on service AND oversized: the same service at two different prices is two
+      // lines, otherwise one flag would silently reprice cards the customer already added.
+      const existing = prev.find(item => item.service.name === service.name && item.oversized === oversized);
       if (existing) {
-        return prev.map(item => 
-          item.service.name === service.name 
+        return prev.map(item =>
+          item.service.name === service.name && item.oversized === oversized
             ? { ...item, quantity: item.quantity + qty }
             : item
         );
       }
-      return [...prev, { service, quantity: qty }];
+      return [...prev, { service, quantity: qty, oversized }];
     });
     // Reset local quantity after adding
     setQuantities(prev => ({ ...prev, [service.name]: 1 }));
+    setOversizedSel(prev => ({ ...prev, [service.name]: false }));
   };
 
-  const removeFromCart = (serviceName: string) => {
+  const removeFromCart = (index: number) => {
     playUIAudio(450, 0.08);
-    setCart(prev => prev.filter(item => item.service.name !== serviceName));
+    setCart(prev => prev.filter((_, i) => i !== index));
   };
 
   const questionTexts = [
@@ -657,39 +676,6 @@ export default function App() {
 
   // --- Logic ---
 
-  const getOptionsForQuestion = (idx: number, services: Service[]) => {
-    if (idx === 4) {
-      // Release Year step: show year options if any remaining service requires a specific year choice
-      const hasYearRestriction = services.some(s => {
-        const val = s.questions[4];
-        if (!val) return false;
-        const normalized = val.toLowerCase();
-        return normalized !== 'x' && normalized !== 'skip question' && normalized !== 'either';
-      });
-      if (hasYearRestriction) {
-        return ['1999 - Newer', '1998 - Older'];
-      }
-      return [];
-    }
-
-    const options = new Set<string>();
-    services.forEach(s => {
-      const val = s.questions[idx];
-      if (val && val.toUpperCase() !== 'X' && val.toLowerCase() !== 'skip question' && val.toLowerCase() !== 'either') {
-        options.add(val);
-      }
-    });
-    return Array.from(options);
-  };
-
-  const findNextValidQuestionIdx = (startIdx: number, services: Service[]): number => {
-    for (let i = startIdx; i < 6; i++) {
-      const options = getOptionsForQuestion(i, services);
-      if (options.length > 0) return i;
-    }
-    return 6; // Results
-  };
-
   /** Narrow the service list by one answer. Pure — the only place the match rules live. */
   const filterByAnswer = (services: Service[], idx: number, answer: string): Service[] =>
     services.filter((s) => {
@@ -713,6 +699,47 @@ export default function App() {
 
       return normalizedVal === answer.toLowerCase();
     });
+
+  const getOptionsForQuestion = (idx: number, services: Service[]): string[] => {
+    if (idx === 4) {
+      // Release year. The two eras are fixed strings rather than values read off the
+      // services, so — unlike every other question — this one could offer an answer that
+      // matches nothing. It did: every autograph service at BGS, CGC and SGC is
+      // "1999 - Newer Only", so a customer with a signed pre-1999 card was offered
+      // "1998 - Older" and landed on "No Matches Found".
+      //
+      // Offer an era only if a remaining service can actually satisfy it. Same rule the
+      // other five questions have always followed: never ask what has no answer.
+      const hasYearRestriction = services.some((s) => {
+        const val = s.questions[4];
+        if (!val) return false;
+        const normalized = val.toLowerCase();
+        return normalized !== 'x' && normalized !== 'skip question' && normalized !== 'either';
+      });
+      if (!hasYearRestriction) return [];
+      return ['1999 - Newer', '1998 - Older'].filter(
+        (era) => filterByAnswer(services, 4, era).length > 0,
+      );
+    }
+
+    const options = new Set<string>();
+    services.forEach(s => {
+      const val = s.questions[idx];
+      if (val && val.toUpperCase() !== 'X' && val.toLowerCase() !== 'skip question' && val.toLowerCase() !== 'either') {
+        options.add(val);
+      }
+    });
+    return Array.from(options);
+  };
+
+  const findNextValidQuestionIdx = (startIdx: number, services: Service[]): number => {
+    for (let i = startIdx; i < 6; i++) {
+      const options = getOptionsForQuestion(i, services);
+      if (options.length > 0) return i;
+    }
+    return 6; // Results
+  };
+
 
   /**
    * Advance past every question that has only one possible answer.
@@ -853,6 +880,7 @@ export default function App() {
     setActiveModal(null);
     setCart([]);
     setQuantities({});
+    setOversizedSel({});
     setCustomerNotes('');
     setPaymentMethod('card');
   };
@@ -1383,6 +1411,36 @@ export default function App() {
                   </div>
                 </div>
                 
+                {/*
+                  Oversized is a per-card upcharge, not a separate service. It is chosen
+                  here rather than in the cart so a customer can add two standard cards
+                  and one oversized in the same order — the cart keys lines on the flag.
+                */}
+                {service.oversizedSurcharge !== null && (
+                  <button
+                    onClick={() => setOversizedSel((prev) => ({ ...prev, [service.name]: !prev[service.name] }))}
+                    className={`mx-6 mb-2 flex items-center gap-4 rounded-2xl border-2 px-6 py-4 text-left transition-all active:scale-[0.99] shrink-0 ${
+                      oversizedSel[service.name]
+                        ? 'border-m2m-green bg-m2m-green/10'
+                        : 'border-zinc-800 bg-zinc-950/60 hover:border-zinc-700'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 ${
+                        oversizedSel[service.name] ? 'border-m2m-green bg-m2m-green' : 'border-zinc-700'
+                      }`}
+                    >
+                      {oversizedSel[service.name] && <CheckCircle2 className="h-5 w-5 text-black" />}
+                    </span>
+                    <span className="text-base font-bold uppercase tracking-widest text-m2m-ivory">
+                      Oversized card
+                      <span className="ml-3 tabular-nums text-m2m-green">
+                        +{formatUSD(service.oversizedSurcharge)} per card
+                      </span>
+                    </span>
+                  </button>
+                )}
+
                 <div className="bg-zinc-950 p-6 flex gap-6 items-center border-t border-zinc-800 shrink-0">
                   {remainingServices.length > 1 && (
                     <button 
@@ -1437,16 +1495,17 @@ export default function App() {
 
   const renderHandoff = () => {
     const formattedServices = cart.map(item => {
-      const name = item.service.name;
-      let unitCostVal = parseFloat(item.service.cost.replace(/[^0-9.]/g, '')) || 0;
-      if (cardShowMode && name.toLowerCase().includes('pregrading')) {
-        unitCostVal = showPregradingPrice;
-      }
-      const rawSubtotal = unitCostVal * item.quantity;
+      // "— OVERSIZED" has to survive the trip. The shop is packing the card and the
+      // grader is billing for it; a $10.00 upcharge in the total with nothing on the
+      // order to explain it is a support call waiting to happen.
+      const name = item.service.name + (item.oversized ? ' — OVERSIZED' : '');
+      const unitCostVal = unitPriceOf(item.service);
+      const rawSubtotal = lineTotal(unitCostVal, item.quantity, surchargeOf(item));
       let itemTotalStr = `$${rawSubtotal.toFixed(2)}`;
       
       if (cardShowMode && globalDiscount > 0 && !name.toLowerCase().includes('pregrading')) {
-        const itemDiscount = rawSubtotal * (globalDiscount / 100);
+        // Discount the service, never the pass-through oversized upcharge.
+        const itemDiscount = unitCostVal * item.quantity * (globalDiscount / 100);
         const finalItemTotal = rawSubtotal - itemDiscount;
         itemTotalStr = `$${rawSubtotal.toFixed(2)} / $${itemDiscount.toFixed(2)} / $${finalItemTotal.toFixed(2)}`;
       }
@@ -1739,20 +1798,22 @@ export default function App() {
                     {cart.map((item, i) => (
                       <div key={i} className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 flex justify-between items-center gap-8 shadow-2xl group hover:border-zinc-600 transition-all">
                         <div className="flex-1 min-w-0 space-y-4">
-                          <h4 className="font-black text-white text-3xl uppercase italic tracking-tight truncate">{item.service.name}</h4>
+                          <h4 className="font-black text-white text-3xl uppercase italic tracking-tight truncate">
+                            {item.service.name}
+                            {item.oversized && <span className="text-m2m-green"> — Oversized</span>}
+                          </h4>
                           <div className="flex items-center gap-6">
                             <div className="flex flex-col">
-                              <span className="text-3xl font-black text-white">
-                                ${(() => {
-                                  let cost = parseFloat(item.service.cost.replace(/[^0-9.]/g, '')) || 0;
-                                  if (cardShowMode && item.service.name.toLowerCase().includes('pregrading')) {
-                                    cost = showPregradingPrice;
-                                  }
-                                  return (cost * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                                })()}
+                              <span className="tabular-nums text-3xl font-black text-white">
+                                {formatUSD(lineTotal(unitPriceOf(item.service), item.quantity, surchargeOf(item)))}
                               </span>
+                              {item.oversized && item.service.oversizedSurcharge !== null && (
+                                <span className="mt-1 text-sm font-bold uppercase tracking-widest text-zinc-400">
+                                  includes {formatUSD(item.service.oversizedSurcharge)} oversized × {item.quantity}
+                                </span>
+                              )}
                               {cardShowMode && globalDiscount > 0 && !item.service.name.toLowerCase().includes('pregrading') && (() => {
-                                let cost = parseFloat(item.service.cost.replace(/[^0-9.]/g, '')) || 0;
+                                const cost = unitPriceOf(item.service);
                                 const originalTotal = cost * item.quantity;
                                 const discountAmount = originalTotal * (globalDiscount / 100);
                                 const finalTotal = originalTotal - discountAmount;
@@ -1778,7 +1839,7 @@ export default function App() {
                           </div>
                         </div>
                         <button 
-                          onClick={() => removeFromCart(item.service.name)}
+                          onClick={() => removeFromCart(i)}
                           className="p-6 bg-zinc-950 hover:bg-red-500/10 rounded-3xl transition-all group/del active:scale-90 border border-zinc-800"
                         >
                           <Trash2 className="w-8 h-8 text-zinc-700 group-hover/del:text-red-500" />

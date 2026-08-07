@@ -59,6 +59,21 @@ export const SHIPPING_DISCLOSURE = '$24.00 covers your whole order, however many
 export const shippingFeeForCart = (itemCount: number): number =>
   itemCount > 0 ? SHIPPING_AND_INSURANCE : 0;
 
+/**
+ * What one cart line costs, before any show discount.
+ *
+ * The oversized upcharge is PER CARD, not per line — an oversized order of three cards is
+ * three upcharges, because BGS charges per card. Everything that needs a line total goes
+ * through here: the cart, the order summary and the QR handoff all read the same figure.
+ * The shipping fee once had two implementations and the customer saw $24.00 while being
+ * charged $29.00; one function is the entire lesson from that.
+ */
+export const lineTotal = (
+  unitPrice: number,
+  quantity: number,
+  oversizedSurcharge: number | null = null,
+): number => (unitPrice + (oversizedSurcharge ?? 0)) * quantity;
+
 /** Prices always carry two decimals — `$7.00`, never `$7` (BRAND FOUNDATION v6 §2). */
 export const formatUSD = (amount: number): string =>
   `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

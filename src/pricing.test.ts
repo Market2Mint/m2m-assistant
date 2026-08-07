@@ -8,6 +8,7 @@ import {
   SUBMISSION_FROM_PRICE,
   formatTurnaround,
   formatUSD,
+  lineTotal,
   shippingFeeForCart,
 } from './pricing';
 
@@ -58,6 +59,31 @@ describe('shippingFeeForCart', () => {
     for (const cart of carts) {
       expect(shippingFeeForCart(cart.length)).toBe(24.0);
     }
+  });
+});
+
+describe('lineTotal', () => {
+  it('is unit price times quantity when nothing is oversized', () => {
+    expect(lineTotal(84.99, 1)).toBeCloseTo(84.99, 2);
+    expect(lineTotal(84.99, 3)).toBeCloseTo(254.97, 2);
+    expect(lineTotal(25, 4, null)).toBe(100);
+  });
+
+  it('charges the oversized upcharge PER CARD, not per line', () => {
+    // BGS charges per card, so three oversized cards is three upcharges. Applying it
+    // once per line would undercharge every multi-card oversized order.
+    expect(lineTotal(85, 1, 10)).toBe(95);
+    expect(lineTotal(85, 3, 10)).toBe(285);
+    expect(lineTotal(150, 2, 10)).toBe(320);
+  });
+
+  it('matches the sheet\'s own oversized rows to the cent', () => {
+    // The sheet lists these as separate services; the kiosk computes them. If the two
+    // ever disagree, one of them is wrong and it will be this.
+    expect(lineTotal(85, 1, 10)).toBe(95);    // BGS Express — Oversized
+    expect(lineTotal(90, 1, 10)).toBe(100);   // BGS Express w/Auto — Oversized
+    expect(lineTotal(150, 1, 10)).toBe(160);  // BGS Priority — Oversized
+    expect(lineTotal(155, 1, 10)).toBe(165);  // BGS Priority w/Auto — Oversized
   });
 });
 

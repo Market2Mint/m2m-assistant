@@ -53,6 +53,14 @@ export interface ServiceRecord {
    * must be told that before they add it to a cart.
    */
   priceIsMinimum: boolean;
+  /**
+   * A flat upcharge, per card, for an oversized card — or null if the service does not
+   * accept one. This is a MODIFIER, not a separate service: the pricing sheet lists
+   * "BGS Express — Oversized" as its own row, but making those menu entries would double
+   * every BGS tier on screen and would not follow BGS Base and Standard back off
+   * suspension. The figure is measured from the sheet, not typed here.
+   */
+  oversizedSurcharge: number | null;
 }
 
 /**
@@ -147,6 +155,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -159,6 +168,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -171,6 +181,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -183,6 +194,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -195,6 +207,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -207,6 +220,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -219,6 +233,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -231,6 +246,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -243,6 +259,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -255,6 +272,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -267,6 +285,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -279,6 +298,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -291,6 +311,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -303,6 +324,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -315,6 +337,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -327,6 +350,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -339,6 +363,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -351,6 +376,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -363,6 +389,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -375,6 +402,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -387,6 +415,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -399,6 +428,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -411,6 +441,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -423,6 +454,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -435,6 +467,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -447,6 +480,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -459,6 +493,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -471,6 +506,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -483,6 +519,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -495,6 +532,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -507,6 +545,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -519,6 +558,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -531,6 +571,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -543,6 +584,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -555,6 +597,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -567,6 +610,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -579,6 +623,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -591,6 +636,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -603,6 +649,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -615,6 +662,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -627,6 +675,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -639,6 +688,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -651,6 +701,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -663,6 +714,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -675,6 +727,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -687,6 +740,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -699,6 +753,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -711,6 +766,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -723,6 +779,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -735,6 +792,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -747,6 +805,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -759,6 +818,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: 10.0,
   },
   {
     category: "Trading Cards",
@@ -771,6 +831,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: 10.0,
   },
   {
     category: "Trading Cards",
@@ -783,6 +844,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: 10.0,
   },
   {
     category: "Trading Cards",
@@ -795,6 +857,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: 10.0,
   },
   {
     category: "Trading Cards",
@@ -807,6 +870,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: 10.0,
   },
   {
     category: "Trading Cards",
@@ -819,6 +883,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: 10.0,
   },
   {
     category: "Trading Cards",
@@ -831,6 +896,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: 10.0,
   },
   {
     category: "Trading Cards",
@@ -843,6 +909,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: 10.0,
   },
   {
     category: "Trading Cards",
@@ -855,6 +922,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -867,6 +935,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -879,6 +948,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -891,6 +961,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -903,6 +974,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Autograph Quick Opinion",
@@ -915,6 +987,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Memorabilia",
@@ -927,6 +1000,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: true,
+    oversizedSurcharge: null,
   },
   {
     category: "Memorabilia",
@@ -939,6 +1013,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: true,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -951,6 +1026,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -963,6 +1039,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -975,6 +1052,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -987,6 +1065,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -999,6 +1078,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1011,6 +1091,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1023,6 +1104,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1035,6 +1117,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1047,6 +1130,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1059,6 +1143,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1071,6 +1156,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1083,6 +1169,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1095,6 +1182,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1107,6 +1195,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Reholder",
@@ -1119,6 +1208,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Reholder",
@@ -1131,6 +1221,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Reholder",
@@ -1143,6 +1234,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Reholder",
@@ -1155,6 +1247,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Reholder",
@@ -1167,6 +1260,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Unopened Packs",
@@ -1179,6 +1273,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Unopened Packs",
@@ -1191,6 +1286,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Movies & Games",
@@ -1203,6 +1299,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "Available",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Movies & Games",
@@ -1215,6 +1312,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Movies & Games",
@@ -1227,6 +1325,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Event Tickets",
@@ -1239,6 +1338,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Event Tickets",
@@ -1251,6 +1351,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Event Tickets",
@@ -1263,6 +1364,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Event Tickets",
@@ -1275,6 +1377,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Event Tickets",
@@ -1287,6 +1390,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Event Tickets",
@@ -1299,6 +1403,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1311,6 +1416,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1323,6 +1429,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1335,6 +1442,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1347,6 +1455,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1359,6 +1468,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1371,6 +1481,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1383,6 +1494,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1395,6 +1507,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1407,6 +1520,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1419,6 +1533,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1431,6 +1546,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1443,6 +1559,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1455,6 +1572,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1467,6 +1585,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1479,6 +1598,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1491,6 +1611,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1503,6 +1624,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1515,6 +1637,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1527,6 +1650,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1539,6 +1663,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1551,6 +1676,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1563,6 +1689,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1575,6 +1702,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Comics & Magazines",
@@ -1587,6 +1715,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -1599,6 +1728,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -1611,6 +1741,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -1623,6 +1754,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -1635,6 +1767,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Trading Cards",
@@ -1647,6 +1780,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1659,6 +1793,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Crossover",
@@ -1671,6 +1806,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
   {
     category: "Slab Cracking",
@@ -1683,6 +1819,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,
+    oversizedSurcharge: null,
   },
 ];
 

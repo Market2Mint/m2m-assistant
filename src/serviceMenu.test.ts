@@ -182,3 +182,43 @@ describe('BGS Priority is live', () => {
       .toEqual(['BGS Express', 'BGS Express w/Auto', 'BGS Priority', 'BGS Priority w/Auto']);
   });
 });
+
+describe('oversized is a modifier, not four extra services', () => {
+  it('never appears as a menu entry', () => {
+    expect(SERVICE_MENU.filter((s) => /oversized/i.test(s.name))).toEqual([]);
+  });
+
+  it('offers +$10.00 on every BGS card service', () => {
+    const bgsCards = ACTIVE_SERVICES.filter(
+      (s) => s.category === 'Trading Cards' && s.name.startsWith('BGS'),
+    );
+    expect(bgsCards.length).toBeGreaterThan(0);
+    for (const s of bgsCards) {
+      expect(s.oversizedSurcharge, `${s.name} should accept an oversized card`).toBe(10);
+    }
+  });
+
+  it('follows BGS Base and Standard into retirement, so it returns with them', () => {
+    // The whole reason this is a modifier and not four records: when BGS un-retires
+    // Base and Standard, oversized has to come back with them without anyone editing
+    // a second list.
+    for (const name of ['BGS Base', 'BGS Standard', 'BGS Base w/Auto', 'BGS Standard w/Auto']) {
+      const rows = byName(name);
+      expect(rows.length).toBeGreaterThan(0);
+      for (const r of rows) expect(r.oversizedSurcharge, `${name}`).toBe(10);
+    }
+  });
+
+  it('is offered by no other grader', () => {
+    const others = ACTIVE_SERVICES.filter(
+      (s) => s.oversizedSurcharge !== null && !s.name.startsWith('BGS'),
+    );
+    expect(others.map((s) => s.name)).toEqual([]);
+  });
+
+  it('is not offered on BGS services outside trading cards', () => {
+    for (const s of ACTIVE_SERVICES.filter((s) => s.category !== 'Trading Cards')) {
+      expect(s.oversizedSurcharge, `${s.name} should not offer oversized`).toBeNull();
+    }
+  });
+});

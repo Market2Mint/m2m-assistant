@@ -312,6 +312,12 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
     ];
   }, [showLog]);
 
+  /** The version block's second line — plain enough to read down a phone. */
+  const updaterSummary = React.useMemo(
+    () => fleetStatus.find((r) => r.label === 'Updater')?.value ?? 'Updater status unknown',
+    [fleetStatus],
+  );
+
   const handleClearLog = () => {
     if (confirm('Clear system log?')) {
       clearLogs();
@@ -387,6 +393,37 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                   >
                     <X className="w-5 h-5" />
                   </button>
+                </div>
+              </div>
+
+              {/*
+                ── KIOSK VERSION — one tap, no password, readable down a phone. ──
+
+                This is the single most important thing in this panel and it is deliberately
+                the first thing in it, OUTSIDE the advanced-settings password. A shop owner
+                being talked through a stuck kiosk cannot be asked for a passcode first.
+
+                ⚠️ ITS ABSENCE IS THE DIAGNOSTIC. Builds between 2026-03-14 and 2026-05-22
+                shipped with no update mechanism at all, so a kiosk last touched in that
+                window can never be reached by a deploy — and will never receive this block
+                either, because it arrives the same way. So the question down the phone is
+                simply: "at the top, do you see a green box that says KIOSK VERSION?"
+                  · yes → alive, read out the date
+                  · no  → frozen; delete the Home Screen icon and re-add it from the URL
+
+                That is why it is a bordered, labelled block rather than a subtle line of
+                metadata: "I don't see it" has to be an answer a non-technical person can
+                give confidently, which a blank space does not support.
+              */}
+              <div className="px-8 pt-6">
+                <div className="rounded-2xl border border-m2m-green/40 bg-m2m-green/[0.08] px-5 py-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-m2m-green">
+                    Kiosk version
+                  </p>
+                  <p className="mt-1 font-mono text-lg leading-tight text-m2m-ivory tabular-nums">
+                    {BUILD_LABEL}
+                  </p>
+                  <p className="mt-1 text-xs leading-tight text-zinc-400">{updaterSummary}</p>
                 </div>
               </div>
 

@@ -2,11 +2,17 @@
  * Reload in a way iOS cannot satisfy from cache.
  *
  * `location.reload()` is allowed to re-serve the cached document, and `reload(true)` — the
- * old force-reload — is ignored by every current browser. On an iPad that matters more
- * than usual: a kiosk added to the Home Screen runs in a separate web-app cache from
- * Safari's, and that cache is stickier. A kiosk stuck on an old bundle is exactly the case
- * where a soft reload is most likely to hand back the same old bundle — which is to say
- * the one case where it must not.
+ * old force-reload — is ignored by every current browser.
+ *
+ * ⚠️ I first justified this by a Home-Screen-cache theory. **Cayden disproved it on
+ * 2026-08-07**: index.html is served `max-age=0, must-revalidate` with an ETag, and a
+ * conditional request correctly returns 304. Revalidation works. The browser cannot hand
+ * back a stale document without asking the server first.
+ *
+ * So this is belt-and-braces, not a fix for a known fault. It is kept because it is
+ * strictly no worse than a soft reload, and because it stops depending on a cache header
+ * staying correct forever — a header is a deployment setting someone can change without
+ * ever thinking about these kiosks.
  *
  * Navigating to a URL the cache has never seen sidesteps the question. `replace` rather
  * than `assign` so a kiosk cannot accumulate history entries, and the parameter is

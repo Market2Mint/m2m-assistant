@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "headers": [
+    {
+      "//": "Hashed build assets. Vite writes the content hash into the filename, so index-BDeGAHmo.js is that exact bytes and nothing else — the name changes when the content does. A file that can never go stale should never be revalidated. Vercel's default served these with max-age=0, must-revalidate, which made every kiosk re-check ~780KB over shop WiFi before it could paint.",
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "//": "The HTML must NEVER be immutable. It is the only unhashed file, so it is the thing that tells a kiosk which hashed bundle to load — and the update check reads it to detect a new build. Cache it and the fleet stops updating. This restates Vercel's current default explicitly so that a future change cannot silently break the update mechanism.",
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    }
+  ]
+}

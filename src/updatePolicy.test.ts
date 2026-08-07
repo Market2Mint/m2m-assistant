@@ -168,16 +168,15 @@ describe('shouldApplyUpdate', () => {
     expect(shouldApplyUpdate({ ...base, lastAppliedAt: null }).apply).toBe(true);
   });
 
-  it('THE COLD-START CASE: asleep overnight, build published at 02:00, woken at 09:00', () => {
-    // The real-world scenario, and the one most likely to have been failing. A sleeping
-    // iPad does not run setInterval — timers are suspended, not queued — so the kiosk
-    // performs NO check at 04:00 and nothing fires late. It learns about the new build
-    // only because waking now triggers a check directly (see the visibilitychange /
-    // pageshow listeners in App.tsx); a timer alone would have left it up to five more
-    // minutes, and on the old build there was no wake trigger at all.
+  it('COLD START: powered off overnight, build published at 02:00, booted at 09:00', () => {
+    // A kiosk that was off — genuinely powered down, or an app iOS reclaimed — missed the
+    // 04:00 window entirely. It must not then wait until 11:00.
     //
-    // Once it knows, 09:00 sits inside the 04:00 window, which yesterday's update did not
-    // serve — so it is eligible immediately rather than waiting for 11:00.
+    // NOTE this was written as "asleep overnight" on the theory that iPads suspend timers.
+    // Cayden established the fleet runs as standalone Home Screen apps under Guided Access
+    // and never sleeps, so that framing was wrong. The case is still worth pinning — a
+    // shop that switches its iPad off at close produces exactly this — but it is no longer
+    // the explanation for the stuck fleet.
     const lastAppliedAt = at(6, 11, 15).getTime(); // yesterday's 11:00 window
     expect(shouldApplyUpdate({ ...base, now: at(7, 9, 0), lastAppliedAt })).toEqual({
       apply: true,

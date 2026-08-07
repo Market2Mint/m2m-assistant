@@ -199,6 +199,14 @@ const PREGRADE_CATEGORY = 'Pregrading';
 /** Survives the reload it guards — see `readLastUpdateApplied`. */
 const LAST_UPDATE_APPLIED_KEY = 'm2m_last_update_applied';
 
+/**
+ * The customer gets a warning before the kiosk resets, and 30 seconds is deliberate: long
+ * enough to notice, read and reach out on a panel-mounted screen, without leaving an
+ * abandoned order on display for the next person in the queue.
+ */
+const IDLE_RESET_AFTER_MS = 120_000;
+const IDLE_WARNING_AFTER_MS = IDLE_RESET_AFTER_MS - 30_000;
+
 /** Updater health. Persisted because the interesting failures span reloads. */
 const UPDATE_HEALTH_KEY = 'm2m_update_health';
 
@@ -306,6 +314,8 @@ export default function App() {
   }, [step]);
 
   const [handoffCountdown, setHandoffCountdown] = useState(60);
+  /** True for the last 30 seconds before an inactivity reset. */
+  const [idleWarning, setIdleWarning] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -545,22 +555,26 @@ export default function App() {
     pollForChanges();
 
     /*
-     * ── RE-CHECK ON WAKE. This is the fix most likely to unstick the fleet. ──
+     * ── RE-CHECK ON WAKE — cheap insurance, NOT the fix for the live fleet. ──
      *
-     * These are iPads. **A sleeping iPad does not run `setInterval`** — timers are
-     * suspended, not queued, so nothing accumulates and nothing fires late. A kiosk that
-     * sleeps overnight simply does not perform its 04:00 check; it performs no checks at
-     * all until something wakes it, and then waits up to another five minutes for the next
-     * tick. Low Power Mode throttles it further, and iOS may discard a backgrounded tab
-     * and restore it from a snapshot with its timers dead.
+     * I originally wrote this as the answer to stuck kiosks, on the theory that a sleeping
+     * iPad suspends `setInterval`. **That theory is dead.** Cayden established 2026-08-07
+     * how the fleet actually runs: Safari → Add to Home Screen → standalone web app under
+     * Guided Access. They never sleep, so timer suspension was never happening.
      *
-     * A timer is therefore the wrong primary trigger for a device that spends most of its
-     * life asleep. Waking is the event that matters, so it gets its own listener.
+     * The real cause is not fixable in software: builds between 2026-03-14 and 2026-05-22
+     * shipped with NO update mechanism at all, so a kiosk last touched in that window has
+     * nothing on the device listening and can never be reached by a deploy. Those need a
+     * person to delete and re-add the Home Screen icon.
      *
-     * Both events, because they fire in different situations: `visibilitychange` covers
-     * the screen coming back on and the tab being re-foregrounded; `pageshow` with
-     * `persisted` covers a restore from the back/forward cache, where no other lifecycle
-     * event fires at all and the page resumes mid-flight.
+     * These listeners stay because they cost two event handlers and still cover cases that
+     * do occur — a device powered off overnight, iOS reclaiming memory from a backgrounded
+     * app, or a shop that runs the kiosk as an ordinary Safari tab. They are no longer
+     * claimed to be load-bearing.
+     *
+     * Both events, because they fire in different situations: `visibilitychange` covers the
+     * app being re-foregrounded; `pageshow` with `persisted` covers a back/forward-cache
+     * restore, where no other lifecycle event fires at all.
      */
     const recheckOnWake = (why: string) => {
       addLog(`VERSION_CHECK_WAKE: ${why}`);
@@ -621,116 +635,53 @@ export default function App() {
     };
   }, []);
 
-  // Global Inactivity Timer (120s)
+  /*
+   * ── INACTIVITY RESET, WITH A WARNING FIRST ──
+   *
+   * A hard timeout with no warning is an accessibility failure, not a convenience. It
+   * resets someone who is simply reading slowly, or who is deaf, or dyslexic, or elderly,
+   * or translating the screen for a friend — and it takes their order with it and tells
+   * them nothing about why. The customer's own reasonable pace becomes the fault.
+   *
+   * So the last 30 seconds are spent asking. The countdown is visible, the dismissal is a
+   * single large tap, and taking it resets the clock completely — anyone who needs longer
+   * can have longer, as many times as they like.
+   */
   useEffect(() => {
-    if (step === 'landing') return;
+    if (step === 'landing') {
+      setIdleWarning(false);
+      return;
+    }
 
-    let timeoutId: NodeJS.Timeout;
+    let warnId: NodeJS.Timeout;
+    let resetId: NodeJS.Timeout;
+
     const resetTimer = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
+      clearTimeout(warnId);
+      clearTimeout(resetId);
+      setIdleWarning(false);
+      warnId = setTimeout(() => setIdleWarning(true), IDLE_WARNING_AFTER_MS);
+      resetId = setTimeout(() => {
         addLog('Global Inactivity Timeout');
         handleReset();
-      }, 120000); // 120 seconds
+      }, IDLE_RESET_AFTER_MS);
     };
 
-    // `input` is here because the other five events do not reliably fire while someone is
+    // `input` is here because the other events do not reliably fire while someone is
     // typing on the iPad's on-screen keyboard: the software keyboard is not part of the
     // page, so its taps produce no `touchstart`, and `keypress` is deprecated and skipped
     // by dictation, autocorrect accepts and paste. Without it the kiosk can reset out from
-    // under a customer mid-sentence. That already applied to the Additional Instructions
-    // textarea; the minimum-grade reference field is the second field to depend on it.
+    // under a customer mid-sentence.
     const events = ['mousedown', 'mousemove', 'keypress', 'input', 'scroll', 'touchstart'];
     events.forEach(event => document.addEventListener(event, resetTimer));
     resetTimer();
 
     return () => {
-      clearTimeout(timeoutId);
+      clearTimeout(warnId);
+      clearTimeout(resetId);
       events.forEach(event => document.removeEventListener(event, resetTimer));
     };
   }, [step]);
-
-  // The Handoff Screen Timer (60s) used to sit here. It now lives immediately after the
-  // `handoff` memo, because it has to know whether a QR was produced — and reading
-  // `handoff` from here would hit the temporal dead zone, since a dependency array is
-  // evaluated during render rather than when the effect runs.
-
-  // Network Status
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  // Video Analytics Setup
-  useEffect(() => {
-    if (activeModal === 'video') {
-      progressTracked.current = {};
-      
-      const setupPlayer = () => {
-        if (!(window as any).YT || !(window as any).YT.Player) return;
-        
-        playerRef.current = new (window as any).YT.Player('m2m-video-player', {
-          events: {
-            'onStateChange': (event: any) => {
-              if (event.data === (window as any).YT.PlayerState.PLAYING) {
-                addLog('VIDEO_START');
-                startTrackingProgress();
-              } else if (event.data === (window as any).YT.PlayerState.ENDED) {
-                addLog('VIDEO_COMPLETE');
-                stopTrackingProgress();
-              }
-            }
-          }
-        });
-      };
-
-      const startTrackingProgress = () => {
-        if (progressInterval.current) clearInterval(progressInterval.current);
-        progressInterval.current = setInterval(() => {
-          if (playerRef.current && typeof playerRef.current.getDuration === 'function') {
-            const duration = playerRef.current.getDuration();
-            const currentTime = playerRef.current.getCurrentTime();
-            if (duration > 0) {
-              const progress = (currentTime / duration) * 100;
-              [25, 50, 75].forEach(milestone => {
-                if (progress >= milestone && !progressTracked.current[milestone]) {
-                  addLog(`VIDEO_PROGRESS: ${milestone}%`);
-                  progressTracked.current[milestone] = true;
-                }
-              });
-            }
-          }
-        }, 1000);
-      };
-
-      const stopTrackingProgress = () => {
-        if (progressInterval.current) {
-          clearInterval(progressInterval.current);
-          progressInterval.current = null;
-        }
-      };
-
-      if (!(window as any).YT) {
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-        (window as any).onYouTubeIframeAPIReady = setupPlayer;
-      } else {
-        setupPlayer();
-      }
-
-      return () => stopTrackingProgress();
-    }
-  }, [activeModal]);
-
-  // Global Inactivity Timer (120s)
 
   const handleScroll = () => {
     if (scrollRef.current && scrollRef.current.scrollTop > 20) {
@@ -2547,6 +2498,35 @@ export default function App() {
           </Modal>
         )}
       </AnimatePresence>
+      {/*
+        ── "STILL THERE?" — the last 30 seconds before an inactivity reset. ──
+
+        Sits above everything except the brightness dimmer so it cannot be missed, but it
+        does NOT block the screen behind it: a customer who was mid-thought should be able
+        to see what they were looking at while they decide.
+
+        Any touch anywhere already resets the timer, so this is belt-and-braces for someone
+        who is reading rather than touching. The button is oversized because the whole point
+        is that a person who is struggling can dismiss it without aiming.
+      */}
+      {idleWarning && (
+        <div className="fixed inset-x-0 bottom-0 z-[9998] flex justify-center p-6 pointer-events-none">
+          <div className="pointer-events-auto flex items-center gap-8 rounded-[2rem] border border-m2m-green/40 bg-m2m-bg/95 px-10 py-6 shadow-2xl backdrop-blur">
+            <div>
+              <p className="text-2xl font-bold leading-tight text-m2m-ivory">Are you still there?</p>
+              <p className="mt-1 text-base leading-tight text-zinc-400">
+                We'll clear this order shortly so the next person starts fresh.
+              </p>
+            </div>
+            <button
+              onClick={() => setIdleWarning(false)}
+              className="min-h-[64px] shrink-0 rounded-2xl bg-m2m-green px-10 py-4 text-lg font-bold uppercase tracking-widest text-m2m-bg active:scale-95 transition-transform"
+            >
+              I need more time
+            </button>
+          </div>
+        </div>
+      )}
       {brightness < 100 && (
         <div 
           id="screen-brightness-dimmer"

@@ -29,5 +29,14 @@ export default defineConfig(() => {
       // warning. Vite blocks non-IP Host headers by default.
       allowedHosts: ['.local'],
     },
+    // `preview` serves the real production build from dist/. It is a SEPARATE config block
+    // from `server` above — the dev allowance does not apply to it — and it is what you
+    // want on an actual iPad before a deploy, because the dev server differs from what a
+    // kiosk runs in ways that matter: unminified bundle, HMR injected, and React StrictMode
+    // double-invoking effects. Checking a shippable build on the dev server is checking
+    // something else.
+    preview: {
+      allowedHosts: ['.local'],
+    },
   };
 });

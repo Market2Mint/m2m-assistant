@@ -40,6 +40,7 @@ import {
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
 import { hardReload } from './utils/hardReload';
+import { summariseTiers } from './tiers';
 import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl } from './handoff';
 import { EMPTY_HEALTH, UPDATE_WINDOWS, shouldApplyUpdate, type UpdateHealth } from './updatePolicy';
 import { refreshPublishedMenu, resolveMenuAtBoot } from './menuSource';
@@ -1465,29 +1466,9 @@ export default function App() {
    * At five or more, fall back to summarising by turnaround, which is what the sort has
    * always actually been. No path currently reaches five.
    */
-  const speedTiers = useMemo(() => {
-    if (remainingServices.length <= 1) return [];
-
-    const sorted = [...remainingServices].sort((a, b) => {
-      const daysA = parseInt(a.turnaround.replace(/\D/g, '')) || 0;
-      const daysB = parseInt(b.turnaround.replace(/\D/g, '')) || 0;
-      return daysB - daysA; // Slowest to fastest
-    });
-
-    if (sorted.length <= 4) {
-      return sorted.map((service) => ({
-        label: '',
-        service,
-        index: remainingServices.indexOf(service),
-      }));
-    }
-
-    return [
-      { label: 'LONGEST WAIT', service: sorted[0], index: remainingServices.indexOf(sorted[0]) },
-      { label: 'MIDDLE', service: sorted[Math.floor(sorted.length / 2)], index: remainingServices.indexOf(sorted[Math.floor(sorted.length / 2)]) },
-      { label: 'FASTEST', service: sorted[sorted.length - 1], index: remainingServices.indexOf(sorted[sorted.length - 1]) },
-    ];
-  }, [remainingServices]);
+  // Summary logic lives in src/tiers.ts, pure and tested. It was inline here when it
+  // silently dropped one of four services — see the regression test.
+  const speedTiers = useMemo(() => summariseTiers(remainingServices), [remainingServices]);
 
   const scrollToTile = (index: number) => {
     const element = document.getElementById(`service-tile-${index}`);

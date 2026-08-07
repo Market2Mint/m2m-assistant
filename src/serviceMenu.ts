@@ -47,6 +47,12 @@ export interface ServiceRecord {
   /** false = retired/suspended. Kept as history; filtered out of the flow. */
   active: boolean;
   status: string;
+  /**
+   * The price is a STARTING price, not the price. Memorabilia authentication is costed
+   * per item after assessment, so the figure on screen is a minimum and the customer
+   * must be told that before they add it to a cart.
+   */
+  priceIsMinimum: boolean;
 }
 
 /**
@@ -72,23 +78,22 @@ export const SERVICE_COPY: Record<string, { description: string; details: string
   "PSA Express Dual": { description: "PSA's Express Dual service offers priority turnaround and grader notes. Perfect for collectors or sellers who need quick results without sacrificing PSA's trusted grading standards. All submissions through Market 2 Mint include card prep, wipe-down, and secure handling from start to finish.", details: "Will have grader notes" },
   "PSA Super Express": { description: "Need fast grading for your high-value cards? PSA's Super Express service is built for speed and security, offering fast turnaround and grader notes. This service ensures your premium items are prioritized and handled with top-tier care. All submissions through Market 2 Mint include a professional wipe-down and secure processing from start to finish.", details: "Will have grader notes" },
   "PSA Super Express Dual": { description: "Need fast grading for your high-value cards? PSA's Super Express Dual service is built for speed and security, offering fast turnaround and grader notes. This service ensures your premium items are prioritized and handled with top-tier care. All submissions through Market 2 Mint include a professional wipe-down and secure processing from start to finish.", details: "Will have grader notes" },
-  "BGS Base": { description: "Beckett's Base service offers reliable grading with no maximum declared value, making it ideal for a wide range of cards—from modern to vintage. This service provides full subgrades and the iconic BGS label. All cards submitted through Market 2 Mint receive a full wipe-down and are securely handled from prep to return.", details: "Only pack-pulled autograph cards can be submitted. All autographs are graded by BGS, but only 10's make it to the label." },
+  "BGS Base": { description: "Beckett's Base service offers reliable grading with no maximum declared value, making it ideal for a wide range of cards—from modern to vintage. This service provides full subgrades and the iconic BGS label. All cards submitted through Market 2 Mint receive a full wipe-down and are securely handled from prep to return.", details: "" },
   "BGS Base w/Auto": { description: "Beckett's Base service offers reliable grading with no maximum declared value, making it ideal for a wide range of cards—from modern to vintage. This service provides full subgrades and the iconic BGS label. All cards submitted through Market 2 Mint receive a full wipe-down and are securely handled from prep to return.", details: "Only pack-pulled autograph cards can be submitted. All autographs are graded by BGS, but only 10's make it to the label." },
-  "BGS Standard": { description: "BGS Standard offers a great balance between turnaround time and cost, with no maximum declared value. Perfect for collectors looking for reliable grading with full subgrades and Beckett's signature labeling. All cards submitted through Market 2 Mint are wiped down and securely handled throughout the submission process.", details: "Only pack-pulled autograph cards can be submitted. All autographs are graded by BGS, but only 10's make it to the label." },
+  "BGS Standard": { description: "BGS Standard offers a great balance between turnaround time and cost, with no maximum declared value. Perfect for collectors looking for reliable grading with full subgrades and Beckett's signature labeling. All cards submitted through Market 2 Mint are wiped down and securely handled throughout the submission process.", details: "" },
   "BGS Standard w/Auto": { description: "BGS Standard offers a great balance between turnaround time and cost, with no maximum declared value. Perfect for collectors looking for reliable grading with full subgrades and Beckett's signature labeling. All cards submitted through Market 2 Mint are wiped down and securely handled throughout the submission process.", details: "Only pack-pulled autograph cards can be submitted. All autographs are graded by BGS, but only 10's make it to the label." },
-  "BGS Express": { description: "Need faster grading without sacrificing accuracy? BGS Express offers a quicker turnaround—with no maximum declared value. This service includes full subgrades and Beckett's premium labeling, ideal for collectors and sellers who want their cards back fast. Every card submitted through Market 2 Mint receives a careful wipe-down and is securely processed from start to finish.", details: "Only pack-pulled autograph cards can be submitted. All autographs are graded by BGS, but only 10's make it to the label." },
+  "BGS Express": { description: "Need faster grading without sacrificing accuracy? BGS Express offers a quicker turnaround—with no maximum declared value. This service includes full subgrades and Beckett's premium labeling, ideal for collectors and sellers who want their cards back fast. Every card submitted through Market 2 Mint receives a careful wipe-down and is securely processed from start to finish.", details: "" },
   "BGS Express w/Auto": { description: "Need faster grading without sacrificing accuracy? BGS Express offers a quicker turnaround—with no maximum declared value. This service includes full subgrades and Beckett's premium labeling, ideal for collectors and sellers who want their cards back fast. Every card submitted through Market 2 Mint receives a careful wipe-down and is securely processed from start to finish.", details: "Only pack-pulled autograph cards can be submitted. All autographs are graded by BGS, but only 10's make it to the label." },
-  "BGS Priority": { description: "Need faster grading without sacrificing accuracy? BGS Priority offers a quicker turnaround—with no maximum declared value. This service includes full subgrades and Beckett's premium labeling, ideal for collectors and sellers who want their cards back fast. Every card submitted through Market 2 Mint receives a careful wipe-down and is securely processed from start to finish.", details: "Only pack-pulled autograph cards can be submitted. All autographs are graded by BGS, but only 10's make it to the label." },
+  "BGS Priority": { description: "Need faster grading without sacrificing accuracy? BGS Priority offers a quicker turnaround—with no maximum declared value. This service includes full subgrades and Beckett's premium labeling, ideal for collectors and sellers who want their cards back fast. Every card submitted through Market 2 Mint receives a careful wipe-down and is securely processed from start to finish.", details: "" },
   "BGS Priority w/Auto": { description: "Need faster grading without sacrificing accuracy? BGS Priority offers a quicker turnaround—with no maximum declared value. This service includes full subgrades and Beckett's premium labeling, ideal for collectors and sellers who want their cards back fast. Every card submitted through Market 2 Mint receives a careful wipe-down and is securely processed from start to finish.", details: "Only pack-pulled autograph cards can be submitted. All autographs are graded by BGS, but only 10's make it to the label." },
   "CGC Economy": { description: "CGC's Economy service is an ideal option for collectors looking for reliable grading without the higher price tag. Whether you're submitting sports cards or trading card games (TCGs), CGC delivers consistent, high-quality results. Every card submitted through Market 2 Mint is wiped down and carefully handled throughout the grading process.", details: "" },
   "CGC Standard": { description: "CGC's Standard service is a great choice for grading mid-value cards, offering a perfect blend of turnaround time and affordability. Whether it's sports cards or TCGs, you'll receive accurate, professional grading with CGC's trusted standards. All cards submitted through Market 2 Mint are wiped down and securely handled from submission to return.", details: "" },
   "CGC Express": { description: "CGC's Express service is ideal for grading high-value cards quickly and securely. Perfect for serious collectors or sellers who need fast, reliable results. All cards submitted through Market 2 Mint are wiped down and professionally handled from start to finish.", details: "" },
-  "SGC Standard": { description: "SGC's <1500 service offers affordable grading for cards valued up to $1,500, making it a great option for collectors looking for reliable grading without the higher price tag. Whether you're submitting sports cards or trading card games (TCGs), SGC delivers consistent, high-quality results. Every card submitted through Market 2 Mint is wiped down and carefully handled throughout the grading process.", details: "" },
-  "SGC Expedited": { description: "SGC's <3500 service offers affordable grading for cards valued up to $7,500, making it a great option for collectors looking for reliable grading without the higher price tag. Whether you're submitting sports cards or trading card games (TCGs), SGC delivers consistent, high-quality results. Every card submitted through Market 2 Mint is wiped down and carefully handled throughout the grading process.", details: "" },
+  "SGC Standard": { description: "SGC Standard is a straightforward, well-priced way to have a card authenticated, graded and sealed in SGC's signature black-matted holder, insured up to $1,500.00. Suits sports cards and trading card games alike. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "" },
+  "SGC Expedited": { description: "SGC Expedited is the faster route for higher-value cards, insured up to $3,500.00 and returned in SGC's signature black-matted holder. Choose this when you want the card back quickly without giving up SGC's grading standards. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "" },
   "BGS Auto Quick Opinion": { description: "Unsure about an autograph? We'll scan it and submit it to BGS for a 'Likely to Pass' or 'Unlikely to Pass' opinion – helping you avoid costly submission fees. Buying online? Just send us the link.", details: "Use this service first if even the slightest doubt about the authenticity of an autograph." },
   "JSA Authentication": { description: "Certify virtually any type of memorabilia. What you pay today is JSA's minimum for any autograph authentication. We will let you know final costs based on signatures before proceeding and what you pay today, will be applied regardless of authenticity outcome.", details: "Final cost is determined by factors such as who signed, how many signed, and even what they signed. Once everything has been properly assessed, we will notify you with the total, and you will be able to accept or decline." },
   "PSA/DNA Memorabilia Certification": { description: "Certify virtually any type of memorabilia. What you pay today is PSA's minimum for any autograph authentication. We will let you know final costs based on signatures before proceeding and what you pay today, will be applied regardless of authenticity outcome.", details: "Final cost is determined by factors such as who signed, how many signed, and even what they signed. Once everything has been properly assessed, we will notify you with the total, and you will be able to accept or decline." },
-  "M2M Slab Cracking Service": { description: "We will carefully remove your card from its existing holder. Whether you're preparing for a resubmission, or a fresh evaluation, we handle your card with precision and care. Every cracked card is wiped down and prepped for its next destination.", details: "" },
   "PSA Crossover Plus Card Only": { description: "Submit cards graded by another company for evaluation and potential crossover to PSA. You must specify your minimum acceptable grade(s) in the checkout notes; if PSA does not meet those minimums, the card will be returned in its current holder and the evaluation fee will still apply.", details: "The customer must specify their minimum acceptable grade for both card and autograph as applicable for the crossover." },
   "PSA Crossover Plus Dual": { description: "Submit cards graded by another company for evaluation and potential crossover to PSA. You must specify your minimum acceptable grade(s) in the checkout notes; if PSA does not meet those minimums, the card will be returned in its current holder and the evaluation fee will still apply.", details: "The customer must specify their minimum acceptable grade for both card and autograph as applicable for the crossover." },
   "PSA Crossover Express": { description: "Submit cards graded by another company for evaluation and potential crossover to PSA. You must specify your minimum acceptable grade(s) in the checkout notes; if PSA does not meet those minimums, the card will be returned in its current holder and the evaluation fee will still apply.", details: "The customer must specify their minimum acceptable grade for both card and autograph as applicable for the crossover." },
@@ -102,7 +107,6 @@ export const SERVICE_COPY: Record<string, { description: string; details: string
   "CGC Standard Video": { description: "CGC's Video/Movie Grading service is perfect for sealed VHS tapes, DVDs, and other home video formats valued up to $2,500. This service provides expert authentication, grading, and encapsulation with CGC's trusted accuracy and presentation. All submissions through Market 2 Mint are carefully inspected, prepped, and securely handled from start to finish.", details: "" },
   "CGC Standard Video w/Basic Cleaning": { description: "CGC's Video/Movie Grading service is perfect for sealed VHS tapes, DVDs, and other home video formats valued up to $2,500. This service provides expert authentication, grading, and encapsulation with CGC's trusted accuracy and presentation. All submissions through Market 2 Mint are carefully inspected, prepped, and securely handled from start to finish.", details: "" },
   "CGC Standard Video w/Heavy Cleaning": { description: "CGC's Video/Movie Grading service is perfect for sealed VHS tapes, DVDs, and other home video formats valued up to $2,500. This service provides expert authentication, grading, and encapsulation with CGC's trusted accuracy and presentation. All submissions through Market 2 Mint are carefully inspected, prepped, and securely handled from start to finish.", details: "" },
-  "PSA Video Games": { description: "From loose cartridges to Complete-in-Box (CIB), sealed media, and beyond, PSA authenticates and grades your favorite media across various consoles and platforms. In an era where physical media is disappearing, we help you preserve your most important gaming and media memories, recognizing them for the art and history that they are. PSA's experts provide authentication, grading, and encapsulation services for your most treasured items, whether you're just starting to collect or you're expanding your collection.", details: "" },
   "PSA Value Ticket": { description: "Holding on to a ticket stub from that unforgettable concert? What about the last time your team went all the way to the World Series? Whether it's a milestone or a memory, your ticket can be preserved and graded by PSA's team of experts.", details: "" },
   "BGS Base Ticket": { description: "Preserve a ticket stub in a Beckett holder, graded and sealed. Every ticket submitted through Market 2 Mint is inspected, prepped and handled securely from drop-off to return.", details: "" },
   "BGS Base Ticket Dual": { description: "", details: "For a signed ticket. Beckett grades the ticket and authenticates the signature." },
@@ -110,9 +114,7 @@ export const SERVICE_COPY: Record<string, { description: string; details: string
   "PSA Modern Comic Dual": { description: "", details: "Graded and the signature authenticated in one submission." },
   "PSA Vintage Comic Dual": { description: "", details: "Graded and the signature authenticated in one submission." },
   "PSA High Value Comic Dual": { description: "", details: "Graded and the signature authenticated in one submission." },
-  "CGC Modern Comic": { description: "CGC provides an accurate, consistent and impartial assessment of authenticity and grade. CGC is part of the Certified Collectibles Group, whose mission is to empower collectors with services that ignite passion, create value and build community.", details: "Graded and the signature authenticated in one submission." },
-  "CGC Vintage Comic": { description: "", details: "Graded and the signature authenticated in one submission." },
-  "CGC High Value Comic": { description: "", details: "Graded and the signature authenticated in one submission." },
+  "CGC Modern Comic": { description: "CGC provides an accurate, consistent and impartial assessment of authenticity and grade. CGC is part of the Certified Collectibles Group, whose mission is to empower collectors with services that ignite passion, create value and build community.", details: "" },
   "CGC Modern Comic w/Auto": { description: "CGC provides an accurate, consistent and impartial assessment of authenticity and grade. CGC is part of the Certified Collectibles Group, whose mission is to empower collectors with services that ignite passion, create value and build community.", details: "Graded and the signature authenticated in one submission." },
   "CGC Vintage Comic w/Auto": { description: "", details: "Graded and the signature authenticated in one submission." },
   "CGC High Value Comic w/Auto": { description: "", details: "Graded and the signature authenticated in one submission." },
@@ -120,12 +122,17 @@ export const SERVICE_COPY: Record<string, { description: string; details: string
   "PSA Modern Magazine Dual": { description: "", details: "Graded and the signature authenticated in one submission." },
   "PSA Vintage Magazine Dual": { description: "", details: "Graded and the signature authenticated in one submission." },
   "PSA High Value Magazine Dual": { description: "", details: "Graded and the signature authenticated in one submission." },
-  "CGC Modern Magazine": { description: "CGC provides an accurate, consistent and impartial assessment of authenticity and grade. CGC is part of the Certified Collectibles Group, whose mission is to empower collectors with services that ignite passion, create value and build community.", details: "Graded and the signature authenticated in one submission." },
-  "CGC Vintage Magazine": { description: "", details: "Graded and the signature authenticated in one submission." },
-  "CGC High Value Magazine": { description: "", details: "Graded and the signature authenticated in one submission." },
+  "CGC Modern Magazine": { description: "CGC provides an accurate, consistent and impartial assessment of authenticity and grade. CGC is part of the Certified Collectibles Group, whose mission is to empower collectors with services that ignite passion, create value and build community.", details: "" },
   "CGC Modern Magazine w/Auto": { description: "CGC provides an accurate, consistent and impartial assessment of authenticity and grade. CGC is part of the Certified Collectibles Group, whose mission is to empower collectors with services that ignite passion, create value and build community.", details: "Graded and the signature authenticated in one submission." },
   "CGC Vintage Magazine w/Auto": { description: "", details: "Graded and the signature authenticated in one submission." },
   "CGC High Value Magazine w/Auto": { description: "", details: "Graded and the signature authenticated in one submission." },
+  "CGC Economy w/Auto": { description: "CGC's Economy service is an ideal option for collectors looking for reliable grading without the higher price tag. Whether you're submitting sports cards or trading card games (TCGs), CGC delivers consistent, high-quality results. Every card submitted through Market 2 Mint is wiped down and carefully handled throughout the grading process.", details: "Pack-pulled autographs only, from 1999 or newer. Only the card is graded — the autograph is authenticated by being sealed with the card, not separately graded. Adds $5.00 and about five business days to the base service." },
+  "CGC Standard w/Auto": { description: "CGC's Standard service is a great choice for grading mid-value cards, offering a perfect blend of turnaround time and affordability. Whether it's sports cards or TCGs, you'll receive accurate, professional grading with CGC's trusted standards. All cards submitted through Market 2 Mint are wiped down and securely handled from submission to return.", details: "Pack-pulled autographs only, from 1999 or newer. Only the card is graded — the autograph is authenticated by being sealed with the card, not separately graded. Adds $5.00 and about five business days to the base service." },
+  "CGC Express w/Auto": { description: "CGC's Express service is ideal for grading high-value cards quickly and securely. Perfect for serious collectors or sellers who need fast, reliable results. All cards submitted through Market 2 Mint are wiped down and professionally handled from start to finish.", details: "Pack-pulled autographs only, from 1999 or newer. Only the card is graded — the autograph is authenticated by being sealed with the card, not separately graded. Adds $5.00 and about five business days to the base service." },
+  "SGC Standard w/Auto": { description: "SGC Standard is a straightforward, well-priced way to have a card authenticated, graded and sealed in SGC's signature black-matted holder, insured up to $1,500.00. Suits sports cards and trading card games alike. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "Pack-pulled autographs only, from 1999 or newer. Same price and turnaround as the standard service. SGC grades the autograph, but the autograph grade is only applied to the label if the card itself grades a 10." },
+  "SGC Expedited w/Auto": { description: "SGC Expedited is the faster route for higher-value cards, insured up to $3,500.00 and returned in SGC's signature black-matted holder. Choose this when you want the card back quickly without giving up SGC's grading standards. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "Pack-pulled autographs only, from 1999 or newer. Same price and turnaround as the standard service. SGC grades the autograph, but the autograph grade is only applied to the label if the card itself grades a 10." },
+  "PSA Crossover Super Express": { description: "Submit cards graded by another company for evaluation and potential crossover to PSA. You must specify your minimum acceptable grade(s) in the checkout notes; if PSA does not meet those minimums, the card will be returned in its current holder and the evaluation fee will still apply.", details: "" },
+  "Slab Cracking": { description: "We will carefully remove your card from its existing holder. Whether you're preparing for a resubmission or a fresh evaluation, we handle your card with precision and care. Every cracked card is wiped down and prepped for its next destination.", details: "" },
 };
 
 export const SERVICE_MENU: ServiceRecord[] = [
@@ -139,6 +146,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "NA",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -150,6 +158,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -161,6 +170,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -172,6 +182,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -183,6 +194,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -194,6 +206,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -205,6 +218,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -216,6 +230,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -227,6 +242,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -238,6 +254,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -249,6 +266,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -260,6 +278,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -271,6 +290,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -282,6 +302,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -293,6 +314,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -304,6 +326,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -315,6 +338,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -326,6 +350,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -337,6 +362,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -348,6 +374,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -359,6 +386,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -370,6 +398,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -381,6 +410,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -392,6 +422,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -403,6 +434,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -414,6 +446,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -425,6 +458,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -436,6 +470,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -447,6 +482,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -458,6 +494,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -469,6 +506,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -480,6 +518,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -491,6 +530,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -502,6 +542,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -513,6 +554,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -524,6 +566,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -535,6 +578,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -546,6 +590,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -557,6 +602,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -568,6 +614,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -579,6 +626,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -590,6 +638,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -601,6 +650,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -612,6 +662,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$5,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -623,6 +674,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$5,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -634,6 +686,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$5,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -645,6 +698,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$5,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -656,6 +710,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$5,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -667,6 +722,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$5,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -678,6 +734,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$5,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -689,6 +746,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$5,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -700,6 +758,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -711,6 +770,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -722,6 +782,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,000.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -733,6 +794,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,000.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -744,6 +806,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$3,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -755,6 +818,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$3,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -766,6 +830,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "NA",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -777,6 +842,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "NA",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -788,6 +854,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -799,6 +866,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$3,000.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -810,6 +878,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$10,000.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -821,6 +890,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Trading Cards",
@@ -832,6 +902,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$3,500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Autograph Quick Opinion",
@@ -843,6 +914,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "NA",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Memorabilia",
@@ -854,6 +926,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "NA",
     active: true,
     status: "Available",
+    priceIsMinimum: true,
   },
   {
     category: "Memorabilia",
@@ -862,42 +935,10 @@ export const SERVICE_MENU: ServiceRecord[] = [
     price: { customer: 25.0, employee: null, owner: null },
     cost: null,
     businessDays: 95,
-    maxInsuredValue: "$2,500",
+    maxInsuredValue: "NA",
     active: true,
-    status: "UNRECONCILED",
-  },
-  {
-    category: "Slab Cracking",
-    name: "M2M Slab Cracking Service",
-    questions: ["Slab Cracking", "Skip Question", "Skip Question", "Skip Question", "Skip Question", "Skip Question"],
-    price: { customer: 10.0, employee: null, owner: null },
-    cost: null,
-    businessDays: 5,
-    maxInsuredValue: "$500.00",
-    active: true,
-    status: "UNRECONCILED",
-  },
-  {
-    category: "Slab Cracking",
-    name: "M2M Slab Cracking Service",
-    questions: ["Slab Cracking", "Skip Question", "Skip Question", "Skip Question", "Skip Question", "Skip Question"],
-    price: { customer: 15.0, employee: null, owner: null },
-    cost: null,
-    businessDays: 5,
-    maxInsuredValue: "$1,500.00",
-    active: true,
-    status: "UNRECONCILED",
-  },
-  {
-    category: "Slab Cracking",
-    name: "M2M Slab Cracking Service",
-    questions: ["Slab Cracking", "Skip Question", "Skip Question", "Skip Question", "Skip Question", "Skip Question"],
-    price: { customer: 20.0, employee: null, owner: null },
-    cost: null,
-    businessDays: 5,
-    maxInsuredValue: "$3,000.00",
-    active: true,
-    status: "UNRECONCILED",
+    status: "NEW / CHANGED",
+    priceIsMinimum: true,
   },
   {
     category: "Crossover",
@@ -909,6 +950,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -920,6 +962,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -931,6 +974,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -942,6 +986,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -953,6 +998,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -964,6 +1010,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -975,6 +1022,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -986,6 +1034,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -997,6 +1046,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -1008,6 +1058,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -1019,6 +1070,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -1030,6 +1082,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -1041,6 +1094,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "NA",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Crossover",
@@ -1052,6 +1106,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "NA",
     active: false,
     status: "TEMPORARILY UNAVAILABLE",
+    priceIsMinimum: false,
   },
   {
     category: "Reholder",
@@ -1063,6 +1118,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,000.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Reholder",
@@ -1074,6 +1130,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$5,000.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Reholder",
@@ -1085,6 +1142,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$20,000.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Reholder",
@@ -1096,6 +1154,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "NA",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Reholder",
@@ -1107,6 +1166,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "NA",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Unopened Packs",
@@ -1118,6 +1178,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Unopened Packs",
@@ -1129,6 +1190,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Movies & Games",
@@ -1140,6 +1202,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "Available",
+    priceIsMinimum: false,
   },
   {
     category: "Movies & Games",
@@ -1151,6 +1214,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Movies & Games",
@@ -1162,39 +1226,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "NEW / CHANGED",
-  },
-  {
-    category: "Movies & Games",
-    name: "PSA Video Games",
-    questions: ["Movies & Games", "PSA", "Skip Question", "Skip Question", "Skip Question", "Grade Game"],
-    price: { customer: 65.0, employee: null, owner: null },
-    cost: null,
-    businessDays: 30,
-    maxInsuredValue: "Unlimited",
-    active: true,
-    status: "UNRECONCILED",
-  },
-  {
-    category: "Movies & Games",
-    name: "PSA Video Games",
-    questions: ["Movies & Games", "PSA", "Skip Question", "Skip Question", "Skip Question", "Grade Game"],
-    price: { customer: 95.0, employee: null, owner: null },
-    cost: null,
-    businessDays: 15,
-    maxInsuredValue: "Unlimited",
-    active: true,
-    status: "UNRECONCILED",
-  },
-  {
-    category: "Movies & Games",
-    name: "PSA Video Games",
-    questions: ["Movies & Games", "PSA", "Skip Question", "Skip Question", "Skip Question", "Grade Game"],
-    price: { customer: 95.0, employee: null, owner: null },
-    cost: null,
-    businessDays: 15,
-    maxInsuredValue: "Unlimited",
-    active: true,
-    status: "UNRECONCILED",
+    priceIsMinimum: false,
   },
   {
     category: "Event Tickets",
@@ -1206,6 +1238,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Event Tickets",
@@ -1217,6 +1250,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Event Tickets",
@@ -1228,6 +1262,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$2,500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Event Tickets",
@@ -1239,6 +1274,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$5,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Event Tickets",
@@ -1250,6 +1286,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$999.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Event Tickets",
@@ -1261,6 +1298,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$999.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1272,6 +1310,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1283,6 +1322,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1294,6 +1334,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1305,6 +1346,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1316,6 +1358,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1327,6 +1370,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1338,6 +1382,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1349,6 +1394,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1360,6 +1406,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1371,6 +1418,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1382,6 +1430,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1393,6 +1442,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1404,6 +1454,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1415,6 +1466,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1426,6 +1478,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1437,6 +1490,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1448,6 +1502,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1459,6 +1514,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,500.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1470,6 +1526,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1481,6 +1538,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1492,6 +1550,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1503,6 +1562,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1514,6 +1574,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
   {
     category: "Comics & Magazines",
@@ -1525,6 +1586,103 @@ export const SERVICE_MENU: ServiceRecord[] = [
     maxInsuredValue: "$1,000.00",
     active: true,
     status: "NEW / CHANGED",
+    priceIsMinimum: false,
+  },
+  {
+    category: "Trading Cards",
+    name: "CGC Economy w/Auto",
+    questions: ["Trading Cards", "CGC", "Yes", "Pack-pulled", "1999 - Newer Only", "Card Grade Only"],
+    price: { customer: 30.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 50,
+    maxInsuredValue: "$1,000.00",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+  },
+  {
+    category: "Trading Cards",
+    name: "CGC Standard w/Auto",
+    questions: ["Trading Cards", "CGC", "Yes", "Pack-pulled", "1999 - Newer Only", "Card Grade Only"],
+    price: { customer: 65.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 30,
+    maxInsuredValue: "$3,000.00",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+  },
+  {
+    category: "Trading Cards",
+    name: "CGC Express w/Auto",
+    questions: ["Trading Cards", "CGC", "Yes", "Pack-pulled", "1999 - Newer Only", "Card Grade Only"],
+    price: { customer: 110.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 20,
+    maxInsuredValue: "$10,000.00",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+  },
+  {
+    category: "Trading Cards",
+    name: "SGC Standard w/Auto",
+    questions: ["Trading Cards", "SGC", "Yes", "Pack-pulled", "1999 - Newer Only", "Card & Auto Grade"],
+    price: { customer: 25.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 75,
+    maxInsuredValue: "$1,500.00",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+  },
+  {
+    category: "Trading Cards",
+    name: "SGC Expedited w/Auto",
+    questions: ["Trading Cards", "SGC", "Yes", "Pack-pulled", "1999 - Newer Only", "Card & Auto Grade"],
+    price: { customer: 175.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 15,
+    maxInsuredValue: "$3,500.00",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+  },
+  {
+    category: "Crossover",
+    name: "PSA Crossover Super Express",
+    questions: ["Crossover", "PSA", "No", "Skip Question", "Skip Question", "Card Grade Only"],
+    price: { customer: 354.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 15,
+    maxInsuredValue: "$5,000.00",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+  },
+  {
+    category: "Crossover",
+    name: "PSA Crossover Super Express",
+    questions: ["Crossover", "PSA", "No", "Skip Question", "Skip Question", "Authenticate Only"],
+    price: { customer: 354.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 15,
+    maxInsuredValue: "$5,000.00",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+  },
+  {
+    category: "Slab Cracking",
+    name: "Slab Cracking",
+    questions: ["Slab Cracking", "Skip Question", "Skip Question", "Skip Question", "Skip Question", "Skip Question"],
+    price: { customer: 15.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 7,
+    maxInsuredValue: "NA",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
   },
 ];
 

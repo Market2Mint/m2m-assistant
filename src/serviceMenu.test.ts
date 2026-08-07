@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIVE_SERVICES, SERVICE_MENU, type ServiceRecord } from './serviceMenu';
+import { ACTIVE_SERVICES, SERVICE_MENU, copyFor, type ServiceRecord } from './serviceMenu';
 
 /**
  * Phase 2 restructured the menu against the corrected pricing sheet. These assertions
@@ -19,34 +19,64 @@ const priceOf = (name: string) => {
   return rows[0];
 };
 
-describe('SGC is two services, and only two', () => {
-  // "Replaces all old SGC tiers. No w/Auto" — SGC no longer prices autographs separately.
-  it('offers exactly SGC Standard and SGC Expedited', () => {
-    expect(uniqueActive((s) => s.name.startsWith('SGC'))).toEqual(['SGC Expedited', 'SGC Standard']);
+describe('SGC is two tiers, each with a pack-pulled autograph variant', () => {
+  it('offers exactly the four SGC services', () => {
+    expect(uniqueActive((s) => s.name.startsWith('SGC'))).toEqual([
+      'SGC Expedited', 'SGC Expedited w/Auto', 'SGC Standard', 'SGC Standard w/Auto',
+    ]);
   });
 
-  it('prices them at $25.00 / ~75 days and $175.00 / ~15 days', () => {
+  it('prices the base tiers at $25.00 / ~75 days and $175.00 / ~15 days', () => {
     expect(priceOf('SGC Standard').price.customer).toBe(25.0);
     expect(priceOf('SGC Standard').businessDays).toBe(75);
     expect(priceOf('SGC Expedited').price.customer).toBe(175.0);
     expect(priceOf('SGC Expedited').businessDays).toBe(15);
   });
 
-  it('has no SGC autograph variant anywhere, retired or not', () => {
-    expect(SERVICE_MENU.filter((s) => s.name.startsWith('SGC') && /auto/i.test(s.name))).toEqual([]);
+  it('charges nothing extra and adds no time for the autograph', () => {
+    // Genuinely identical to the base service. Without the disclosure below, these read
+    // as duplicate rows and someone will "fix" one of them.
+    expect(priceOf('SGC Standard w/Auto').price.customer).toBe(25.0);
+    expect(priceOf('SGC Standard w/Auto').businessDays).toBe(75);
+    expect(priceOf('SGC Expedited w/Auto').price.customer).toBe(175.0);
+    expect(priceOf('SGC Expedited w/Auto').businessDays).toBe(15);
+  });
+
+  it('discloses that the autograph grade only lands on a card that grades a 10', () => {
+    for (const name of ['SGC Standard w/Auto', 'SGC Expedited w/Auto']) {
+      expect(copyFor(name).details, `${name} is missing the grade-10 disclosure`)
+        .toMatch(/only applied to the label if the card itself grades a 10/i);
+    }
   });
 });
 
-describe('CGC does not grade cards with autographs', () => {
-  it('offers no CGC card service with an autograph variant', () => {
-    const cgcCards = uniqueActive((s) => s.category === 'Trading Cards' && s.name.startsWith('CGC'));
-    expect(cgcCards).toEqual(['CGC Economy', 'CGC Express', 'CGC Standard']);
+describe('CGC and SGC accept pack-pulled autographs', () => {
+  it('offers all six CGC card services', () => {
+    expect(uniqueActive((s) => s.category === 'Trading Cards' && s.name.startsWith('CGC'))).toEqual([
+      'CGC Economy', 'CGC Economy w/Auto', 'CGC Express', 'CGC Express w/Auto',
+      'CGC Standard', 'CGC Standard w/Auto',
+    ]);
   });
 
-  it('removed them entirely rather than retiring them', () => {
-    // Deleted, not `active: false` — they were never a real M2M offering.
-    for (const name of ['CGC Economy w/Auto', 'CGC Standard w/Auto', 'CGC Express w/Auto']) {
-      expect(byName(name), `${name} should be gone from the menu`).toEqual([]);
+  it('prices each CGC autograph variant at base +$5.00 and +5 days', () => {
+    for (const [base, auto] of [['CGC Economy', 'CGC Economy w/Auto'],
+                                ['CGC Standard', 'CGC Standard w/Auto'],
+                                ['CGC Express', 'CGC Express w/Auto']]) {
+      expect(priceOf(auto).price.customer).toBeCloseTo(priceOf(base).price.customer + 5, 2);
+      expect(priceOf(auto).businessDays).toBe(priceOf(base).businessDays + 5);
+    }
+  });
+
+  it('accepts pack-pulled 1999-or-newer only — never aftermarket, never pre-1999', () => {
+    const autos = ACTIVE_SERVICES.filter(
+      (s) => s.category === 'Trading Cards' &&
+             /^(CGC|SGC)/.test(s.name) && /w\/Auto$/.test(s.name),
+    );
+    expect(autos.length).toBe(5);
+    for (const s of autos) {
+      expect(s.questions?.[2], `${s.name} should require an autograph`).toBe('Yes');
+      expect(s.questions?.[3], `${s.name} must be pack-pulled only`).toBe('Pack-pulled');
+      expect(s.questions?.[4], `${s.name} must be 1999-newer only`).toBe('1999 - Newer Only');
     }
   });
 });

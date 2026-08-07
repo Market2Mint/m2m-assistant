@@ -45,6 +45,8 @@ interface Service {
   cost: string;
   turnaround: string;
   maxValue: string;
+  /** The price is a starting figure, quoted before the item has been assessed. */
+  priceIsMinimum: boolean;
   description: string;
   details: string;
 }
@@ -72,6 +74,7 @@ const toService = (r: ServiceRecord): Service => ({
   cost: formatUSD(r.price.customer),
   turnaround: String(r.businessDays),
   maxValue: r.maxInsuredValue,
+  priceIsMinimum: r.priceIsMinimum,
   ...copyFor(r.name),
 });
 
@@ -117,6 +120,34 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMai
   );
 };
 
+/**
+ * The answers so far, including the ones the kiosk filled in because only one option
+ * existed. Those are marked, not hidden: a choice made on a customer's behalf that they
+ * cannot see is indistinguishable from the kiosk getting it wrong.
+ */
+const AnswerTrail: React.FC<{ answers: { value: string; auto: boolean }[] }> = ({ answers }) => {
+  if (answers.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {answers.map((a, i) => (
+        <React.Fragment key={`${a.value}-${i}`}>
+          {i > 0 && <ChevronRight className="w-4 h-4 text-zinc-700" />}
+          <span
+            className={`rounded-full px-4 py-1.5 text-sm font-bold uppercase tracking-widest ${
+              a.auto
+                ? 'border border-dashed border-zinc-700 text-zinc-500'
+                : 'bg-zinc-900 border border-zinc-800 text-m2m-ivory'
+            }`}
+          >
+            {a.value}
+            {a.auto && <span className="ml-2 normal-case tracking-normal text-zinc-600">only option</span>}
+          </span>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
 export default function App() {
   // ACTIVE_SERVICES is already filtered to active + routable, so the merchandising
   // decision that used to be buried in the parser ("Temporarily suspend and hide PSA
@@ -128,8 +159,12 @@ export default function App() {
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [showYearQuestion, setShowYearQuestion] = useState(false);
-  const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
-  const [history, setHistory] = useState<{ questionIdx: number; services: Service[]; wasYearQuestion?: boolean }[]>([]);
+  // `auto` marks an answer the kiosk chose because it was the only one available. The
+  // customer never saw that question, so Back must not return them to it — and the
+  // answer still has to be shown, because a choice made on someone's behalf that they
+  // cannot see is indistinguishable from a bug.
+  const [selectedAnswers, setSelectedAnswers] = useState<{ value: string; auto: boolean }[]>([]);
+  const [history, setHistory] = useState<{ questionIdx: number; services: Service[]; auto?: boolean; wasYearQuestion?: boolean }[]>([]);
   const [remainingServices, setRemainingServices] = useState<Service[]>(allServices);
   
   const [storeCode, setStoreCode] = useState(() => localStorage.getItem('storeCode') || '');
@@ -655,32 +690,18 @@ export default function App() {
     return 6; // Results
   };
 
-  const handleStart = () => {
-    // The policy acknowledgement no longer gates this button. It gates "Complete Order"
-    // at checkout instead (2026-08-05), where the customer is already committed and the
-    // liability copy is relevant. Leading a stranger with five disclaimers is what made
-    // people ask "what is Market 2 Mint?" while standing in front of the kiosk.
-    addLog('START_SUBMISSION');
-    const firstIdx = findNextValidQuestionIdx(0, allServices);
-    setCurrentQuestionIdx(firstIdx);
-    setRemainingServices(allServices);
-    setStep('questions');
-    console.log("Starting flow. First question index:", firstIdx);
-  };
-
-  const handleAnswer = (answer: string) => {
-    addLog(`Answered Q${currentQuestionIdx + 1}: ${answer}`);
-    
-    const nextServices = remainingServices.filter(s => {
-      const val = s.questions[currentQuestionIdx];
+  /** Narrow the service list by one answer. Pure — the only place the match rules live. */
+  const filterByAnswer = (services: Service[], idx: number, answer: string): Service[] =>
+    services.filter((s) => {
+      const val = s.questions[idx];
       if (!val) return false;
-      
+
       const normalizedVal = val.toLowerCase();
       if (normalizedVal === 'x' || normalizedVal === 'skip question' || normalizedVal === 'either') {
         return true;
       }
 
-      if (currentQuestionIdx === 4) {
+      if (idx === 4) {
         // Dynamic year matching logic
         if (answer === '1999 - Newer') {
           return normalizedVal.includes('1999') || normalizedVal.includes('2000') || normalizedVal === 'either';
@@ -690,22 +711,78 @@ export default function App() {
         }
       }
 
-      return val.toLowerCase() === answer.toLowerCase();
+      return normalizedVal === answer.toLowerCase();
     });
 
-    setHistory([...history, { questionIdx: currentQuestionIdx, services: remainingServices }]);
-    setSelectedAnswers([...selectedAnswers, answer]);
-    
-    const nextIdx = findNextValidQuestionIdx(currentQuestionIdx + 1, nextServices);
-    
-    console.log(`Answer: ${answer}. Remaining services: ${nextServices.length}. Next question index: ${nextIdx}`);
-    
-    if (nextIdx >= 6) {
-      setRemainingServices(nextServices);
+  /**
+   * Advance past every question that has only one possible answer.
+   *
+   * `findNextValidQuestionIdx` already skips questions with ZERO options. A question with
+   * exactly one is the same situation: there is no decision to make, so presenting a
+   * screen with a single button asks the customer to confirm something they were never
+   * choosing. Sixteen of them existed after the menu restructure — "Is the item
+   * autographed?" offering only "No" reads like a broken screen, not a question.
+   *
+   * The auto-answers are recorded like real ones so they can be displayed, and flagged so
+   * that Back skips over them to the last question the customer actually answered.
+   */
+  const autoAdvance = (
+    services: Service[],
+    fromIdx: number,
+    answers: { value: string; auto: boolean }[],
+    trail: { questionIdx: number; services: Service[]; auto?: boolean }[],
+  ) => {
+    let idx = findNextValidQuestionIdx(fromIdx, services);
+    let current = services;
+    const nextAnswers = [...answers];
+    const nextTrail = [...trail];
+
+    while (idx < 6) {
+      const options = getOptionsForQuestion(idx, current);
+      if (options.length !== 1) break;
+      const only = options[0];
+      addLog(`Auto-answered Q${idx + 1} (only option): ${only}`);
+      nextTrail.push({ questionIdx: idx, services: current, auto: true });
+      nextAnswers.push({ value: only, auto: true });
+      current = filterByAnswer(current, idx, only);
+      idx = findNextValidQuestionIdx(idx + 1, current);
+    }
+
+    return { idx, services: current, answers: nextAnswers, trail: nextTrail };
+  };
+
+  const handleStart = () => {
+    // The policy acknowledgement no longer gates this button. It gates "Complete Order"
+    // at checkout instead (2026-08-05), where the customer is already committed and the
+    // liability copy is relevant. Leading a stranger with five disclaimers is what made
+    // people ask "what is Market 2 Mint?" while standing in front of the kiosk.
+    addLog('START_SUBMISSION');
+    const advanced = autoAdvance(allServices, 0, [], []);
+    setSelectedAnswers(advanced.answers);
+    setHistory(advanced.trail);
+    setRemainingServices(advanced.services);
+    setCurrentQuestionIdx(advanced.idx);
+    setStep(advanced.idx >= 6 ? 'results' : 'questions');
+  };
+
+  const handleAnswer = (answer: string) => {
+    addLog(`Answered Q${currentQuestionIdx + 1}: ${answer}`);
+
+    const nextServices = filterByAnswer(remainingServices, currentQuestionIdx, answer);
+    const advanced = autoAdvance(
+      nextServices,
+      currentQuestionIdx + 1,
+      [...selectedAnswers, { value: answer, auto: false }],
+      [...history, { questionIdx: currentQuestionIdx, services: remainingServices }],
+    );
+
+    setSelectedAnswers(advanced.answers);
+    setHistory(advanced.trail);
+    setRemainingServices(advanced.services);
+    if (advanced.idx >= 6) {
       setStep('results');
     } else {
-      setRemainingServices(nextServices);
-      setCurrentQuestionIdx(nextIdx);
+      setCurrentQuestionIdx(advanced.idx);
     }
   };
 
@@ -720,7 +797,7 @@ export default function App() {
     }
 
     // Special case for Memorabilia authenticator selection
-    if (currentQuestionIdx === 1 && selectedAnswers[0]?.toLowerCase() === 'memorabilia') {
+    if (currentQuestionIdx === 1 && selectedAnswers[0]?.value.toLowerCase() === 'memorabilia') {
       handleReset();
       return;
     }
@@ -730,19 +807,32 @@ export default function App() {
       return;
     }
 
-    const lastState = history[history.length - 1];
-    
+    // Rewind to the last question the CUSTOMER answered, not the last question answered.
+    // Landing on an auto-answered question would immediately auto-advance forward again,
+    // which reads as a dead Back button.
+    let target = history.length - 1;
+    while (target > 0 && history[target].auto) target--;
+    const lastState = history[target];
+
     if (lastState.wasYearQuestion) {
       setShowYearQuestion(true);
-      setHistory(history.slice(0, -1));
+      setHistory(history.slice(0, target));
       setRemainingServices(lastState.services);
       setCurrentQuestionIdx(lastState.questionIdx);
-      setSelectedAnswers(selectedAnswers.slice(0, -1));
+      setSelectedAnswers(selectedAnswers.slice(0, target));
       return;
     }
 
-    setHistory(history.slice(0, -1));
-    setSelectedAnswers(selectedAnswers.slice(0, -1));
+    // Every auto-answer before the first real question is still true at the landing
+    // screen, so if nothing manual remains, go home rather than to a screen with one
+    // button on it.
+    if (history.slice(0, target + 1).every((h) => h.auto)) {
+      setStep('landing');
+      return;
+    }
+
+    setHistory(history.slice(0, target));
+    setSelectedAnswers(selectedAnswers.slice(0, target));
     setRemainingServices(lastState.services);
     setCurrentQuestionIdx(lastState.questionIdx);
     if (step === 'results') setStep('questions');
@@ -768,12 +858,12 @@ export default function App() {
   };
 
   const handleSelectAnother = () => {
-    const firstIdx = findNextValidQuestionIdx(0, allServices);
-    setCurrentQuestionIdx(firstIdx);
-    setSelectedAnswers([]);
-    setHistory([]);
-    setRemainingServices(allServices);
-    setStep('questions');
+    const advanced = autoAdvance(allServices, 0, [], []);
+    setSelectedAnswers(advanced.answers);
+    setHistory(advanced.trail);
+    setRemainingServices(advanced.services);
+    setCurrentQuestionIdx(advanced.idx);
+    setStep(advanced.idx >= 6 ? 'results' : 'questions');
   };
 
   /**
@@ -918,7 +1008,7 @@ export default function App() {
   const renderQuestions = () => {
     const rawOptions = showYearQuestion ? ['1998 & OLDER', '1999 TO PRESENT'] : getOptionsForQuestion(currentQuestionIdx, remainingServices);
     const definitions = showYearQuestion ? null : questionDefinitions[currentQuestionIdx];
-    const currentQuestionText = showYearQuestion ? 'Select the Card Release Year' : getQuestionText(currentQuestionIdx, selectedAnswers);
+    const currentQuestionText = showYearQuestion ? 'Select the Card Release Year' : getQuestionText(currentQuestionIdx, selectedAnswers.map((a) => a.value));
 
     // Map options for Step 6 (index 5)
     const options = rawOptions;
@@ -977,6 +1067,8 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
 
+          <AnswerTrail answers={selectedAnswers} />
+
           <AnimatePresence mode="wait">
             <motion.div 
               key={showYearQuestion ? 'year-options' : currentQuestionIdx}
@@ -1014,30 +1106,44 @@ export default function App() {
     );
   };
 
+  /**
+   * The cards at the top of the results screen.
+   *
+   * Up to four services, EVERY service gets a card. It used to render exactly three no
+   * matter what, picked as slowest / middle / fastest — so the four PSA ticket tiers
+   * showed three and silently dropped PSA Regular Ticket ($84.99) from the chooser.
+   *
+   * No labels when everything is shown. VALUE / STANDARD / PRIORITY was assigned by
+   * turnaround, which is only meaningful when the tiers ARE a speed ladder. On the comic
+   * tiers — an era ladder — it labelled PSA Vintage Comic "VALUE" purely because it is
+   * the slowest. If the customer can see every option, naming them adds nothing and can
+   * only mislead.
+   *
+   * At five or more, fall back to summarising by turnaround, which is what the sort has
+   * always actually been. No path currently reaches five.
+   */
   const speedTiers = useMemo(() => {
     if (remainingServices.length <= 1) return [];
+
     const sorted = [...remainingServices].sort((a, b) => {
       const daysA = parseInt(a.turnaround.replace(/\D/g, '')) || 0;
       const daysB = parseInt(b.turnaround.replace(/\D/g, '')) || 0;
       return daysB - daysA; // Slowest to fastest
     });
-    
-    if (sorted.length === 2) {
-      return [
-        { label: 'VALUE', service: sorted[0], index: remainingServices.indexOf(sorted[0]) },
-        { label: 'PRIORITY', service: sorted[1], index: remainingServices.indexOf(sorted[1]) }
-      ];
+
+    if (sorted.length <= 4) {
+      return sorted.map((service) => ({
+        label: '',
+        service,
+        index: remainingServices.indexOf(service),
+      }));
     }
-    
-    if (sorted.length >= 3) {
-      return [
-        { label: 'VALUE', service: sorted[0], index: remainingServices.indexOf(sorted[0]) },
-        { label: 'STANDARD', service: sorted[Math.floor(sorted.length / 2)], index: remainingServices.indexOf(sorted[Math.floor(sorted.length / 2)]) },
-        { label: 'PRIORITY', service: sorted[sorted.length - 1], index: remainingServices.indexOf(sorted[sorted.length - 1]) }
-      ];
-    }
-    
-    return [];
+
+    return [
+      { label: 'LONGEST WAIT', service: sorted[0], index: remainingServices.indexOf(sorted[0]) },
+      { label: 'MIDDLE', service: sorted[Math.floor(sorted.length / 2)], index: remainingServices.indexOf(sorted[Math.floor(sorted.length / 2)]) },
+      { label: 'FASTEST', service: sorted[sorted.length - 1], index: remainingServices.indexOf(sorted[sorted.length - 1]) },
+    ];
   }, [remainingServices]);
 
   const scrollToTile = (index: number) => {
@@ -1142,17 +1248,21 @@ export default function App() {
                   <p className="text-m2m-green text-xl uppercase tracking-widest font-black">Choose a tier to see full details below</p>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-24">
+                <div className={`grid grid-cols-1 gap-6 mb-24 ${
+                  speedTiers.length >= 4 ? 'md:grid-cols-4' : 'md:grid-cols-3'
+                }`}>
                   {speedTiers.map((tier, idx) => (
                     <motion.button
-                      key={tier.label}
+                      key={`${tier.service.name}-${tier.index}`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: idx * 0.1 } }}
                       onClick={() => scrollToTile(tier.index)}
                       className="bg-zinc-900 border-2 border-zinc-800 p-8 rounded-[2.5rem] text-left hover:border-m2m-green transition-all group active:scale-95 flex flex-col justify-between h-64 shadow-2xl"
                     >
                       <div>
-                        <span className="text-m2m-green font-black text-xs uppercase tracking-[0.3em] mb-4 block italic">{tier.label}</span>
+                        {tier.label && (
+                          <span className="text-m2m-green font-black text-xs uppercase tracking-[0.3em] mb-4 block italic">{tier.label}</span>
+                        )}
                         <h4 className="text-2xl font-black text-white uppercase italic leading-tight transition-colors">{tier.service.name}</h4>
                       </div>
                       <div className="space-y-2">
@@ -1204,12 +1314,34 @@ export default function App() {
                   <div className="shrink-0 space-y-4">
                     <div className="flex justify-between items-center gap-10">
                       <h3 className="text-4xl font-black leading-tight text-white uppercase italic tracking-tight">{service.name}</h3>
-                      <div className="text-m2m-green font-black text-6xl leading-none">
-                        {cardShowMode && service.name.toLowerCase().includes('pregrading') 
-                          ? `$${showPregradingPrice.toFixed(2)}` 
-                          : service.cost}
+                      <div className="text-right shrink-0">
+                        <div className="text-m2m-green font-black text-6xl leading-none">
+                          {cardShowMode && service.name.toLowerCase().includes('pregrading')
+                            ? `$${showPregradingPrice.toFixed(2)}`
+                            : service.cost}
+                        </div>
+                        {service.priceIsMinimum && (
+                          <p className="mt-1 text-xs font-black uppercase tracking-widest text-m2m-green">Minimum</p>
+                        )}
                       </div>
                     </div>
+
+                    {/*
+                      Memorabilia authentication is costed per item AFTER assessment, so
+                      the figure above is a floor, not the price. The customer has to
+                      learn that before they add it to a cart, not when the invoice
+                      arrives.
+                    */}
+                    {service.priceIsMinimum && (
+                      <div className="rounded-2xl border border-m2m-green/40 bg-m2m-green/[0.08] px-6 py-4">
+                        <p className="text-base leading-snug text-m2m-ivory">
+                          <span className="font-bold">{service.cost} is a minimum, not the final price.</span>{' '}
+                          What you pay today is the grader's minimum fee. The final cost depends on the
+                          item and is only known once it has been assessed — we will quote it to you
+                          before any further work, and today's payment is applied either way.
+                        </p>
+                      </div>
+                    )}
                     
                     <div className="flex gap-4 w-full">
                       <div className="bg-zinc-950 px-6 py-3 rounded-2xl border border-zinc-800 flex-1 text-center whitespace-nowrap">

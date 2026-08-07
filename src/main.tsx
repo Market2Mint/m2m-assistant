@@ -6,10 +6,16 @@ import {createRoot} from 'react-dom/client';
 // The variable font carries 400–800 in one file — 800 is the wordmark weight.
 import '@fontsource-variable/inter';
 import App from './App.tsx';
+import ErrorBoundary from './ErrorBoundary.tsx';
 import './index.css';
 
+// The boundary sits OUTSIDE App, so it still stands if App's own top level throws. Without
+// it a render error unmounts the tree and leaves a blank white panel in a shop — see the
+// file header. It is the outermost thing here for that reason; do not move it inside.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );

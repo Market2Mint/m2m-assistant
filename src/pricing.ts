@@ -87,8 +87,12 @@ export const formatUSD = (amount: number): string =>
  * writes "~20 Business Days" throughout, so the kiosk matches the counter rather than
  * inventing a second convention.
  *
- * One formatter, called from everywhere a day count appears. Two copies of one rule is
- * exactly how the shipping fee ended up charging $29.00 while printing $24.00.
+ * Two forms because one screen sets the number large and the unit small, but the `~`
+ * itself is defined once. Do not hand-prefix it anywhere and do not pick it apart out of
+ * the full string — two copies of one rule is exactly how the shipping fee ended up
+ * charging $29.00 while printing $24.00.
  */
+export const formatTurnaroundDays = (businessDays: number): string => `~${businessDays}`;
+
 export const formatTurnaround = (businessDays: number): string =>
-  `~${businessDays} BUSINESS DAYS`;
+  `${formatTurnaroundDays(businessDays)} BUSINESS DAYS`;

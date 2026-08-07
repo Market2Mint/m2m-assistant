@@ -7,6 +7,7 @@ import {
   SUBMISSION_BASE_TIERS,
   SUBMISSION_FROM_PRICE,
   formatTurnaround,
+  formatTurnaroundDays,
   formatUSD,
   lineTotal,
   shippingFeeForCart,
@@ -104,6 +105,14 @@ describe('formatTurnaround', () => {
   it('marks every turnaround as an estimate with a tilde', () => {
     expect(formatTurnaround(75)).toBe('~75 BUSINESS DAYS');
     expect(formatTurnaround(7)).toBe('~7 BUSINESS DAYS');
+  });
+
+  it('offers the number alone for screens that style the unit separately', () => {
+    // The tier card sets the number large and "BUSINESS DAYS" small. It must take the
+    // number from here rather than hand-writing the tilde or slicing it out of the full
+    // string, or the two screens drift.
+    expect(formatTurnaroundDays(75)).toBe('~75');
+    expect(formatTurnaround(75).startsWith(formatTurnaroundDays(75))).toBe(true);
   });
 });
 

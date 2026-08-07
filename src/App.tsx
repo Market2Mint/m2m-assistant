@@ -31,6 +31,8 @@ import {
   PREGRADE_PRICE_KIOSK,
   SHIPPING_DISCLOSURE,
   SUBMISSION_FROM_PRICE,
+  formatTurnaround,
+  formatTurnaroundDays,
   formatUSD,
   lineTotal,
   shippingFeeForCart,
@@ -45,6 +47,8 @@ interface Service {
   name: string;
   cost: string;
   turnaround: string;
+  /** The same figure as `turnaround`, unparsed. Use this for anything but display. */
+  businessDays: number;
   maxValue: string;
   /** The price is a starting figure, quoted before the item has been assessed. */
   priceIsMinimum: boolean;
@@ -76,6 +80,7 @@ const toService = (r: ServiceRecord): Service => ({
   name: r.name,
   cost: formatUSD(r.price.customer),
   turnaround: String(r.businessDays),
+  businessDays: r.businessDays,
   maxValue: r.maxInsuredValue,
   priceIsMinimum: r.priceIsMinimum,
   oversizedSurcharge: r.oversizedSurcharge,
@@ -151,6 +156,9 @@ const AnswerTrail: React.FC<{ answers: { value: string; auto: boolean }[] }> = (
     </div>
   );
 };
+
+/** The Question-1 value that identifies the pregrade path. */
+const PREGRADE_CATEGORY = 'Pregrading';
 
 export default function App() {
   // ACTIVE_SERVICES is already filtered to active + routable, so the merchandising
@@ -778,13 +786,36 @@ export default function App() {
     return { idx, services: current, answers: nextAnswers, trail: nextTrail };
   };
 
-  const handleStart = () => {
-    // The policy acknowledgement no longer gates this button. It gates "Complete Order"
-    // at checkout instead (2026-08-05), where the customer is already committed and the
-    // liability copy is relevant. Leading a stranger with five disclaimers is what made
-    // people ask "what is Market 2 Mint?" while standing in front of the kiosk.
-    addLog('START_SUBMISSION');
-    const advanced = autoAdvance(allServices, 0, [], []);
+  /**
+   * Both home-screen cards start the SAME flow with a different opening filter. There is
+   * no second code path: a fork would be two flows to keep in step, and they would not
+   * stay in step.
+   *
+   * The policy acknowledgement does not gate this. It gates "Complete Order" at checkout,
+   * where the customer is already committed. Leading a stranger with five disclaimers is
+   * what made people ask "what is Market 2 Mint?" while standing in front of the kiosk.
+   */
+  const startFlow = (entry: 'pregrade' | 'submissions') => {
+    playUIAudio(700, 0.08);
+    addLog(`START_SUBMISSION: ${entry}`);
+
+    const isPregrade = (s: Service) => s.questions[0] === PREGRADE_CATEGORY;
+
+    const advanced = entry === 'pregrade'
+      ? autoAdvance(
+          allServices.filter(isPregrade),
+          1,
+          // Shown to the customer as a normal answer, because it is one — they chose it
+          // by tapping the card...
+          [{ value: PREGRADE_CATEGORY, auto: false }],
+          // ...but flagged in the history as machine-made, so Back returns them to the
+          // home screen rather than to a category list they never saw.
+          [{ questionIdx: 0, services: allServices, auto: true }],
+        )
+      // Pregrading has its own entry now, so it must not reappear as an option inside
+      // submissions. Question 1 is still asked — minus that one choice.
+      : autoAdvance(allServices.filter((s) => !isPregrade(s)), 0, [], []);
+
     setSelectedAnswers(advanced.answers);
     setHistory(advanced.trail);
     setRemainingServices(advanced.services);
@@ -885,6 +916,16 @@ export default function App() {
     setPaymentMethod('card');
   };
 
+  /**
+   * "Another service" restarts at question 1 across the WHOLE menu, including Pregrading.
+   *
+   * Not from the card the customer came in through: restarting the pregrade entry would
+   * land them straight back on the one service they are already looking at, which is a
+   * button that appears to do nothing. And the rule that Pregrading must not appear
+   * inside the submissions flow is about the home screen not offering two routes to the
+   * same thing — once someone is adding a SECOND item, a pregrade is a legitimate thing
+   * to want, and this is the only way to build a mixed order.
+   */
   const handleSelectAnother = () => {
     const advanced = autoAdvance(allServices, 0, [], []);
     setSelectedAnswers(advanced.answers);
@@ -927,15 +968,27 @@ export default function App() {
 
   const renderLanding = () => (
     <div className="landscape-container px-8 pt-10 pb-6 lg:px-12 overflow-y-auto">
-      <div className="min-h-full w-full max-w-[1240px] mx-auto flex flex-col justify-between gap-5">
+      {/*
+        `safe center` rather than plain `center`: centred vertically as asked, but if a
+        shorter viewport ever makes the block taller than the screen, alignment falls back
+        to the top instead of clipping the header off the top edge where it cannot be
+        scrolled back to.
+      */}
+      <div className="min-h-full w-full max-w-[1240px] mx-auto flex flex-col [justify-content:safe_center] gap-5">
 
-        {/* ── WHO ── lateral lockup: badge left, wordmark right. */}
-        <header className="flex items-center gap-5 shrink-0">
+        {/* ── WHO ── lateral lockup, centred as a PAIR. Never stack the badge above the
+            wordmark — that is the retired stacked lockup. */}
+        <header className="flex items-center justify-center gap-5 shrink-0">
           {/* The real badge asset, embedded. Never redrawn, never recoloured. */}
           <img src={badgeUrl} alt="" className="h-16 w-auto" />
           <div>
+            {/*
+              The "2" is set larger than the words in em, so it scales with the wordmark
+              instead of needing a second number kept in step. Inline text sits on the
+              shared baseline, so it grows upward and the lockup stays one line.
+            */}
             <p className="text-4xl font-extrabold tracking-tight text-m2m-ivory leading-none">
-              MARKET<span className="text-m2m-green">2</span>MINT
+              MARKET<span className="text-m2m-green text-[1.3em]">2</span>MINT
             </p>
             <p className="mt-2 text-xs font-bold uppercase tracking-[0.4em] text-zinc-500">
               Your cards. Our passion.
@@ -944,24 +997,32 @@ export default function App() {
         </header>
 
         {/* ── WHAT IS THIS? ── */}
-        <div className="shrink-0">
+        <div className="shrink-0 text-center">
           <h1 className="text-5xl font-extrabold uppercase tracking-tight text-m2m-ivory leading-[1.05]">
             We get your cards<br />professionally graded.
           </h1>
-          <p className="mt-3 max-w-[1000px] text-xl text-zinc-400 leading-snug">
+          <p className="mt-3 mx-auto max-w-[900px] text-xl text-zinc-400 leading-snug">
             Leave your cards with us at this counter. We prepare and submit them to PSA, BGS, CGC
             or SGC, track every step, and return them sealed in a protective case with an
             official grade.
           </p>
         </div>
 
-        {/* ── WHAT DOES IT COST? ── pregrade leads; submissions stay visible beside it. */}
+        {/*
+          ── WHAT DOES IT COST, AND HOW DO I START? ──
+          The cards ARE the action. They used to be passive panels above a separate "Start
+          your order" button, which asked the customer to read a price and then press
+          something else. Pregrade leads; submissions sit beside it, never behind it.
+        */}
         <div className="grid grid-cols-2 gap-5 shrink-0">
-          <div className="rounded-3xl border-2 border-m2m-green bg-m2m-green/10 px-7 py-6">
+          <button
+            onClick={() => startFlow('pregrade')}
+            className="rounded-3xl border-2 border-m2m-green bg-m2m-green/10 px-7 py-6 text-left transition-all hover:bg-m2m-green/20 active:scale-[0.99]"
+          >
             <div className="flex items-center gap-3">
               <span className="text-sm font-bold uppercase tracking-[0.25em] text-m2m-green">Pregrade</span>
               <span className="rounded-full bg-m2m-green px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-black">
-                Start here
+                Recommended
               </span>
             </div>
             <div className="mt-3 flex items-baseline gap-3">
@@ -974,9 +1035,15 @@ export default function App() {
               <span className="font-bold">Know before you commit.</span> We evaluate centering,
               corners, edges and surfaces and project a grade — before you pay for grading.
             </p>
-          </div>
+            <span className="mt-4 flex items-center gap-2 text-base font-extrabold uppercase tracking-widest text-m2m-green">
+              Start a pregrade <ChevronRight className="h-5 w-5" />
+            </span>
+          </button>
 
-          <div className="rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 px-7 py-6">
+          <button
+            onClick={() => startFlow('submissions')}
+            className="rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 px-7 py-6 text-left transition-all hover:border-zinc-600 hover:bg-zinc-900 active:scale-[0.99]"
+          >
             <span className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-400">Full submission</span>
             <div className="mt-3 flex items-baseline gap-3">
               <span className="tabular-nums text-6xl font-extrabold leading-none text-m2m-ivory">
@@ -988,7 +1055,10 @@ export default function App() {
               Graded, authenticated and sealed by PSA, BGS, CGC or SGC. You choose the company and
               the turnaround at the next step.
             </p>
-          </div>
+            <span className="mt-4 flex items-center gap-2 text-base font-extrabold uppercase tracking-widest text-m2m-ivory">
+              Start a submission <ChevronRight className="h-5 w-5" />
+            </span>
+          </button>
         </div>
 
         {/* ── The $24.00, disclosed early and verbatim. Customers assume it is per card. ── */}
@@ -1002,20 +1072,13 @@ export default function App() {
           </p>
         </div>
 
-        {/* ── HOW DO I START? ── one obvious action; the video is secondary. ── */}
-        <div className="flex gap-5 shrink-0">
-          <button
-            onClick={handleStart}
-            className="flex h-24 flex-[3] items-center justify-center gap-5 rounded-3xl bg-m2m-green text-3xl font-extrabold uppercase tracking-[0.15em] text-black shadow-2xl transition-all hover:bg-m2m-green-ink hover:text-m2m-ivory active:scale-[0.98]"
-          >
-            Start your order
-            <ChevronRight className="w-10 h-10" />
-          </button>
+        {/* The video stays secondary — it is for people who want it, not a step. */}
+        <div className="flex justify-center shrink-0">
           <button
             onClick={() => setActiveModal('video')}
-            className="flex h-24 flex-1 items-center justify-center gap-4 rounded-3xl border-2 border-zinc-800 bg-zinc-900 text-lg font-bold uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98]"
+            className="flex items-center justify-center gap-4 rounded-2xl border-2 border-zinc-800 bg-zinc-900 px-10 py-4 text-base font-bold uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98]"
           >
-            <Play className="w-7 h-7 fill-current" />
+            <Play className="w-6 h-6 fill-current" />
             How it works
           </button>
         </div>
@@ -1295,7 +1358,8 @@ export default function App() {
                       </div>
                       <div className="space-y-2">
                         <p className="text-4xl font-black text-white uppercase italic tracking-tighter">
-                          {tier.service.turnaround} <span className="text-sm text-white tracking-widest">BUSINESS DAYS</span>
+                          {formatTurnaroundDays(tier.service.businessDays)}{' '}
+                          <span className="text-sm text-white tracking-widest">BUSINESS DAYS</span>
                         </p>
                         <p className="text-2xl font-black text-m2m-green">
                           {cardShowMode && tier.service.name.toLowerCase().includes('pregrading') 
@@ -1373,8 +1437,8 @@ export default function App() {
                     
                     <div className="flex gap-4 w-full">
                       <div className="bg-zinc-950 px-6 py-3 rounded-2xl border border-zinc-800 flex-1 text-center whitespace-nowrap">
-                        <p className="text-[12px] font-black text-m2m-green uppercase tracking-widest mb-1">Turnaround Time</p>
-                        <p className="text-lg font-black text-white uppercase italic">{service.turnaround} BUSINESS DAYS</p>
+                        <p className="text-[12px] font-black text-m2m-green uppercase tracking-widest mb-1">Estimated Turnaround</p>
+                        <p className="text-lg font-black text-white uppercase italic">{formatTurnaround(service.businessDays)}</p>
                       </div>
                       <div className="bg-zinc-950 px-6 py-3 rounded-2xl border border-zinc-800 flex-1 text-center whitespace-nowrap">
                         <p className="text-[12px] font-black text-m2m-green uppercase tracking-widest mb-1">Max Insured Value (If Lost/Damaged)</p>
@@ -1828,10 +1892,10 @@ export default function App() {
                           </div>
                           <div className="flex gap-4">
                             <div className="flex items-center gap-2 bg-zinc-950 px-4 py-1.5 rounded-full border border-zinc-800 shrink-0">
+                              <span className="text-zinc-400 text-xs font-black uppercase tracking-widest">Est.</span>
                               <span className="text-white text-xs font-black uppercase tracking-widest">
                                 {getEstimatedDate(item.service.turnaround)}
                               </span>
-                              <CheckCircle2 className="w-4 h-4 text-white opacity-100" />
                             </div>
                             <span className="bg-zinc-950 px-4 py-1.5 rounded-full border border-zinc-800 text-white text-xs font-black uppercase tracking-widest">
                               MAX INSURED VALUE: {item.service.maxValue}

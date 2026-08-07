@@ -135,6 +135,8 @@ export type UpdateDecisionReason =
    * at 4am.
    */
   | 'scheduled-refresh'
+  /** A real update landed less than MIN_REAPPLY_MS ago. Loop guard, not a policy. */
+  | 'just-applied'
   | 'offline'
   | 'in-use'
   | 'window-already-serviced';
@@ -145,32 +147,58 @@ export interface UpdateDecision {
 }
 
 /**
+ * A real update must not re-apply faster than this.
+ *
+ * Purely a loop guard. If a kiosk ever reloaded into a build that still reported an update
+ * pending — a stale CDN edge is the plausible cause — it would otherwise reload in a tight
+ * cycle and be unusable. Ten minutes bounds that to something a shop would tolerate while
+ * still propagating a fix quickly.
+ */
+export const MIN_REAPPLY_MS = 10 * 60 * 1000;
+
+/**
  * Should this kiosk reload right now?
  *
- * Order matters only for the log line — the checks are independent, but reporting
- * 'in-use' when the kiosk is also offline would send someone to the wrong problem.
+ * ⚠️ THE WINDOWS GATE THE UNCONDITIONAL REFRESH, NOT A REAL UPDATE. That distinction is
+ * the whole design and it was wrong in the first cut.
+ *
+ * Window-gating a genuine new build creates a fatal asymmetry: a deploy would reach the
+ * fleet fast (the kiosks it lands on are running the OLD rules) while a ROLLBACK would
+ * wait for the next window — up to fourteen hours. Fast in, slow out, which is exactly
+ * backwards. The emergency you cannot respond to quickly is the one that matters.
+ *
+ * And the thing the windows were protecting against turns out to be cheap: a reload takes
+ * about two seconds, only happens after five idle minutes, and returns to the same attract
+ * screen. Spending fourteen hours of rollback latency to avoid a rare two-second blip is a
+ * bad trade — so a detected new build now applies as soon as the kiosk is idle, online and
+ * has confirmed the bundle is fetchable.
+ *
+ * The windows still gate `scheduled-refresh`, where they belong: that one has no new build
+ * behind it, so there is no reason to run it more than twice a day.
  *
  * ⚠️ `online: true` is NOT proof the reload will succeed. `navigator.onLine` reports a
  * link, not reachability: an iPad associated to a shop access point with a dead uplink
  * reports true. The caller must ALSO fetch the new bundle and confirm it arrives before
- * committing to a reload. This function decides whether it is the right *time*; only the
- * fetch decides whether it is safe.
+ * committing. This decides whether it is the right TIME; only the fetch decides whether it
+ * is safe.
  */
 export const shouldApplyUpdate = (input: UpdateDecisionInput): UpdateDecision => {
   if (!input.online) return { apply: false, reason: 'offline' };
   if (input.msSinceInteraction < IDLE_REQUIRED_MS) return { apply: false, reason: 'in-use' };
 
+  if (input.updatePending) {
+    const since = input.lastAppliedAt === null ? Infinity : input.now.getTime() - input.lastAppliedAt;
+    if (since < MIN_REAPPLY_MS) return { apply: false, reason: 'just-applied' };
+    return { apply: true, reason: 'ready' };
+  }
+
+  // No new build. The unconditional refresh exists because `updatePending` is set by the
+  // very check that might be broken — a kiosk with a silently failing poll reports "up to
+  // date" forever and would never reload. This is the one action that does not consult
+  // anything the kiosk believes about itself, which is the only reason it can rescue one.
   const windowStart = mostRecentWindowStart(input.now, input.windows).getTime();
   if (input.lastAppliedAt !== null && input.lastAppliedAt >= windowStart) {
     return { apply: false, reason: 'window-already-serviced' };
   }
-
-  // NOTE `updatePending` is no longer a precondition — it only names the reason.
-  //
-  // It used to gate everything, and that is the trap: the flag is set by the very check
-  // that might be broken. A kiosk whose poll silently fails has `updatePending === false`
-  // permanently and would never reload, so the mechanism that keeps the fleet current is
-  // exactly the mechanism that cannot notice it has stopped working. Reloading on the
-  // window regardless breaks that circularity.
-  return { apply: true, reason: input.updatePending ? 'ready' : 'scheduled-refresh' };
+  return { apply: true, reason: 'scheduled-refresh' };
 };

@@ -120,18 +120,38 @@ describe('shouldApplyUpdate', () => {
     expect(shouldApplyUpdate({ ...base, msSinceInteraction: IDLE_REQUIRED_MS }).apply).toBe(true);
   });
 
-  it('takes an update only once per window', () => {
-    // Applied at 04:05; still inside the 04:00 window at 09:00, so no second reload.
+  it('takes a REAL update immediately, without waiting for a window', () => {
+    // Changed 2026-08-07 after finding the asymmetry this created: window-gating a genuine
+    // new build made a deploy fast (it lands on kiosks running the OLD rules) but a
+    // ROLLBACK slow — up to fourteen hours until the next window. Fast in, slow out, which
+    // is exactly backwards. The emergency you cannot respond to quickly is the one that
+    // matters, so a detected build applies as soon as the kiosk is idle and online.
     const applied = at(7, 4, 5).getTime();
     expect(shouldApplyUpdate({ ...base, now: at(7, 9), lastAppliedAt: applied })).toEqual({
-      apply: false,
-      reason: 'window-already-serviced',
+      apply: true,
+      reason: 'ready',
     });
   });
 
-  it('opens again at the next window', () => {
-    const applied = at(7, 4, 5).getTime();
-    expect(shouldApplyUpdate({ ...base, now: at(7, 11, 1), lastAppliedAt: applied }).apply).toBe(
+  it('bounds a rollback to minutes, not the next window', () => {
+    // The property that made the change worth making. Ship at 14:00, discover a problem,
+    // roll back: every idle kiosk takes it within the poll interval.
+    const shipped = at(7, 14, 0).getTime();
+    expect(shouldApplyUpdate({ ...base, now: at(7, 14, 30), lastAppliedAt: shipped })).toEqual({
+      apply: true,
+      reason: 'ready',
+    });
+  });
+
+  it('will not re-apply a real update in a tight loop', () => {
+    // Loop guard, not policy. A kiosk that reloaded into a build still reporting an update
+    // pending — a stale CDN edge would do it — must not cycle.
+    const justNow = at(7, 9, 0).getTime();
+    expect(shouldApplyUpdate({ ...base, now: at(7, 9, 1), lastAppliedAt: justNow })).toEqual({
+      apply: false,
+      reason: 'just-applied',
+    });
+    expect(shouldApplyUpdate({ ...base, now: at(7, 9, 11), lastAppliedAt: justNow }).apply).toBe(
       true,
     );
   });
@@ -185,15 +205,17 @@ describe('shouldApplyUpdate', () => {
     ).toEqual({ apply: true, reason: 'scheduled-refresh' });
   });
 
-  it('does not reload repeatedly through the small hours', () => {
-    // 00:30 belongs to yesterday's 11:00 window. A kiosk that updated at 23:00 has
-    // already served that window and must stay put until 04:00.
+  it('does not run the unconditional refresh repeatedly through the small hours', () => {
+    // 00:30 belongs to yesterday's 11:00 window. A kiosk that refreshed at 23:00 has
+    // already served that window and must stay put until 04:00. Only applies with NO
+    // update pending — a real one would be taken immediately, and rightly.
+    const idle = { ...base, updatePending: false };
     const applied = at(6, 23, 0).getTime();
-    expect(shouldApplyUpdate({ ...base, now: at(7, 0, 30), lastAppliedAt: applied })).toEqual({
+    expect(shouldApplyUpdate({ ...idle, now: at(7, 0, 30), lastAppliedAt: applied })).toEqual({
       apply: false,
       reason: 'window-already-serviced',
     });
-    expect(shouldApplyUpdate({ ...base, now: at(7, 4, 1), lastAppliedAt: applied }).apply).toBe(
+    expect(shouldApplyUpdate({ ...idle, now: at(7, 4, 1), lastAppliedAt: applied }).apply).toBe(
       true,
     );
   });
@@ -207,7 +229,7 @@ describe('shouldApplyUpdate', () => {
     const applications: Date[] = [];
     for (let step = 0; step < 7 * 24 * 6; step++) {
       const now = new Date(at(7, startHour).getTime() + step * 10 * 60 * 1000);
-      if (shouldApplyUpdate({ ...base, now, lastAppliedAt }).apply) {
+      if (shouldApplyUpdate({ ...base, updatePending: false, now, lastAppliedAt }).apply) {
         lastAppliedAt = now.getTime();
         applications.push(now);
       }
@@ -215,7 +237,7 @@ describe('shouldApplyUpdate', () => {
     return applications;
   };
 
-  it('applies at most ONCE PER WINDOW, which is the actual guarantee', () => {
+  it('runs the unconditional refresh at most ONCE PER WINDOW', () => {
     // Not "twice per calendar day" — those differ, and the difference is real rather than
     // a bug. A kiosk booting for the first time at 00:30 is inside YESTERDAY's 11:00
     // window, so it can legitimately reload at 00:30, again at 04:00 and again at 11:00:
@@ -232,7 +254,7 @@ describe('shouldApplyUpdate', () => {
     expect(applications.length).toBeGreaterThan(12); // ~2 per day for a week
   });
 
-  it('settles to exactly twice a day once a kiosk has been running', () => {
+  it('settles the unconditional refresh to twice a day once a kiosk has been running', () => {
     // Steady state — the thing a shop actually experiences day to day.
     const applications = simulateWeek(4, at(7, 3, 0).getTime());
     const perDay: Record<string, number> = {};
@@ -246,7 +268,7 @@ describe('shouldApplyUpdate', () => {
     }
   });
 
-  it('reloads within hours of a deploy, not days', () => {
+  it('refreshes within hours even when nothing is detected, not days', () => {
     // The opposite failure: a fleet that drifts apart because updates never land. Four
     // kiosks on a new price and fourteen on the old one is worse than none of them
     // moving, because now the shops disagree with each other.

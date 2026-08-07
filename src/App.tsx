@@ -773,6 +773,17 @@ export default function App() {
     return eligibleSubtotal * (globalDiscount / 100);
   }, [cart, cardShowMode, globalDiscount, showPregradingPrice]);
 
+  /**
+   * Does any line carry a price that is only a floor?
+   *
+   * One such line makes the whole total a minimum, so this drives both the cart copy and
+   * the handoff. JSA and PSA/DNA memorabilia are assessed per item AFTER the order.
+   */
+  const cartHasMinimumPricedItem = useMemo(
+    () => cart.some((item) => item.service.priceIsMinimum),
+    [cart],
+  );
+
   // Shipping & insurance — $24.00 FLAT, once per order, however many cards.
   // The rule, its history and its tests live in src/pricing.ts. This is the only place
   // the app calls it, and renderHandoff reuses this value rather than recomputing it.
@@ -1822,7 +1833,11 @@ export default function App() {
       // a term the customer is financially exposed to has to reach the shop legibly. It
       // deliberately does NOT go in `customerNotes` (brief §5.2b).
       const minGradeStr = minimumGradeHandoffFragment(item);
-      const body = `• ${name}${variationStr}${minGradeStr} - ${itemTotalStr} (x${item.quantity})`;
+      // The shop invoices from this line. An assessed-after service must not reach them
+      // looking settled, or the customer gets a second bill nobody who spoke to them
+      // warned them about.
+      const minPriceStr = item.service.priceIsMinimum ? ' — MINIMUM, FINAL PRICE AFTER ASSESSMENT' : '';
+      const body = `• ${name}${variationStr}${minGradeStr}${minPriceStr} - ${itemTotalStr} (x${item.quantity})`;
       // Two forms of the same line. The estimated date is the first thing dropped if the
       // order will not fit in a QR — see fitHandoffUrl for why it is the safe one to lose.
       return { full: `${body} — EST: ${estDate}`, compact: body };
@@ -1841,8 +1856,14 @@ export default function App() {
     // no server between here and JotForm — so its length is a correctness constraint, not
     // a formatting detail: past the QR's capacity the encoder THROWS during render, and
     // with no error boundary that blanks the kiosk and loses the order. See handoff.test.ts.
+    // The store code already travels as its own `storecode` parameter, but that maps to a
+    // JotForm field that only reaches the email SUBJECT — so a shop processing the order
+    // has to go back to the subject line to find it. Repeating it at the head of the
+    // services blob puts it in the body, where MIN GRADE demonstrably lands.
+    const storeHeaderLine = `STORE: ${savedStoreCode}`;
+
     const fit = fitHandoffUrl({
-      lines: formattedServices,
+      lines: [{ full: storeHeaderLine, compact: storeHeaderLine }, ...formattedServices],
       shippingLine: shippingAndInsuranceLine,
       total: total.toFixed(2),
       storeCode: savedStoreCode,
@@ -1853,7 +1874,7 @@ export default function App() {
     return {
       ...fit,
       savedStoreCode,
-      orderText: [...formattedServices.map((l) => l.full), shippingAndInsuranceLine].join('\n'),
+      orderText: [storeHeaderLine, ...formattedServices.map((l) => l.full), shippingAndInsuranceLine].join('\n'),
     };
     // getEstimatedDate reads today's date, so this is not a pure function of its inputs.
     // That is harmless: the only way to sit on this screen across midnight is to leave a
@@ -2217,6 +2238,15 @@ export default function App() {
                                   includes {formatUSD(item.service.oversizedSurcharge)} oversized × {item.quantity}
                                 </span>
                               )}
+                              {item.service.priceIsMinimum && (
+                                // The results screen already explains this in full, but a
+                                // figure sitting in a cart reads as A PRICE — that is what
+                                // a cart is for. Without this line, the customer's last
+                                // sight of it before paying says the opposite of the truth.
+                                <span className="mt-1 text-sm font-bold uppercase tracking-widest text-m2m-green">
+                                  Minimum — final price set after assessment
+                                </span>
+                              )}
                               {cardShowMode && globalDiscount > 0 && !item.service.name.toLowerCase().includes('pregrading') && (() => {
                                 const cost = unitPriceOf(item.service);
                                 const originalTotal = cost * item.quantity;
@@ -2377,11 +2407,25 @@ export default function App() {
                           </span>
                         </div>
                         <div className="pt-8 border-t border-zinc-800 flex justify-between items-end">
-                          <span className="text-m2m-green font-black uppercase tracking-[0.2em] text-2xl">Total</span>
+                          <span className="text-m2m-green font-black uppercase tracking-[0.2em] text-2xl">
+                            {cartHasMinimumPricedItem ? 'Total so far' : 'Total'}
+                          </span>
                           <span className="text-5xl font-black text-white">
                             ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
+                        {cartHasMinimumPricedItem && (
+                          // One minimum-priced line makes the WHOLE total a minimum. A
+                          // customer reading "Total $49.00" reasonably believes that is
+                          // what they owe; saying "Total so far" and why is the difference
+                          // between an expected invoice and a dispute.
+                          <p className="text-sm leading-snug text-m2m-ivory">
+                            This order includes an authentication service priced from a minimum. The
+                            final cost depends on the item and is set once it has been assessed — we
+                            will quote it to you before any further work, and today's payment is
+                            applied either way.
+                          </p>
+                        )}
                       </div>
 
                       {/* Customer Notes Section */}

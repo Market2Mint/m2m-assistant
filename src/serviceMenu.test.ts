@@ -246,3 +246,21 @@ describe('oversized is a modifier, not four extra services', () => {
     }
   });
 });
+
+describe('services whose price is only a floor', () => {
+  // JSA and PSA/DNA memorabilia are assessed per item AFTER the order, so $25.00 is a
+  // deposit, not a price. The flag is what drives every disclosure — results screen, cart
+  // line, order total and the shop's copy of the order. If a menu regeneration ever drops
+  // it, all four go silent at once and the customer's first hint is a second invoice.
+  it('flags JSA and PSA/DNA, and nothing else', () => {
+    const minimums = uniqueActive((s) => s.priceIsMinimum);
+    expect(minimums).toEqual(['JSA Authentication', 'PSA/DNA Memorabilia Certification']);
+  });
+
+  it('prices both at the $25.00 minimum', () => {
+    for (const name of ['JSA Authentication', 'PSA/DNA Memorabilia Certification']) {
+      const svc = ACTIVE_SERVICES.find((s) => s.name === name)!;
+      expect(svc.price.customer, name).toBe(25.0);
+    }
+  });
+});

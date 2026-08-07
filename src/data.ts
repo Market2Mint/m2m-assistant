@@ -5,12 +5,25 @@
  * change and a malformed row is a build error rather than a service silently vanishing
  * from the kiosk. This file keeps only the customer-facing legal and policy copy.
  */
+/*
+ * Rendered at checkout, above the "I acknowledge and agree" checkbox that gates Complete
+ * Order. Liability copy belongs at the point of commitment, not on the attract screen —
+ * so every line here is covered by an affirmative action rather than being fine print.
+ *
+ * The last two lines are the minimum-grade terms (brief §5.2c / §5.3 item 3). They sit
+ * here as well as at the control itself because they do different jobs: the inline copy
+ * reaches the customer at the moment they can still act on it, and these reach the
+ * customer who never expanded the control at all. Do not add a second checkbox or a
+ * confirmation dialog for them — a modal on a kiosk gets dismissed without reading.
+ */
 export const POLICY = [
   "Turnaround times begin upon induction at grading facilities and are not guaranteed.",
   "Market 2 Mint is not affiliated with this card shop. We take full responsibility for your items while they are in our possession.",
   "Unclaimed items will be considered abandoned after 120 days and three notification attempts.",
   "Inspect returned items at pickup. Claims must be filed within 7 days of shop return notification.",
-  "Grading company upcharges will be invoiced as applicable."
+  "Grading company upcharges will be invoiced as applicable.",
+  "If you set a minimum grade and the item does not reach it, the item is returned ungraded and the grading fee is not refunded.",
+  "If no minimum grade is entered, your order will be submitted without one. Customers are responsible for the accuracy of their order details and photos."
 ];
 
 export const RECOMMENDATIONS = [

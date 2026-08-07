@@ -39,12 +39,32 @@ import {
 } from './pricing';
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
+import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl } from './handoff';
+import {
+  CARD_REFERENCE_LABEL,
+  CARD_REFERENCE_MAX_LENGTH,
+  CARD_REFERENCE_PLACEHOLDER,
+  MINIMUM_GRADES,
+  MIN_GRADE_COLLAPSED_LABEL,
+  MIN_GRADE_CONSEQUENCE_REST,
+  MIN_GRADE_LEAD_REST,
+  MIN_GRADE_LEAD_STRONG,
+  NO_MINIMUM_DISCLOSURE,
+  NO_MINIMUM_LABEL,
+  formatGrade,
+  minimumGradeConsequenceLead,
+  minimumGradeHandoffFragment,
+  sanitizeCardReference,
+  supportsMinimumGrade,
+} from './minimumGrade';
 
 // --- Types ---
 
 interface Service {
   questions: string[]; // [Q1, Q2, Q3, Q4, Q5]
   name: string;
+  /** Carried through from the menu so `supportsMinimumGrade` can read it off a cart line. */
+  category: string;
   cost: string;
   turnaround: string;
   /** The same figure as `turnaround`, unparsed. Use this for anything but display. */
@@ -56,6 +76,17 @@ interface Service {
   oversizedSurcharge: number | null;
   description: string;
   details: string;
+}
+
+interface CartLine {
+  id: number;
+  service: Service;
+  quantity: number;
+  oversized: boolean;
+  /** null = "No minimum". Never defaulted to a value — a customer must choose the risk. */
+  minimumGrade: number | null;
+  /** Optional free text, for staff eyes only. Never blocks completion. */
+  cardReference: string;
 }
 
 interface ModalProps {
@@ -78,6 +109,7 @@ interface ModalProps {
 const toService = (r: ServiceRecord): Service => ({
   questions: r.questions as string[],
   name: r.name,
+  category: r.category,
   cost: formatUSD(r.price.customer),
   turnaround: String(r.businessDays),
   businessDays: r.businessDays,
@@ -189,7 +221,16 @@ export default function App() {
   // `oversized` is a per-line flag, not a separate service, so a customer can order two
   // standard cards and one oversized in the same visit. Lines are keyed on service AND
   // flag for that reason.
-  const [cart, setCart] = useState<{ service: Service; quantity: number; oversized: boolean }[]>([]);
+  //
+  // `minimumGrade` and `cardReference` (brief §5.2b) are per-line too. The cart line stays
+  // the unit — there is deliberately no per-card row model, because the consumer is an M2M
+  // staff member doing the PSA intake by hand, not PSA.
+  //
+  // `id` is a stable identity for a line. React keys and the per-line expanded state were
+  // both on the array index, which is wrong the moment a line is removed: every row below
+  // it inherits the state of the row that used to sit there.
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const nextLineId = useRef(1);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [oversizedSel, setOversizedSel] = useState<Record<string, boolean>>({});
   const [customerNotes, setCustomerNotes] = useState('');
@@ -397,7 +438,13 @@ export default function App() {
       }, 120000); // 120 seconds
     };
 
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    // `input` is here because the other five events do not reliably fire while someone is
+    // typing on the iPad's on-screen keyboard: the software keyboard is not part of the
+    // page, so its taps produce no `touchstart`, and `keypress` is deprecated and skipped
+    // by dictation, autocorrect accepts and paste. Without it the kiosk can reset out from
+    // under a customer mid-sentence. That already applied to the Additional Instructions
+    // textarea; the minimum-grade reference field is the second field to depend on it.
+    const events = ['mousedown', 'mousemove', 'keypress', 'input', 'scroll', 'touchstart'];
     events.forEach(event => document.addEventListener(event, resetTimer));
     resetTimer();
 
@@ -407,27 +454,10 @@ export default function App() {
     };
   }, [step]);
 
-  // Handoff Screen Timer (60s)
-  useEffect(() => {
-    if (step !== 'handoff') {
-      setHandoffCountdown(60);
-      return;
-    }
-
-    const intervalId = setInterval(() => {
-      setHandoffCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(intervalId);
-          addLog('QR Screen Timeout');
-          handleReset();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(intervalId);
-  }, [step]);
+  // The Handoff Screen Timer (60s) used to sit here. It now lives immediately after the
+  // `handoff` memo, because it has to know whether a QR was produced — and reading
+  // `handoff` from here would hit the temporal dead zone, since a dependency array is
+  // evaluated during render rather than when the effect runs.
 
   // Network Status
   useEffect(() => {
@@ -634,25 +664,51 @@ export default function App() {
     setCart(prev => {
       // Merge on service AND oversized: the same service at two different prices is two
       // lines, otherwise one flag would silently reprice cards the customer already added.
-      const existing = prev.find(item => item.service.name === service.name && item.oversized === oversized);
-      if (existing) {
+      //
+      // A line that already carries a minimum grade is NOT a merge target. Folding a later
+      // addition into it would silently apply someone's grade threshold to cards they
+      // never chose it for — and the downside of that threshold is the whole fee. Two
+      // lines is also the shape §5.2b describes for "minimum 9 on two, minimum 8 on one":
+      // the customer sets the second grade on the new line.
+      const target = prev.find(
+        item =>
+          item.service.name === service.name &&
+          item.oversized === oversized &&
+          item.minimumGrade === null,
+      );
+      if (target) {
         return prev.map(item =>
-          item.service.name === service.name && item.oversized === oversized
-            ? { ...item, quantity: item.quantity + qty }
-            : item
+          item.id === target.id ? { ...item, quantity: item.quantity + qty } : item
         );
       }
-      return [...prev, { service, quantity: qty, oversized }];
+      return [
+        ...prev,
+        { id: nextLineId.current++, service, quantity: qty, oversized, minimumGrade: null, cardReference: '' },
+      ];
     });
     // Reset local quantity after adding
     setQuantities(prev => ({ ...prev, [service.name]: 1 }));
     setOversizedSel(prev => ({ ...prev, [service.name]: false }));
   };
 
-  const removeFromCart = (index: number) => {
+  const removeFromCart = (id: number) => {
     playUIAudio(450, 0.08);
-    setCart(prev => prev.filter((_, i) => i !== index));
+    setCart(prev => prev.filter(item => item.id !== id));
   };
+
+  /** Edit one cart line in place, by identity rather than by position. */
+  const updateCartLine = (id: number, patch: Partial<CartLine>) => {
+    setCart(prev => prev.map(item => (item.id === id ? { ...item, ...patch } : item)));
+  };
+
+  // Which lines have the minimum-grade control open. Collapsed is the default and the
+  // point (§5.2d) — a customer who has never heard of minimum grading must be able to
+  // finish an order without ever opening it, and without wondering whether they skipped a
+  // required step. A line that HAS a grade or a reference is always rendered open, so a
+  // choice the customer made can never be hidden from them behind a collapsed summary.
+  const [openMinGradeLines, setOpenMinGradeLines] = useState<number[]>([]);
+  const isMinGradeOpen = (item: CartLine) =>
+    openMinGradeLines.includes(item.id) || item.minimumGrade !== null || item.cardReference !== '';
 
   const questionTexts = [
     "What can we help you with today?",
@@ -912,6 +968,7 @@ export default function App() {
     setCart([]);
     setQuantities({});
     setOversizedSel({});
+    setOpenMinGradeLines([]);
     setCustomerNotes('');
     setPaymentMethod('card');
   };
@@ -1557,7 +1614,13 @@ export default function App() {
     </div>
   );
 
-  const renderHandoff = () => {
+  /*
+   * The handoff is built HERE rather than inside renderHandoff because the countdown
+   * effect has to know whether a QR was produced. An order too large to encode sends the
+   * customer to fetch an attendant, and a 60-second timer wiping the screen while they
+   * are doing that is the one thing that screen must not do.
+   */
+  const handoff = useMemo(() => {
     const formattedServices = cart.map(item => {
       // "— OVERSIZED" has to survive the trip. The shop is packing the card and the
       // grader is billing for it; a $10.00 upcharge in the total with nothing on the
@@ -1579,27 +1642,79 @@ export default function App() {
       const variationStr = (val && val.toLowerCase() !== 'skip question' && val.toLowerCase() !== 'either' && val.toLowerCase() !== 'x')
         ? ` (${val})`
         : '';
-      return `• ${name}${variationStr} - ${itemTotalStr} (x${item.quantity}) — EST: ${estDate}`;
+      // MIN GRADE rides on the service line, next to OVERSIZED, for the same reason —
+      // a term the customer is financially exposed to has to reach the shop legibly. It
+      // deliberately does NOT go in `customerNotes` (brief §5.2b).
+      const minGradeStr = minimumGradeHandoffFragment(item);
+      const body = `• ${name}${variationStr}${minGradeStr} - ${itemTotalStr} (x${item.quantity})`;
+      // Two forms of the same line. The estimated date is the first thing dropped if the
+      // order will not fit in a QR — see fitHandoffUrl for why it is the safe one to lose.
+      return { full: `${body} — EST: ${estDate}`, compact: body };
     });
-    
+
     // Shipping & insurance is computed in exactly ONE place — the `shippingFee` memo above —
     // and reused here. It previously had a second, DIFFERENT implementation at this spot, which
     // meant a CGC+SGC cart (no PSA/BGS) charged $29 in the total while printing "$24.00" on the
     // handoff the customer scanned. Do not reintroduce a local calculation here.
     const shippingAndInsuranceLine = `• Shipping & Insurance - $${shippingFee.toFixed(2)}`;
 
-    const servicesPlainString = [...formattedServices, shippingAndInsuranceLine].join('\n');
-    const serviceList = encodeURIComponent(servicesPlainString);
-    const cartTotal = total.toFixed(2);
     const savedStoreCode = (cardShowMode && showName.trim()) ? showName.trim() : (storeCode || 'NOT_SET');
-    const notes = encodeURIComponent(customerNotes);
-    
-    const baseUrl = (cardShowMode && paymentMethod === 'cash') 
-      ? 'https://form.jotform.com/260846848017162' 
-      : 'https://form.jotform.com/260667434445159';
-      
-    const jotformUrl = `${baseUrl}?totalAmount=${cartTotal}&paymentAmount=${cartTotal}&servicesOrdered=${serviceList}&storecode=${encodeURIComponent(savedStoreCode)}&customernotes=${notes}&totalAmountBridge=${cartTotal}`;
+
+    // Assembled in src/handoff.ts so the QR capacity test can encode the real URL rather
+    // than a copy of its format that drifts. This URL carries the entire order — there is
+    // no server between here and JotForm — so its length is a correctness constraint, not
+    // a formatting detail: past the QR's capacity the encoder THROWS during render, and
+    // with no error boundary that blanks the kiosk and loses the order. See handoff.test.ts.
+    const fit = fitHandoffUrl({
+      lines: formattedServices,
+      shippingLine: shippingAndInsuranceLine,
+      total: total.toFixed(2),
+      storeCode: savedStoreCode,
+      customerNotes,
+      cashAtShow: cardShowMode && paymentMethod === 'cash',
+    });
+
+    return {
+      ...fit,
+      savedStoreCode,
+      orderText: [...formattedServices.map((l) => l.full), shippingAndInsuranceLine].join('\n'),
+    };
+    // getEstimatedDate reads today's date, so this is not a pure function of its inputs.
+    // That is harmless: the only way to sit on this screen across midnight is to leave a
+    // finished order untouched, and the inactivity timer resets the kiosk long before then.
+  }, [cart, cardShowMode, globalDiscount, showPregradingPrice, shippingFee, total, storeCode, showName, paymentMethod, customerNotes]);
+
+  // Handoff Screen Timer (60s)
+  useEffect(() => {
+    if (step !== 'handoff') {
+      setHandoffCountdown(60);
+      return;
+    }
+    // Suspended when the order was too large to encode. That screen asks the customer to
+    // go and fetch a shop attendant; counting their order down to a reset while they do it
+    // would destroy the only remaining copy of it. The 120-second global inactivity timer
+    // is still the backstop, and any touch keeps the screen alive.
+    if (handoff.url === null) return;
+
+    const intervalId = setInterval(() => {
+      setHandoffCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(intervalId);
+          addLog('QR Screen Timeout');
+          handleReset();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [step, handoff.url]);
+
+  const renderHandoff = () => {
+    const { url: jotformUrl, droppedDates, savedStoreCode, orderText } = handoff;
     const countdownColor = handoffCountdown <= 10 ? 'text-red-500' : 'text-zinc-500';
+    const itemCount = cart.reduce((n, i) => n + i.quantity, 0);
 
     return (
       <div className="landscape-container bg-zinc-900 flex flex-col p-8 lg:p-12 overflow-y-auto relative">
@@ -1639,6 +1754,37 @@ export default function App() {
 
         <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
           <div className="max-w-4xl w-full space-y-6">
+          {jotformUrl === null ? (
+            /*
+              The order is larger than any QR code can carry. Rare, but it must not be a
+              crash: the encoder throws from inside render and there is no error boundary,
+              so the alternative is a blank kiosk and a customer whose order is gone.
+              Nothing is discarded to force a fit — every remaining field is something the
+              customer chose and is paying for. An attendant completes it at the counter.
+            */
+            <>
+              <div className="space-y-4">
+                <h2 className="text-5xl font-black text-white uppercase italic tracking-tight leading-none">
+                  ONE MORE STEP <br />
+                  <span className="text-m2m-green">AT THE COUNTER</span>
+                </h2>
+                <p className="text-zinc-300 text-xl max-w-2xl mx-auto leading-relaxed font-medium">
+                  This order has too many separate services to finish on the tablet. Nothing
+                  is lost — show this screen to a shop attendant and they will complete it
+                  for you.
+                </p>
+              </div>
+              <div className="rounded-[2rem] border border-m2m-green/40 bg-m2m-green/[0.08] px-8 py-6 text-left">
+                <p className="text-sm font-black uppercase tracking-widest text-m2m-green mb-3">
+                  Your order — {itemCount} {itemCount === 1 ? 'item' : 'items'}, {formatUSD(total)}
+                </p>
+                <pre className="whitespace-pre-wrap text-base leading-snug text-m2m-ivory font-medium">
+                  {orderText}
+                </pre>
+              </div>
+            </>
+          ) : (
+            <>
           <div className="space-y-4">
             <h2 className="text-5xl font-black text-white uppercase italic tracking-tight leading-none">
               SCAN TO FINISH <br />
@@ -1650,16 +1796,27 @@ export default function App() {
           </div>
 
           <div className="bg-white p-8 rounded-[3rem] shadow-[0_0_60px_rgba(0,200,5,0.2)] inline-block border-[10px] border-zinc-800 relative">
-            <QRCodeSVG 
-              value={jotformUrl} 
+            <QRCodeSVG
+              value={jotformUrl}
               size={320}
-              level="H"
+              level={QR_ERROR_CORRECTION_LEVEL}
               includeMargin={false}
             />
             <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-m2m-green text-black px-6 py-1.5 rounded-full font-black text-xs uppercase tracking-widest shadow-xl">
               Secure Link
             </div>
           </div>
+          {droppedDates && (
+            // Said out loud rather than left to be discovered. The dates are estimates the
+            // customer has already seen on the cart screen; the services, quantities,
+            // prices and minimum grades all made the trip intact.
+            <p className="text-sm text-zinc-500 max-w-2xl mx-auto leading-snug">
+              Estimated completion dates were left off the transfer to fit this order. Every
+              service, quantity, price and minimum grade has been sent.
+            </p>
+          )}
+            </>
+          )}
 
           <div className="pt-4 space-y-6">
             <button 
@@ -1668,9 +1825,13 @@ export default function App() {
             >
               EXIT IPAD FORM
             </button>
-            <p className={`text-sm font-black uppercase tracking-[0.2em] ${countdownColor} animate-pulse`}>
-              Resetting to Home in {handoffCountdown} seconds...
-            </p>
+            {jotformUrl !== null && (
+              // Not shown on the attendant-assist screen: that countdown is suspended, so
+              // printing one would be a promise the kiosk is deliberately not keeping.
+              <p className={`text-sm font-black uppercase tracking-[0.2em] ${countdownColor} animate-pulse`}>
+                Resetting to Home in {handoffCountdown} seconds...
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -1859,8 +2020,12 @@ export default function App() {
                 <div className="flex flex-col h-full space-y-8">
                   {/* Cart Items List */}
                   <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar space-y-6 min-h-0">
-                    {cart.map((item, i) => (
-                      <div key={i} className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 flex justify-between items-center gap-8 shadow-2xl group hover:border-zinc-600 transition-all">
+                    {cart.map((item) => (
+                      // Keyed on the line's own id, not on its index: removing a line
+                      // otherwise hands its open/closed state to whichever line moves up.
+                      // `items-start` so the delete button stays beside the service name
+                      // instead of drifting down the row when a minimum grade is opened.
+                      <div key={item.id} className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 flex justify-between items-start gap-8 shadow-2xl group hover:border-zinc-600 transition-all">
                         <div className="flex-1 min-w-0 space-y-4">
                           <h4 className="font-black text-white text-3xl uppercase italic tracking-tight truncate">
                             {item.service.name}
@@ -1901,9 +2066,104 @@ export default function App() {
                               MAX INSURED VALUE: {item.service.maxValue}
                             </span>
                           </div>
+
+                          {/*
+                            ── MINIMUM GRADE (PSA card services only) — brief §5.2b–d ──
+
+                            Collapsed, small and secondary on purpose. The feature has a
+                            real financial downside — pay the full fee, receive an
+                            unslabbed card — and the best protection is that a customer
+                            who does not understand it never opens it. So it must
+                            self-select for people who already know what it is: spotted
+                            immediately by someone who does, and skippable without a
+                            second thought by someone who does not.
+
+                            That is why it is not a green button, not a card, and carries
+                            no badge, count or asterisk that could read as an unanswered
+                            step. If the collapsed state ever creates doubt about whether
+                            it needs answering, it is too loud.
+                          */}
+                          {supportsMinimumGrade(item.service) && (
+                            isMinGradeOpen(item) ? (
+                              <div className="space-y-5 rounded-3xl border border-zinc-700 bg-zinc-950/60 p-6">
+                                <p className="text-base leading-snug text-zinc-300">
+                                  <span className="font-black text-white">{MIN_GRADE_LEAD_STRONG}</span>{' '}
+                                  {MIN_GRADE_LEAD_REST}
+                                </p>
+
+                                <select
+                                  value={item.minimumGrade === null ? '' : String(item.minimumGrade)}
+                                  onChange={(e) =>
+                                    updateCartLine(item.id, {
+                                      minimumGrade: e.target.value === '' ? null : Number(e.target.value),
+                                    })
+                                  }
+                                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-5 py-4 text-lg font-bold text-white focus:border-m2m-green focus:outline-none"
+                                >
+                                  {/* Default, and the only default. Never pre-select a grade. */}
+                                  <option value="">{NO_MINIMUM_LABEL}</option>
+                                  {MINIMUM_GRADES.map((g) => (
+                                    <option key={g} value={g}>
+                                      Minimum grade {formatGrade(g)}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                {item.minimumGrade === null ? (
+                                  // A statement of what will happen, not a warning and not
+                                  // an obstacle. Deliberately not red and not a dialog.
+                                  <p className="text-base leading-snug text-zinc-400">
+                                    {NO_MINIMUM_DISCLOSURE}
+                                  </p>
+                                ) : (
+                                  // Inset and bordered, the way the $24.00 disclosure is
+                                  // treated on the home screen — unmissable once open,
+                                  // without pretending a legitimate service is a hazard.
+                                  <div className="rounded-2xl border border-m2m-green/40 bg-m2m-green/[0.08] px-6 py-5">
+                                    <p className="text-lg leading-snug text-m2m-ivory">
+                                      <span className="font-black">
+                                        {minimumGradeConsequenceLead(item.minimumGrade)}
+                                      </span>{' '}
+                                      {MIN_GRADE_CONSEQUENCE_REST}
+                                    </p>
+                                  </div>
+                                )}
+
+                                <div className="space-y-2">
+                                  <label
+                                    htmlFor={`card-ref-${item.id}`}
+                                    className="block text-sm font-bold text-zinc-400"
+                                  >
+                                    {CARD_REFERENCE_LABEL}
+                                  </label>
+                                  <input
+                                    id={`card-ref-${item.id}`}
+                                    type="text"
+                                    value={item.cardReference}
+                                    maxLength={CARD_REFERENCE_MAX_LENGTH}
+                                    placeholder={CARD_REFERENCE_PLACEHOLDER}
+                                    onChange={(e) =>
+                                      updateCartLine(item.id, {
+                                        cardReference: sanitizeCardReference(e.target.value),
+                                      })
+                                    }
+                                    className="w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-5 py-4 text-lg text-white placeholder:text-zinc-600 focus:border-m2m-green focus:outline-none"
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setOpenMinGradeLines((prev) => [...prev, item.id])}
+                                className="flex items-center gap-2 text-sm font-bold text-zinc-500 hover:text-zinc-300 active:scale-95 transition-all"
+                              >
+                                <Plus className="h-4 w-4" />
+                                {MIN_GRADE_COLLAPSED_LABEL}
+                              </button>
+                            )
+                          )}
                         </div>
-                        <button 
-                          onClick={() => removeFromCart(i)}
+                        <button
+                          onClick={() => removeFromCart(item.id)}
                           className="p-6 bg-zinc-950 hover:bg-red-500/10 rounded-3xl transition-all group/del active:scale-90 border border-zinc-800"
                         >
                           <Trash2 className="w-8 h-8 text-zinc-700 group-hover/del:text-red-500" />
@@ -1956,8 +2216,16 @@ export default function App() {
                             Provide any additional details to help us accurately process your order (e.g., which cards belong to which services).
                           </p>
                         </div>
+                        {/*
+                          Capped because this field travels inside the handoff QR with the
+                          rest of the order. It was unbounded, and a long enough note alone
+                          could push the payload past what a QR can hold — which throws
+                          during render and blanks the kiosk. 400 characters is several
+                          sentences and leaves room for the order itself.
+                        */}
                         <textarea
                           value={customerNotes}
+                          maxLength={CUSTOMER_NOTES_MAX_LENGTH}
                           onChange={(e) => setCustomerNotes(e.target.value)}
                           placeholder="Enter any special instructions or details about your items..."
                           className="w-full h-32 bg-zinc-950 border border-m2m-green rounded-lg p-6 text-white text-lg focus:ring-1 focus:ring-m2m-green focus:outline-none transition-all resize-none custom-scrollbar placeholder:text-white"

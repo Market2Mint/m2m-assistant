@@ -41,6 +41,7 @@ import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
 import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl } from './handoff';
 import { UPDATE_WINDOWS, shouldApplyUpdate } from './updatePolicy';
+import { refreshPublishedMenu, resolveMenuAtBoot } from './menuSource';
 import {
   CARD_REFERENCE_LABEL,
   CARD_REFERENCE_MAX_LENGTH,
@@ -201,7 +202,15 @@ export default function App() {
   // decision that used to be buried in the parser ("Temporarily suspend and hide PSA
   // Value tier services", marked temporary, still live six weeks later) is now a data
   // flag anyone can see in serviceMenu.ts and in the generated M2M_SERVICE_MENU.md.
-  const allServices = useMemo(() => ACTIVE_SERVICES.map(toService), []);
+  // Resolved ONCE, at boot. The menu deliberately never changes underneath a live session:
+  // a customer part-way through choosing a service must not have the price move, and doing
+  // the swap only when there is no session is the cheapest way to guarantee that. A newly
+  // published menu lands at the next reload, which the update policy already schedules.
+  const [menuAtBoot] = useState(resolveMenuAtBoot);
+  const allServices = useMemo(
+    () => menuAtBoot.services.filter((s) => s.active && s.questions !== null).map(toService),
+    [menuAtBoot],
+  );
   
   const [step, setStep] = useState<'landing' | 'questions' | 'results' | 'handoff'>('landing');
   const [policyAccepted, setPolicyAccepted] = useState(false);
@@ -333,6 +342,8 @@ export default function App() {
   const [updateDetected, setUpdateDetected] = useState(false);
   const updateDetectedRef = useRef(false);
   const pendingBundleUrlRef = useRef<string | null>(null);
+  /** A newly published menu is cached and waiting for the next reload to adopt it. */
+  const menuPendingRef = useRef(false);
   const lastInteractionRef = useRef<number>(Date.now());
 
   /**
@@ -454,11 +465,22 @@ export default function App() {
 
   // Poll for bundle updates periodically (every 5 mins) & evaluate the update policy
   useEffect(() => {
-    // 1. Poll every 5 minutes for new Vercel/GitHub/Server builds
-    const updatePollInterval = setInterval(() => {
+    // 1. Poll every 5 minutes for a new bundle AND for a newly published menu.
+    //
+    // Both are "the kiosk must restart to pick this up", so they share one mechanism
+    // rather than growing two. A price edit and a code deploy then reach the fleet on the
+    // same schedule, through the same network check, with the same idle requirement.
+    const pollForChanges = () => {
       addLog('VERSION_CHECK_START: Querying server index');
       checkForUpdate();
-    }, 5 * 60 * 1000); // 5 minutes
+      refreshPublishedMenu(menuAtBoot.version, addLog).then(({ changed }) => {
+        if (changed) menuPendingRef.current = true;
+      });
+    };
+    const updatePollInterval = setInterval(pollForChanges, 5 * 60 * 1000); // 5 minutes
+    // Once at boot too. The old code waited a full five minutes before its first check,
+    // so a kiosk restarted to pick up a fix learned about the next one late.
+    pollForChanges();
 
     // 2. Every 10 seconds, ask the policy whether now is the moment.
     //
@@ -472,7 +494,7 @@ export default function App() {
 
       const decision = shouldApplyUpdate({
         now: new Date(),
-        updatePending: updateDetectedRef.current,
+        updatePending: updateDetectedRef.current || menuPendingRef.current,
         online: navigator.onLine,
         msSinceInteraction: Date.now() - lastInteractionRef.current,
         lastAppliedAt: readLastUpdateApplied(),
@@ -480,7 +502,10 @@ export default function App() {
       if (!decision.apply) return;
 
       applying = true;
-      if (!(await newBundleIsReachable())) {
+      // A menu-only change needs no bundle check — the new menu is already cached on the
+      // device and a reload simply adopts it. Demanding a reachable bundle would strand a
+      // published price change behind an unrelated network problem.
+      if (updateDetectedRef.current && !(await newBundleIsReachable())) {
         // Deliberately does NOT mark the window as serviced — the kiosk is still owed
         // this update and should retry on the next tick once the network recovers.
         addLog('VERSION_HOLD: Update due but the new bundle could not be fetched. Not reloading.');

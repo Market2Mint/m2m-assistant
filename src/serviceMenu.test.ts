@@ -42,10 +42,34 @@ describe('SGC is two tiers, each with a pack-pulled autograph variant', () => {
     expect(priceOf('SGC Expedited w/Auto').businessDays).toBe(15);
   });
 
-  it('discloses that the autograph grade only lands on a card that grades a 10', () => {
+  it('carries the grade-10 disclosure in the DESCRIPTION, not buried in the details', () => {
+    // Moved 2026-08-07 on Cayden's instruction. These two are identical to their base
+    // service in price, turnaround AND insured value, so the description was the only
+    // thing on screen that could tell them apart — and it was a verbatim copy of the
+    // base's. The explanation has to be the first thing read, not a footnote.
     for (const name of ['SGC Standard w/Auto', 'SGC Expedited w/Auto']) {
-      expect(copyFor(name).details, `${name} is missing the grade-10 disclosure`)
-        .toMatch(/only applied to the label if the card itself grades a 10/i);
+      expect(copyFor(name).description, `${name} is missing the grade-10 disclosure`)
+        .toMatch(/only if the card itself grades a 10/i);
+    }
+  });
+
+  it('does not read as a duplicate of its base service', () => {
+    // The actual requirement. If a w/Auto description ever becomes a straight copy of its
+    // base again, two rows at the same price with the same turnaround appear on screen
+    // with nothing to choose between them, and someone deletes one.
+    for (const [variant, base] of [
+      ['SGC Standard w/Auto', 'SGC Standard'],
+      ['SGC Expedited w/Auto', 'SGC Expedited'],
+    ]) {
+      expect(copyFor(variant).description, `${variant} still copies ${base}`)
+        .not.toBe(copyFor(base).description);
+    }
+  });
+
+  it('says aftermarket autographs are not accepted', () => {
+    for (const name of ['SGC Standard w/Auto', 'SGC Expedited w/Auto']) {
+      expect(copyFor(name).details, `${name} does not exclude aftermarket`)
+        .toMatch(/aftermarket/i);
     }
   });
 });

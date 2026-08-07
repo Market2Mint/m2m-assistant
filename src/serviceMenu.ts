@@ -17,9 +17,10 @@
  * now a data change that shows up in a diff.
  *
  * ADDING A NEW GRADING COMPANY is a data change: append records with their six question
- * values and re-run the generator. MBA (Base $25.00 / Express $60.00) is priced and final
- * in the sheet but marked HOLD — NOT YET LIVE and is deliberately absent, because its
- * decision-tree routing has not been supplied. Do not invent routing for it.
+ * values and re-run the generator. MBA proved it on 2026-08-07 — four routing rows, four
+ * ALIAS entries, no code change at all. A service that is priced in the sheet but has no
+ * routing yet is marked HOLD — NOT YET LIVE and stays out of the menu until it has one;
+ * do not invent routing to get it on screen.
  */
 
 /** The six decision-tree answers, in order. `null` = not routable yet. */
@@ -137,10 +138,14 @@ export const SERVICE_COPY: Record<string, { description: string; details: string
   "CGC Economy w/Auto": { description: "CGC's Economy service is an ideal option for collectors looking for reliable grading without the higher price tag. Whether you're submitting sports cards or trading card games (TCGs), CGC delivers consistent, high-quality results. Every card submitted through Market 2 Mint is wiped down and carefully handled throughout the grading process.", details: "Pack-pulled autographs only, from 1999 or newer. Only the card is graded — the autograph is authenticated by being sealed with the card, not separately graded. Adds $5.00 and about five business days to the base service." },
   "CGC Standard w/Auto": { description: "CGC's Standard service is a great choice for grading mid-value cards, offering a perfect blend of turnaround time and affordability. Whether it's sports cards or TCGs, you'll receive accurate, professional grading with CGC's trusted standards. All cards submitted through Market 2 Mint are wiped down and securely handled from submission to return.", details: "Pack-pulled autographs only, from 1999 or newer. Only the card is graded — the autograph is authenticated by being sealed with the card, not separately graded. Adds $5.00 and about five business days to the base service." },
   "CGC Express w/Auto": { description: "CGC's Express service is ideal for grading high-value cards quickly and securely. Perfect for serious collectors or sellers who need fast, reliable results. All cards submitted through Market 2 Mint are wiped down and professionally handled from start to finish.", details: "Pack-pulled autographs only, from 1999 or newer. Only the card is graded — the autograph is authenticated by being sealed with the card, not separately graded. Adds $5.00 and about five business days to the base service." },
-  "SGC Standard w/Auto": { description: "SGC Standard is a straightforward, well-priced way to have a card authenticated, graded and sealed in SGC's signature black-matted holder, insured up to $1,500.00. Suits sports cards and trading card games alike. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "Pack-pulled autographs only, from 1999 or newer. Same price and turnaround as the standard service. SGC grades the autograph, but the autograph grade is only applied to the label if the card itself grades a 10." },
-  "SGC Expedited w/Auto": { description: "SGC Expedited is the faster route for higher-value cards, insured up to $3,500.00 and returned in SGC's signature black-matted holder. Choose this when you want the card back quickly without giving up SGC's grading standards. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "Pack-pulled autographs only, from 1999 or newer. Same price and turnaround as the standard service. SGC grades the autograph, but the autograph grade is only applied to the label if the card itself grades a 10." },
+  "SGC Standard w/Auto": { description: "SGC Standard, for a pack-pulled autographed card. Pack-pulled autographs from 1999 or newer only. SGC grades the autograph as well as the card, but the autograph grade is printed on the label ONLY if the card itself grades a 10. Same price, turnaround and insured value as the standard service — the autograph is included, not charged for.", details: "Pack-pulled autographs only, from 1999 or newer. Aftermarket autographs are not accepted on this service." },
+  "SGC Expedited w/Auto": { description: "SGC Expedited, for a pack-pulled autographed card. Pack-pulled autographs from 1999 or newer only. SGC grades the autograph as well as the card, but the autograph grade is printed on the label ONLY if the card itself grades a 10. Same price, turnaround and insured value as the standard service — the autograph is included, not charged for.", details: "Pack-pulled autographs only, from 1999 or newer. Aftermarket autographs are not accepted on this service." },
   "PSA Crossover Super Express": { description: "Submit cards graded by another company for evaluation and potential crossover to PSA. You must specify your minimum acceptable grade(s) in the checkout notes; if PSA does not meet those minimums, the card will be returned in its current holder and the evaluation fee will still apply.", details: "" },
   "Slab Cracking": { description: "We will carefully remove your card from its existing holder. Whether you're preparing for a resubmission or a fresh evaluation, we handle your card with precision and care. Every cracked card is wiped down and prepped for its next destination.", details: "" },
+  "MBA Base": { description: "MBA authenticates, grades and encapsulates your card, insured up to $100.00. A straightforward, low-cost way to get a modern card slabbed. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "" },
+  "MBA Express": { description: "MBA Express is the faster route, insured up to $1,000.00. Choose it when you want the card back quickly. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "" },
+  "MBA Base w/Auto": { description: "MBA authenticates, grades and encapsulates your card, insured up to $100.00. A straightforward, low-cost way to get a modern card slabbed. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "Pack-pulled autographs only, from 1999 or newer. MBA does not accept aftermarket autographs. The autograph adds $5.00 and no extra days." },
+  "MBA Express w/Auto": { description: "MBA Express is the faster route, insured up to $1,000.00. Choose it when you want the card back quickly. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "Pack-pulled autographs only, from 1999 or newer. MBA does not accept aftermarket autographs. The autograph adds $5.00 and no extra days." },
 };
 
 export const SERVICE_MENU: ServiceRecord[] = [
@@ -1541,7 +1546,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     questions: ["Comics & Magazines", "CGC Comics", "Yes", "Either", "Either", "Comic"],
     price: { customer: 79.99, employee: null, owner: null },
     cost: null,
-    businessDays: 45,
+    businessDays: 50,
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
@@ -1554,7 +1559,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     questions: ["Comics & Magazines", "CGC Comics", "Yes", "Either", "Either", "Comic"],
     price: { customer: 139.99, employee: null, owner: null },
     cost: null,
-    businessDays: 20,
+    businessDays: 25,
     maxInsuredValue: "$1,000.00",
     active: true,
     status: "NEW / CHANGED",
@@ -1697,7 +1702,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     questions: ["Comics & Magazines", "CGC Comics", "Yes", "Either", "Either", "Magazine"],
     price: { customer: 79.99, employee: null, owner: null },
     cost: null,
-    businessDays: 45,
+    businessDays: 50,
     maxInsuredValue: "$400.00",
     active: true,
     status: "NEW / CHANGED",
@@ -1710,7 +1715,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     questions: ["Comics & Magazines", "CGC Comics", "Yes", "Either", "Either", "Magazine"],
     price: { customer: 139.99, employee: null, owner: null },
     cost: null,
-    businessDays: 20,
+    businessDays: 25,
     maxInsuredValue: "$1,000.00",
     active: true,
     status: "NEW / CHANGED",
@@ -1816,6 +1821,58 @@ export const SERVICE_MENU: ServiceRecord[] = [
     cost: null,
     businessDays: 7,
     maxInsuredValue: "NA",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+    oversizedSurcharge: null,
+  },
+  {
+    category: "Trading Cards",
+    name: "MBA Base",
+    questions: ["Trading Cards", "MBA", "No", "Skip Question", "Skip Question", "Card Grade Only"],
+    price: { customer: 25.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 30,
+    maxInsuredValue: "$100.00",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+    oversizedSurcharge: null,
+  },
+  {
+    category: "Trading Cards",
+    name: "MBA Express",
+    questions: ["Trading Cards", "MBA", "No", "Skip Question", "Skip Question", "Card Grade Only"],
+    price: { customer: 65.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 10,
+    maxInsuredValue: "$1,000.00",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+    oversizedSurcharge: null,
+  },
+  {
+    category: "Trading Cards",
+    name: "MBA Base w/Auto",
+    questions: ["Trading Cards", "MBA", "Yes", "Pack-pulled", "1999 - Newer Only", "Card & Auto Grade"],
+    price: { customer: 30.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 30,
+    maxInsuredValue: "$100.00",
+    active: true,
+    status: "NEW / CHANGED",
+    priceIsMinimum: false,
+    oversizedSurcharge: null,
+  },
+  {
+    category: "Trading Cards",
+    name: "MBA Express w/Auto",
+    questions: ["Trading Cards", "MBA", "Yes", "Pack-pulled", "1999 - Newer Only", "Card & Auto Grade"],
+    price: { customer: 70.0, employee: null, owner: null },
+    cost: null,
+    businessDays: 10,
+    maxInsuredValue: "$1,000.00",
     active: true,
     status: "NEW / CHANGED",
     priceIsMinimum: false,

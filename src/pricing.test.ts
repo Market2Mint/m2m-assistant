@@ -174,9 +174,46 @@ describe('the shipped menu carries no internal pricing', () => {
     }
   });
 
-  it('does not offer MBA — priced and final, but routing not yet supplied', () => {
-    // MBA Base $25.00 / MBA Express $60.00 are HOLD — NOT YET LIVE in the pricing
-    // sheet. They must not reach a customer until their question path exists.
-    expect(SERVICE_MENU.filter((s) => s.name.startsWith('MBA'))).toEqual([]);
+  it('offers MBA at the four prices Cayden supplied', () => {
+    // Went live 2026-08-07. This test used to assert MBA was ABSENT — it was HOLD, priced
+    // but with no routing. Adding it was four rows in the routing CSV and four ALIAS
+    // entries, no code, which was the whole point of generating the menu.
+    const expected = {
+      'MBA Base': { price: 25.0, days: 30, insured: '$100.00' },
+      'MBA Base w/Auto': { price: 30.0, days: 30, insured: '$100.00' },
+      'MBA Express': { price: 65.0, days: 10, insured: '$1,000.00' },
+      'MBA Express w/Auto': { price: 70.0, days: 10, insured: '$1,000.00' },
+    };
+    for (const [name, want] of Object.entries(expected)) {
+      const matches = ACTIVE_SERVICES.filter((s) => s.name === name);
+      expect(matches.length, `${name} is not reachable`).toBeGreaterThan(0);
+      for (const m of matches) {
+        expect(m.price.customer, `${name} price`).toBe(want.price);
+        expect(m.businessDays, `${name} turnaround`).toBe(want.days);
+        expect(m.maxInsuredValue, `${name} insured value`).toBe(want.insured);
+      }
+    }
+  });
+
+  it('charges $5.00 for an MBA autograph and adds NO days', () => {
+    // Cayden, 2026-08-07: "w/Auto is +$5.00 and NO extra days." Pinned because it is the
+    // one MBA figure carrying an unconfirmed assumption — that MBA charges M2M nothing
+    // extra for the autograph, which no other grader does. If MBA turns out to bill for
+    // it, this is the line that has to move and the margin audit is what will catch it.
+    const priceOf = (n: string) => ACTIVE_SERVICES.find((s) => s.name === n)!;
+    expect(priceOf('MBA Base w/Auto').price.customer - priceOf('MBA Base').price.customer).toBe(5);
+    expect(priceOf('MBA Express w/Auto').price.customer - priceOf('MBA Express').price.customer).toBe(5);
+    expect(priceOf('MBA Base w/Auto').businessDays).toBe(priceOf('MBA Base').businessDays);
+    expect(priceOf('MBA Express w/Auto').businessDays).toBe(priceOf('MBA Express').businessDays);
+  });
+
+  it('never routes an MBA aftermarket autograph — MBA does not accept them', () => {
+    // A path that exists but cannot be honoured is worse than no path: the customer pays
+    // and the shop finds out at intake.
+    const mba = ACTIVE_SERVICES.filter((s) => s.name.startsWith('MBA'));
+    expect(mba.length).toBe(4);
+    for (const s of mba) {
+      expect(s.questions![3], `${s.name} accepts an aftermarket autograph`).not.toBe('Aftermarket');
+    }
   });
 });

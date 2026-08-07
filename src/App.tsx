@@ -24,7 +24,8 @@ import {
   Trash2,
   Play
 } from 'lucide-react';
-import { CSV_DATA, POLICY, TERMS_OF_USE_SECTIONS, PRIVACY_POLICY_SECTIONS, SUBMISSION_POLICY_SECTIONS } from './data';
+import { POLICY, TERMS_OF_USE_SECTIONS, PRIVACY_POLICY_SECTIONS, SUBMISSION_POLICY_SECTIONS } from './data';
+import { ACTIVE_SERVICES, copyFor, type ServiceRecord } from './serviceMenu';
 import badgeUrl from './assets/M2M_badge.png';
 import {
   PREGRADE_PRICE_KIOSK,
@@ -59,119 +60,20 @@ interface ModalProps {
 
 // --- Helpers ---
 
-const parseCSV = (csv: string): Service[] => {
-  const lines = csv.split('\n').filter(line => line.trim() !== '');
-  const services: Service[] = [];
-  
-  // Skip header
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    // Simple CSV parser that handles quotes
-    const parts: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let j = 0; j < line.length; j++) {
-      const char = line[j];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        parts.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    parts.push(current.trim());
-
-    if (parts.length >= 7 && parts[0] && parts[6]) {
-      const firstCol = parts[0].toLowerCase();
-      // Skip the descriptive header lines
-      if (
-        firstCol.includes('what can we help') ||
-        firstCol.includes('option 1') ||
-        firstCol.includes('make the below')
-      ) {
-        continue;
-      }
-      
-      const isPSA = parts[1] === 'PSA';
-      const serviceName = parts[6];
-      const sNameNorm = serviceName.toLowerCase();
-      
-      // Temporarily suspend and hide PSA Value tier services in high demand
-      if (isPSA) {
-        if (
-          sNameNorm.includes('value bulk') || 
-          sNameNorm.includes('value (1980') ||
-          sNameNorm.includes('value & vintage') ||
-          sNameNorm === 'value plus' ||
-          sNameNorm.includes('value plus') ||
-          sNameNorm.includes('value max')
-        ) {
-          continue;
-        }
-      }
-
-      services.push({
-        questions: [parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]],
-        name: parts[6],
-        cost: parts[7] || 'N/A',
-        turnaround: parts[8] || 'N/A',
-        maxValue: parts[9] || 'N/A',
-        description: parts[10] || '',
-        details: parts[11] || ''
-      });
-    }
-  }
-
-  // Backfill missing descriptions and details by matching non-empty ones for the same service name or its base name
-  const getBaseName = (name: string): string => {
-    return name.replace(/\s+w\/Auto.*/gi, '').trim();
-  };
-
-  const descriptionMap = new Map<string, string>();
-  const detailsMap = new Map<string, string>();
-
-  for (const s of services) {
-    if (s.description && !descriptionMap.has(s.name)) {
-      descriptionMap.set(s.name, s.description);
-    }
-    if (s.details && !detailsMap.has(s.name)) {
-      detailsMap.set(s.name, s.details);
-    }
-  }
-
-  for (const s of services) {
-    const base = getBaseName(s.name);
-    if (s.description && !descriptionMap.has(base)) {
-      descriptionMap.set(base, s.description);
-    }
-    if (s.details && !detailsMap.has(base)) {
-      detailsMap.set(base, s.details);
-    }
-  }
-
-  for (const s of services) {
-    const base = getBaseName(s.name);
-    if (!s.description) {
-      if (descriptionMap.has(s.name)) {
-        s.description = descriptionMap.get(s.name)!;
-      } else if (descriptionMap.has(base)) {
-        s.description = descriptionMap.get(base)!;
-      }
-    }
-    if (!s.details) {
-      if (detailsMap.has(s.name)) {
-        s.details = detailsMap.get(s.name)!;
-      } else if (detailsMap.has(base)) {
-        s.details = detailsMap.get(base)!;
-      }
-    }
-  }
-
-  return services;
-};
+/**
+ * The render code below works in `Service`, so the generated menu is adapted to that
+ * shape once, here. This replaces a 110-line CSV parser that ran on every boot and
+ * silently dropped malformed rows — a bad row meant a service just vanished from the
+ * kiosk with no error. The menu is now typed data, checked at build time.
+ */
+const toService = (r: ServiceRecord): Service => ({
+  questions: r.questions as string[],
+  name: r.name,
+  cost: formatUSD(r.price.customer),
+  turnaround: String(r.businessDays),
+  maxValue: r.maxInsuredValue,
+  ...copyFor(r.name),
+});
 
 // --- Components ---
 
@@ -216,9 +118,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMai
 };
 
 export default function App() {
-  const allServices = useMemo(() => {
-    return parseCSV(CSV_DATA);
-  }, []);
+  // ACTIVE_SERVICES is already filtered to active + routable, so the merchandising
+  // decision that used to be buried in the parser ("Temporarily suspend and hide PSA
+  // Value tier services", marked temporary, still live six weeks later) is now a data
+  // flag anyone can see in serviceMenu.ts and in the generated M2M_SERVICE_MENU.md.
+  const allServices = useMemo(() => ACTIVE_SERVICES.map(toService), []);
   
   const [step, setStep] = useState<'landing' | 'questions' | 'results' | 'handoff'>('landing');
   const [policyAccepted, setPolicyAccepted] = useState(false);

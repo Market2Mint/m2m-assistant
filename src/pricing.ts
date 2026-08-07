@@ -15,14 +15,18 @@
 export const PREGRADE_PRICE_KIOSK = 7.0;
 
 /**
- * The cheapest full submission, per card — BGS Base, CGC Economy and SGC <1500 all sit
- * here. Quoted on the landing screen as "FROM $25.00". `pricing.test.ts` checks this
- * against the live service menu in data.ts so the two cannot drift apart silently.
+ * The cheapest full submission, per card. Quoted on the landing screen as "FROM $25.00".
+ * `pricing.test.ts` checks every entry against the live service menu — both that the
+ * price still holds AND that the service is still active — so the claim on the attract
+ * screen cannot outlive the menu behind it.
+ *
+ * `BGS Base` was here until 2026-08-06 and was removed because BGS retired it. That test
+ * failing is what caught it. `CGC Economy` and `SGC Standard` are both still $25.00, so
+ * "FROM $25.00" survives on measured data rather than on habit.
  */
 export const SUBMISSION_BASE_TIERS = {
-  'BGS Base': 25.0,
   'CGC Economy': 25.0,
-  'SGC <1500': 25.0,
+  'SGC Standard': 25.0,
 } as const;
 
 export const SUBMISSION_FROM_PRICE = Math.min(...Object.values(SUBMISSION_BASE_TIERS));
@@ -58,3 +62,18 @@ export const shippingFeeForCart = (itemCount: number): number =>
 /** Prices always carry two decimals — `$7.00`, never `$7` (BRAND FOUNDATION v6 §2). */
 export const formatUSD = (amount: number): string =>
   `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/**
+ * Every turnaround shown to a customer, in one place.
+ *
+ * The `~` is not decoration. Turnarounds are the grader's estimate and begin when the
+ * grader receives the item — and the kiosk has shipped numbers faster than the grader
+ * actually delivers. `~` is also already M2M's house style: the printed customer menu
+ * writes "~20 Business Days" throughout, so the kiosk matches the counter rather than
+ * inventing a second convention.
+ *
+ * One formatter, called from everywhere a day count appears. Two copies of one rule is
+ * exactly how the shipping fee ended up charging $29.00 while printing $24.00.
+ */
+export const formatTurnaround = (businessDays: number): string =>
+  `~${businessDays} BUSINESS DAYS`;

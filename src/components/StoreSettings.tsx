@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getLogs, clearLogs, addLog, type LogEntry } from '../utils/logger';
+import { UPDATE_WINDOWS } from '../updatePolicy';
 
 const STORE_OPTIONS = [
   "HH - Escondido, CA.",
@@ -253,6 +254,46 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
     setLogs(getLogs());
     setShowLog(true);
   };
+
+  /**
+   * What this kiosk is running and when it last moved — the four facts you need to answer
+   * "did that reach the shops?" without driving to one.
+   *
+   * Read off the live document rather than a build-time constant, so it cannot claim a
+   * version the kiosk is not actually running. Everything is wrapped because a diagnostics
+   * panel that throws is worse than one that says "unknown".
+   */
+  const fleetStatus = React.useMemo(() => {
+    const safe = <T,>(fn: () => T, fallback: T): T => {
+      try {
+        return fn();
+      } catch {
+        return fallback;
+      }
+    };
+
+    const build = safe(() => {
+      const src = Array.from(document.getElementsByTagName('script'))
+        .map((s) => s.getAttribute('src') || '')
+        .find((s) => s.includes('assets/index-'));
+      // "assets/index-CYeDT1fv.js" → "CYeDT1fv". Vite rehashes this on every build, so it
+      // is a real deploy identity rather than a number someone has to remember to bump.
+      return src?.match(/index-([A-Za-z0-9_-]+)\./)?.[1] ?? 'dev';
+    }, 'unknown');
+
+    const lastUpdate = safe(() => {
+      const raw = localStorage.getItem('m2m_last_update_applied');
+      const ms = raw === null ? NaN : Number(raw);
+      return Number.isFinite(ms) ? new Date(ms).toLocaleString() : 'never';
+    }, 'unknown');
+
+    return [
+      { label: 'Build', value: build },
+      { label: 'Store', value: safe(() => localStorage.getItem('storeCode') || 'NOT SET', '—') },
+      { label: 'Last update', value: lastUpdate },
+      { label: 'Update windows', value: UPDATE_WINDOWS.map((h) => `${h}:00`).join(' · ') },
+    ];
+  }, [showLog]);
 
   const handleClearLog = () => {
     if (confirm('Clear system log?')) {
@@ -572,6 +613,30 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                               Reload App
                             </button>
                           </div>
+
+                          {/*
+                            FLEET STATUS, readable over the phone.
+
+                            There are ~18 of these and no central console, so the only way
+                            to answer "did that fix reach the shops?" has been to drive
+                            there. Anyone standing at a kiosk can now read these four
+                            lines out. Cheap, and it turns an invisible fleet into one you
+                            can ask questions about.
+
+                            The build id is the hashed bundle filename Vite already emits,
+                            so it changes on every deploy and cannot drift from what is
+                            actually running.
+                          */}
+                          <dl className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-[11px]">
+                            {fleetStatus.map(({ label, value }) => (
+                              <div key={label} className="flex justify-between gap-4">
+                                <dt className="font-black uppercase tracking-widest text-zinc-500">
+                                  {label}
+                                </dt>
+                                <dd className="truncate font-mono text-zinc-300">{value}</dd>
+                              </div>
+                            ))}
+                          </dl>
                         </div>
 
                         {/* Card Show Mode */}

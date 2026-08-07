@@ -40,6 +40,7 @@ import {
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
 import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl } from './handoff';
+import { UPDATE_WINDOWS, shouldApplyUpdate } from './updatePolicy';
 import {
   CARD_REFERENCE_LABEL,
   CARD_REFERENCE_MAX_LENGTH,
@@ -192,6 +193,9 @@ const AnswerTrail: React.FC<{ answers: { value: string; auto: boolean }[] }> = (
 /** The Question-1 value that identifies the pregrade path. */
 const PREGRADE_CATEGORY = 'Pregrading';
 
+/** Survives the reload it guards — see `readLastUpdateApplied`. */
+const LAST_UPDATE_APPLIED_KEY = 'm2m_last_update_applied';
+
 export default function App() {
   // ACTIVE_SERVICES is already filtered to active + routable, so the merchandising
   // decision that used to be buried in the parser ("Temporarily suspend and hide PSA
@@ -328,7 +332,32 @@ export default function App() {
 
   const [updateDetected, setUpdateDetected] = useState(false);
   const updateDetectedRef = useRef(false);
+  const pendingBundleUrlRef = useRef<string | null>(null);
   const lastInteractionRef = useRef<number>(Date.now());
+
+  /**
+   * When this kiosk last took an update. In localStorage because it has to survive the
+   * reload it describes — the whole point is to stop the kiosk re-applying inside the
+   * same window, and an in-memory value is wiped by the very act it is guarding.
+   */
+  const readLastUpdateApplied = (): number | null => {
+    try {
+      const raw = localStorage.getItem(LAST_UPDATE_APPLIED_KEY);
+      const parsed = raw === null ? NaN : Number(raw);
+      return Number.isFinite(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const writeLastUpdateApplied = (at: number) => {
+    try {
+      localStorage.setItem(LAST_UPDATE_APPLIED_KEY, String(at));
+    } catch {
+      // Storage full or blocked. The update still applies; the worst case is one extra
+      // reload in this window, which is far better than refusing to update at all.
+    }
+  };
 
   // Keep state ref in sync
   useEffect(() => {
@@ -386,6 +415,9 @@ export default function App() {
       const current = currentBundleUrlRef.current;
       if (fetchedUrl !== current) {
         addLog(`VERSION_CHECK_UPDATE: Detected new bundle ${fetchedUrl} (Running: ${current})`);
+        // Remembered so the pre-reload check can fetch the exact bundle we are about to
+        // reload into, rather than merely proving that *something* answers.
+        pendingBundleUrlRef.current = fetchedUrl;
         setUpdateDetected(true);
         console.log(`Version Check: New bundle detected! (${fetchedUrl})`);
       } else {
@@ -398,7 +430,29 @@ export default function App() {
     }
   };
 
-  // Poll for bundle updates periodically (every 5 mins) & check idle reload triggers (every 10 seconds)
+  /**
+   * Confirm the new bundle is genuinely fetchable before committing to a reload.
+   *
+   * `navigator.onLine` reports a LINK, not reachability — an iPad associated to a shop
+   * access point whose uplink is down reports online. Reloading on that answer lands on a
+   * Safari error page, and because the app is gone, nothing retries: the kiosk is dead
+   * until someone notices. Actually pulling the bundle is the only honest test, and it is
+   * cheap next to the cost of being wrong.
+   */
+  const newBundleIsReachable = async (): Promise<boolean> => {
+    try {
+      const target = pendingBundleUrlRef.current;
+      if (!target) return false;
+      const res = await fetch(`${target}${target.includes('?') ? '&' : '?'}cb=${Date.now()}`, {
+        cache: 'no-store',
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  // Poll for bundle updates periodically (every 5 mins) & evaluate the update policy
   useEffect(() => {
     // 1. Poll every 5 minutes for new Vercel/GitHub/Server builds
     const updatePollInterval = setInterval(() => {
@@ -406,17 +460,39 @@ export default function App() {
       checkForUpdate();
     }, 5 * 60 * 1000); // 5 minutes
 
-    // 2. Check every 10 seconds if kiosk is idle with an update pending
-    const idleCheckInterval = setInterval(() => {
-      if (updateDetectedRef.current) {
-        const timeSinceLastInteraction = Date.now() - lastInteractionRef.current;
-        if (timeSinceLastInteraction >= 5 * 60 * 1000) { // 5 minutes (300,000ms)
-          addLog('VERSION_AUTO_RELOAD: Kiosk has been idle for 5 mins with update pending. Reloading.');
-          clearInterval(updatePollInterval);
-          clearInterval(idleCheckInterval);
-          window.location.reload();
-        }
+    // 2. Every 10 seconds, ask the policy whether now is the moment.
+    //
+    // This used to be "reload as soon as idle 5 minutes", which is why a deploy rolled
+    // through the shops one at a time all afternoon, and why a kiosk could reload onto a
+    // dead network. The policy adds two windows a day and a network check; the fetch
+    // below adds proof. See src/updatePolicy.ts.
+    let applying = false;
+    const idleCheckInterval = setInterval(async () => {
+      if (applying) return;
+
+      const decision = shouldApplyUpdate({
+        now: new Date(),
+        updatePending: updateDetectedRef.current,
+        online: navigator.onLine,
+        msSinceInteraction: Date.now() - lastInteractionRef.current,
+        lastAppliedAt: readLastUpdateApplied(),
+      });
+      if (!decision.apply) return;
+
+      applying = true;
+      if (!(await newBundleIsReachable())) {
+        // Deliberately does NOT mark the window as serviced — the kiosk is still owed
+        // this update and should retry on the next tick once the network recovers.
+        addLog('VERSION_HOLD: Update due but the new bundle could not be fetched. Not reloading.');
+        applying = false;
+        return;
       }
+
+      addLog(`VERSION_AUTO_RELOAD: Applying update in window (${decision.reason}).`);
+      writeLastUpdateApplied(Date.now());
+      clearInterval(updatePollInterval);
+      clearInterval(idleCheckInterval);
+      window.location.reload();
     }, 10000); // 10 seconds
 
     return () => {

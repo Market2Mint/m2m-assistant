@@ -69,11 +69,21 @@ describe('shouldApplyUpdate', () => {
     expect(shouldApplyUpdate(base)).toEqual({ apply: true, reason: 'ready' });
   });
 
-  it('does nothing when no update is pending — the overwhelmingly common case', () => {
+  it('reloads on the window even with NO update pending — the belt-and-braces case', () => {
+    // Changed 2026-08-07, deliberately. `updatePending` is set by the very check that may
+    // be broken, so gating on it means a kiosk with a silently failing poll reports "up to
+    // date" forever and never reloads. The unconditional window reload is the only action
+    // that does not depend on the poll working, so it is the only thing that can rescue
+    // such a kiosk. It costs a few seconds on an idle screen at 4am.
     expect(shouldApplyUpdate({ ...base, updatePending: false })).toEqual({
-      apply: false,
-      reason: 'no-update-pending',
+      apply: true,
+      reason: 'scheduled-refresh',
     });
+  });
+
+  it('still distinguishes a real update from a scheduled refresh, for the logs', () => {
+    expect(shouldApplyUpdate({ ...base, updatePending: true }).reason).toBe('ready');
+    expect(shouldApplyUpdate({ ...base, updatePending: false }).reason).toBe('scheduled-refresh');
   });
 
   it('never reloads while offline', () => {
@@ -84,6 +94,12 @@ describe('shouldApplyUpdate', () => {
       apply: false,
       reason: 'offline',
     });
+  });
+
+  it('refuses a scheduled refresh while offline, exactly like a real update', () => {
+    // The forced reload is insurance, so it must be at least as careful as the thing it
+    // insures. Reloading a HEALTHY kiosk into a dead network would be self-inflicted.
+    expect(shouldApplyUpdate({ ...base, updatePending: false, online: false }).apply).toBe(false);
   });
 
   it('reports offline even when the kiosk is also busy', () => {
@@ -130,6 +146,43 @@ describe('shouldApplyUpdate', () => {
 
   it('updates a brand-new kiosk that has never updated', () => {
     expect(shouldApplyUpdate({ ...base, lastAppliedAt: null }).apply).toBe(true);
+  });
+
+  it('THE COLD-START CASE: asleep overnight, build published at 02:00, woken at 09:00', () => {
+    // The real-world scenario, and the one most likely to have been failing. A sleeping
+    // iPad does not run setInterval — timers are suspended, not queued — so the kiosk
+    // performs NO check at 04:00 and nothing fires late. It learns about the new build
+    // only because waking now triggers a check directly (see the visibilitychange /
+    // pageshow listeners in App.tsx); a timer alone would have left it up to five more
+    // minutes, and on the old build there was no wake trigger at all.
+    //
+    // Once it knows, 09:00 sits inside the 04:00 window, which yesterday's update did not
+    // serve — so it is eligible immediately rather than waiting for 11:00.
+    const lastAppliedAt = at(6, 11, 15).getTime(); // yesterday's 11:00 window
+    expect(shouldApplyUpdate({ ...base, now: at(7, 9, 0), lastAppliedAt })).toEqual({
+      apply: true,
+      reason: 'ready',
+    });
+  });
+
+  it('waits for the shop to go quiet before taking it, even on a cold start', () => {
+    // Whoever woke the iPad probably touched it. The update must not land while they are
+    // standing there — it waits out the idle period like any other.
+    const lastAppliedAt = at(6, 11, 15).getTime();
+    expect(
+      shouldApplyUpdate({ ...base, now: at(7, 9, 0), lastAppliedAt, msSinceInteraction: 30_000 }),
+    ).toEqual({ apply: false, reason: 'in-use' });
+  });
+
+  it('rescues a kiosk whose update CHECK has been broken for weeks', () => {
+    // The case that motivated the scheduled refresh. This kiosk believes it is current —
+    // its poll has been failing silently, so updatePending is false and has been for a
+    // month. Nothing it knows about itself is true. The window reload does not consult
+    // any of that, which is the only reason it recovers.
+    const lastAppliedAt = at(6, 11, 15).getTime();
+    expect(
+      shouldApplyUpdate({ ...base, now: at(7, 9, 0), lastAppliedAt, updatePending: false }),
+    ).toEqual({ apply: true, reason: 'scheduled-refresh' });
   });
 
   it('does not reload repeatedly through the small hours', () => {

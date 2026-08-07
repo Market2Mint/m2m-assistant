@@ -27,6 +27,7 @@
 
 import React from 'react';
 import { addLog } from './utils/logger';
+import { hardReload } from './utils/hardReload';
 
 /** Long enough to read the message, short enough that a shop is not left with a dead panel. */
 const RECOVERY_DELAY_MS = 20000;
@@ -89,7 +90,7 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
       // A full reload, not a state reset: whatever produced the error is somewhere in a
       // tree this component can no longer trust, and a clean boot is the only state that
       // is definitely valid.
-      this.timer = setTimeout(() => window.location.reload(), RECOVERY_DELAY_MS);
+      this.timer = setTimeout(hardReload, RECOVERY_DELAY_MS);
     }
   }
 
@@ -139,7 +140,7 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
           This order was not submitted. Nothing has been charged.
         </p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={hardReload}
           style={{
             marginTop: '0.5rem',
             padding: '1.25rem 3rem',

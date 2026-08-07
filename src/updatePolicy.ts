@@ -69,6 +69,46 @@ export const mostRecentWindowStart = (now: Date, windows: number[] = UPDATE_WIND
   return yesterday;
 };
 
+/**
+ * What this kiosk knows about its own updater.
+ *
+ * Persisted, because the interesting failures span reloads and reboots: "this kiosk has
+ * not completed a successful check since the 3rd" is the sentence that identifies a broken
+ * shop, and it cannot be assembled from anything held in memory.
+ *
+ * This is also precisely the payload telemetry needs to send. It is defined here rather
+ * than inside the beacon so the Settings panel and the beacon report the same numbers by
+ * construction — a health readout that disagrees with the fleet view is worse than none.
+ */
+export interface UpdateHealth {
+  /** Epoch ms of the last check that actually reached the server. */
+  lastSuccessfulCheck: number | null;
+  /** Epoch ms of the last reload this kiosk applied. */
+  lastAppliedAt: number | null;
+  /** Consecutive failed checks. Non-zero for long is the alarm that matters. */
+  consecutiveFailures: number;
+  /** Total failures since this device was first seen — survives a lucky success. */
+  totalFailures: number;
+}
+
+export const EMPTY_HEALTH: UpdateHealth = {
+  lastSuccessfulCheck: null,
+  lastAppliedAt: null,
+  consecutiveFailures: 0,
+  totalFailures: 0,
+};
+
+/**
+ * A kiosk that has not completed a check in this long is presumed broken, not quiet.
+ *
+ * Two days rather than one: a shop shut for a public holiday with the iPad asleep is
+ * normal and must not page anyone. Three days would hide a fault across a weekend.
+ */
+export const STALE_AFTER_MS = 48 * 60 * 60 * 1000;
+
+export const isStale = (health: UpdateHealth, now: number): boolean =>
+  health.lastSuccessfulCheck === null || now - health.lastSuccessfulCheck > STALE_AFTER_MS;
+
 export interface UpdateDecisionInput {
   now: Date;
   /** A newer bundle has been seen on the server. */
@@ -84,7 +124,17 @@ export interface UpdateDecisionInput {
 
 export type UpdateDecisionReason =
   | 'ready'
-  | 'no-update-pending'
+  /**
+   * No new version was detected, but the window is due and the kiosk reloads anyway.
+   *
+   * This is the belt-and-braces case, added 2026-08-07. A kiosk whose update CHECK is
+   * broken can never discover that it is broken — it reports "up to date" forever because
+   * nothing it believes is being tested. An unconditional daily reload is the one action
+   * that does not depend on the poll working, so it is the only thing that can rescue a
+   * kiosk stuck behind a silently failing check. It costs a few seconds on an idle screen
+   * at 4am.
+   */
+  | 'scheduled-refresh'
   | 'offline'
   | 'in-use'
   | 'window-already-serviced';
@@ -107,7 +157,6 @@ export interface UpdateDecision {
  * fetch decides whether it is safe.
  */
 export const shouldApplyUpdate = (input: UpdateDecisionInput): UpdateDecision => {
-  if (!input.updatePending) return { apply: false, reason: 'no-update-pending' };
   if (!input.online) return { apply: false, reason: 'offline' };
   if (input.msSinceInteraction < IDLE_REQUIRED_MS) return { apply: false, reason: 'in-use' };
 
@@ -115,5 +164,13 @@ export const shouldApplyUpdate = (input: UpdateDecisionInput): UpdateDecision =>
   if (input.lastAppliedAt !== null && input.lastAppliedAt >= windowStart) {
     return { apply: false, reason: 'window-already-serviced' };
   }
-  return { apply: true, reason: 'ready' };
+
+  // NOTE `updatePending` is no longer a precondition — it only names the reason.
+  //
+  // It used to gate everything, and that is the trap: the flag is set by the very check
+  // that might be broken. A kiosk whose poll silently fails has `updatePending === false`
+  // permanently and would never reload, so the mechanism that keeps the fleet current is
+  // exactly the mechanism that cannot notice it has stopped working. Reloading on the
+  // window regardless breaks that circularity.
+  return { apply: true, reason: input.updatePending ? 'ready' : 'scheduled-refresh' };
 };

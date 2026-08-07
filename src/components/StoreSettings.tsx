@@ -27,7 +27,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getLogs, clearLogs, addLog, type LogEntry } from '../utils/logger';
-import { UPDATE_WINDOWS } from '../updatePolicy';
+import { EMPTY_HEALTH, UPDATE_WINDOWS, isStale } from '../updatePolicy';
+import { BUILD_LABEL } from '../buildInfo';
+import { hardReload } from '../utils/hardReload';
 
 const STORE_OPTIONS = [
   "HH - Escondido, CA.",
@@ -246,7 +248,10 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
 
   const handleForceReload = () => {
     if (confirm('Force reload application? This will refresh all data.')) {
-      window.location.reload();
+      // hardReload, not location.reload: this is the button someone talks a shop owner
+      // through when a kiosk is stuck on an old build, so it is the one place a
+      // cache-served reload would be worst — it would appear to work and change nothing.
+      hardReload();
     }
   };
 
@@ -272,25 +277,37 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
       }
     };
 
-    const build = safe(() => {
-      const src = Array.from(document.getElementsByTagName('script'))
-        .map((s) => s.getAttribute('src') || '')
-        .find((s) => s.includes('assets/index-'));
-      // "assets/index-CYeDT1fv.js" → "CYeDT1fv". Vite rehashes this on every build, so it
-      // is a real deploy identity rather than a number someone has to remember to bump.
-      return src?.match(/index-([A-Za-z0-9_-]+)\./)?.[1] ?? 'dev';
-    }, 'unknown');
+    const when = (ms: number | null) =>
+      ms === null || !Number.isFinite(ms) ? 'never' : new Date(ms).toLocaleString();
 
-    const lastUpdate = safe(() => {
+    const health = safe(() => {
+      const raw = localStorage.getItem('m2m_update_health');
+      const parsed = raw ? JSON.parse(raw) : {};
+      return { ...EMPTY_HEALTH, ...parsed };
+    }, EMPTY_HEALTH);
+
+    const lastApplied = safe(() => {
       const raw = localStorage.getItem('m2m_last_update_applied');
       const ms = raw === null ? NaN : Number(raw);
-      return Number.isFinite(ms) ? new Date(ms).toLocaleString() : 'never';
-    }, 'unknown');
+      return Number.isFinite(ms) ? ms : null;
+    }, null);
+
+    // The health line leads with the alarm when there is one. A kiosk that has not
+    // completed a check in 48 hours is the single fact worth reading down a phone, and
+    // burying it under four neutral rows would defeat the point of having it.
+    const stale = isStale({ ...health, lastAppliedAt: lastApplied }, Date.now());
+    const healthValue = stale
+      ? `⚠ NOT CHECKED IN — last OK ${when(health.lastSuccessfulCheck)}`
+      : health.consecutiveFailures > 0
+        ? `⚠ ${health.consecutiveFailures} failed checks in a row`
+        : 'OK';
 
     return [
-      { label: 'Build', value: build },
+      { label: 'Build', value: BUILD_LABEL },
       { label: 'Store', value: safe(() => localStorage.getItem('storeCode') || 'NOT SET', '—') },
-      { label: 'Last update', value: lastUpdate },
+      { label: 'Updater', value: healthValue },
+      { label: 'Last checked', value: when(health.lastSuccessfulCheck) },
+      { label: 'Last updated', value: when(lastApplied) },
       { label: 'Update windows', value: UPDATE_WINDOWS.map((h) => `${h}:00`).join(' · ') },
     ];
   }, [showLog]);

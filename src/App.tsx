@@ -39,8 +39,9 @@ import {
 } from './pricing';
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
+import { hardReload } from './utils/hardReload';
 import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl } from './handoff';
-import { UPDATE_WINDOWS, shouldApplyUpdate } from './updatePolicy';
+import { EMPTY_HEALTH, UPDATE_WINDOWS, shouldApplyUpdate, type UpdateHealth } from './updatePolicy';
 import { refreshPublishedMenu, resolveMenuAtBoot } from './menuSource';
 import {
   CARD_REFERENCE_LABEL,
@@ -196,6 +197,10 @@ const PREGRADE_CATEGORY = 'Pregrading';
 
 /** Survives the reload it guards — see `readLastUpdateApplied`. */
 const LAST_UPDATE_APPLIED_KEY = 'm2m_last_update_applied';
+
+/** Updater health. Persisted because the interesting failures span reloads. */
+const UPDATE_HEALTH_KEY = 'm2m_update_health';
+
 
 export default function App() {
   // ACTIVE_SERVICES is already filtered to active + routable, so the merchandising
@@ -370,6 +375,49 @@ export default function App() {
     }
   };
 
+  /**
+   * Updater health, persisted across reloads.
+   *
+   * The failure that matters is not one bad check — shop WiFi drops constantly — it is a
+   * kiosk that has not completed a successful check since last month. That sentence can
+   * only be written down, never remembered, so it lives in storage.
+   */
+  const readHealth = (): UpdateHealth => {
+    try {
+      const raw = localStorage.getItem(UPDATE_HEALTH_KEY);
+      if (!raw) return { ...EMPTY_HEALTH, lastAppliedAt: readLastUpdateApplied() };
+      return { ...EMPTY_HEALTH, ...JSON.parse(raw), lastAppliedAt: readLastUpdateApplied() };
+    } catch {
+      return { ...EMPTY_HEALTH };
+    }
+  };
+
+  const writeHealth = (next: Partial<UpdateHealth>) => {
+    try {
+      const merged = { ...readHealth(), ...next };
+      localStorage.setItem(UPDATE_HEALTH_KEY, JSON.stringify(merged));
+    } catch {
+      /* storage blocked — health is diagnostic, never load-bearing */
+    }
+  };
+
+  const recordCheckSuccess = () => {
+    const before = readHealth();
+    writeHealth({ lastSuccessfulCheck: Date.now(), consecutiveFailures: 0 });
+    // Logged only on the transition, so a recovery is findable in a log that is otherwise
+    // one "OK" line every five minutes.
+    if (before.consecutiveFailures > 0) {
+      addLog(`VERSION_CHECK_RECOVERED after ${before.consecutiveFailures} failures`);
+    }
+  };
+
+  const recordCheckFailure = (why: string) => {
+    const before = readHealth();
+    const consecutiveFailures = before.consecutiveFailures + 1;
+    writeHealth({ consecutiveFailures, totalFailures: before.totalFailures + 1 });
+    addLog(`VERSION_CHECK_FAILED (${consecutiveFailures} in a row): ${why}`);
+  };
+
   // Keep state ref in sync
   useEffect(() => {
     updateDetectedRef.current = updateDetected;
@@ -407,14 +455,22 @@ export default function App() {
         },
         cache: 'no-store'
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        recordCheckFailure(`HTTP ${res.status}`);
+        return;
+      }
       const htmlText = await res.text();
       
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlText, 'text/html');
       const fetchedUrl = getBundleFromDoc(doc);
 
-      if (!fetchedUrl) return;
+      if (!fetchedUrl) {
+        // A 200 that is not the app — a captive-portal WiFi login page is the classic
+        // shape, and it must not be mistaken for a healthy check.
+        recordCheckFailure('response carried no bundle url');
+        return;
+      }
 
       if (!currentBundleUrlRef.current) {
         currentBundleUrlRef.current = fetchedUrl;
@@ -422,6 +478,11 @@ export default function App() {
         console.log(`Version Check Baseline set to: ${fetchedUrl}`);
         return;
       }
+
+      // The check reached the server. Recorded BEFORE deciding whether the bundle changed,
+      // because "did the poll work" and "is there an update" are different questions and
+      // conflating them is what made a broken kiosk indistinguishable from a current one.
+      recordCheckSuccess();
 
       const current = currentBundleUrlRef.current;
       if (fetchedUrl !== current) {
@@ -437,7 +498,7 @@ export default function App() {
       }
     } catch (e) {
       console.error('Failed to run version update check:', e);
-      addLog('VERSION_CHECK_FAILED');
+      recordCheckFailure((e as Error)?.message ?? 'unknown');
     }
   };
 
@@ -482,6 +543,37 @@ export default function App() {
     // so a kiosk restarted to pick up a fix learned about the next one late.
     pollForChanges();
 
+    /*
+     * ── RE-CHECK ON WAKE. This is the fix most likely to unstick the fleet. ──
+     *
+     * These are iPads. **A sleeping iPad does not run `setInterval`** — timers are
+     * suspended, not queued, so nothing accumulates and nothing fires late. A kiosk that
+     * sleeps overnight simply does not perform its 04:00 check; it performs no checks at
+     * all until something wakes it, and then waits up to another five minutes for the next
+     * tick. Low Power Mode throttles it further, and iOS may discard a backgrounded tab
+     * and restore it from a snapshot with its timers dead.
+     *
+     * A timer is therefore the wrong primary trigger for a device that spends most of its
+     * life asleep. Waking is the event that matters, so it gets its own listener.
+     *
+     * Both events, because they fire in different situations: `visibilitychange` covers
+     * the screen coming back on and the tab being re-foregrounded; `pageshow` with
+     * `persisted` covers a restore from the back/forward cache, where no other lifecycle
+     * event fires at all and the page resumes mid-flight.
+     */
+    const recheckOnWake = (why: string) => {
+      addLog(`VERSION_CHECK_WAKE: ${why}`);
+      pollForChanges();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') recheckOnWake('visibilitychange');
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) recheckOnWake('pageshow/bfcache');
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pageshow', onPageShow as EventListener);
+
     // 2. Every 10 seconds, ask the policy whether now is the moment.
     //
     // This used to be "reload as soon as idle 5 minutes", which is why a deploy rolled
@@ -517,12 +609,14 @@ export default function App() {
       writeLastUpdateApplied(Date.now());
       clearInterval(updatePollInterval);
       clearInterval(idleCheckInterval);
-      window.location.reload();
+      hardReload();
     }, 10000); // 10 seconds
 
     return () => {
       clearInterval(updatePollInterval);
       clearInterval(idleCheckInterval);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pageshow', onPageShow as EventListener);
     };
   }, []);
 

@@ -345,7 +345,9 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
       <div className="fixed top-8 right-8 z-[60]">
         <button 
           onClick={() => setIsOpen(true)}
-          className="text-zinc-500 hover:text-black transition-colors p-2 bg-white/5 hover:bg-white/10 rounded-full backdrop-blur-sm"
+          // min-h/w 44px meets the touch floor without making the admin trigger any more
+          // visible — it stays a quiet circle, it is simply now reliably tappable.
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-500 hover:text-black transition-colors p-2 bg-white/5 hover:bg-white/10 rounded-full backdrop-blur-sm"
           title="Store Settings"
           id="store-settings-trigger"
         >

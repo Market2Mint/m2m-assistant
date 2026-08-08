@@ -1330,12 +1330,27 @@ export default function App() {
           </button>
         </div>
 
-        {/* ── Footer: policies stay reachable, they just stop leading. No phone numbers. ── */}
+        {/*
+          ── Footer: policies stay reachable, they just stop leading. No phone numbers. ──
+
+          The three buttons carry a 44px minimum height with negative margin, so the touch
+          target meets the accessibility floor for a public terminal WITHOUT the row getting
+          visually taller. On a kiosk the person tapping may be elderly, or holding a stack
+          of cards in the other hand; a 16px target is a target only in theory.
+        */}
         <div className="flex items-center justify-between gap-6 text-xs font-bold uppercase tracking-[0.2em] text-zinc-600 shrink-0">
-          <div className="flex gap-8">
-            <button onClick={() => setActiveModal('terms')} className="hover:text-m2m-green transition-colors">Terms of Use</button>
-            <button onClick={() => setActiveModal('privacy')} className="hover:text-m2m-green transition-colors">Privacy Policy</button>
-            <button onClick={() => setActiveModal('submission')} className="hover:text-m2m-green transition-colors">Submission Policy</button>
+          <div className="-my-3 flex gap-2">
+            {([['terms', 'Terms of Use'], ['privacy', 'Privacy Policy'], ['submission', 'Submission Policy']] as const).map(
+              ([modal, label]) => (
+                <button
+                  key={modal}
+                  onClick={() => setActiveModal(modal)}
+                  className="flex min-h-[44px] items-center rounded-xl px-4 transition-colors hover:text-m2m-green active:text-m2m-green"
+                >
+                  {label}
+                </button>
+              ),
+            )}
           </div>
           <span className="text-zinc-500 tracking-[0.2em]">market2mint.com</span>
         </div>

@@ -41,6 +41,7 @@ import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
 import { hardReload } from './utils/hardReload';
 import { summariseTiers } from './tiers';
+import { buildPayload, sendTelemetry } from './telemetry';
 import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl } from './handoff';
 import { EMPTY_HEALTH, UPDATE_WINDOWS, shouldApplyUpdate, type UpdateHealth } from './updatePolicy';
 import { refreshPublishedMenu, resolveMenuAtBoot } from './menuSource';
@@ -358,6 +359,8 @@ export default function App() {
   const [updateDetected, setUpdateDetected] = useState(false);
   const updateDetectedRef = useRef(false);
   const pendingBundleUrlRef = useRef<string | null>(null);
+  /** When this page loaded. Reported as uptime — a kiosk showing weeks has not reloaded. */
+  const pageLoadedAtRef = useRef<number>(Date.now());
   /** A newly published menu is cached and waiting for the next reload to adopt it. */
   const menuPendingRef = useRef(false);
   const lastInteractionRef = useRef<number>(Date.now());
@@ -544,10 +547,39 @@ export default function App() {
     // same schedule, through the same network check, with the same idle requirement.
     const pollForChanges = () => {
       addLog('VERSION_CHECK_START: Querying server index');
-      checkForUpdate();
+      checkForUpdate()
+        // AFTER the check, so the beacon carries this round's result rather than the
+        // previous one. A fleet view whose health is always one cycle stale reports a
+        // kiosk as fine on the run where it first broke.
+        .finally(reportIn);
       refreshPublishedMenu(menuAtBoot.version, addLog).then(({ changed }) => {
         if (changed) menuPendingRef.current = true;
       });
+    };
+
+    /*
+     * Tell HQ what this kiosk is, quietly.
+     *
+     * Inert until a URL is configured, rate-limited to once per ten minutes unless
+     * something meaningful changed, and every failure is swallowed. A kiosk that cannot
+     * report is still a kiosk that sells.
+     *
+     * ⚠️ THE ROSTER IS THE SOURCE OF TRUTH AND SILENCE IS THE ALARM. This half only makes
+     * silence meaningful; the receiving end holds the expected list of shops, so the
+     * finding is a row that has NOT been heard from. A dashboard built from kiosks that
+     * reported can only ever show healthy ones.
+     */
+    const reportIn = () => {
+      void sendTelemetry(
+        buildPayload({
+          storeCode: localStorage.getItem('storeCode') || '',
+          menuVersion: menuAtBoot.version,
+          health: readHealth(),
+          updatePending: updateDetectedRef.current || menuPendingRef.current,
+          pageLoadedAt: pageLoadedAtRef.current,
+        }),
+        Date.now(),
+      );
     };
     const updatePollInterval = setInterval(pollForChanges, 5 * 60 * 1000); // 5 minutes
     // Once at boot too. The old code waited a full five minutes before its first check,

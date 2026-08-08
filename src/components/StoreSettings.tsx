@@ -391,7 +391,7 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                   )}
                   <button 
                     onClick={handleClose} 
-                    className="p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-all text-zinc-400 hover:text-white"
+                    className="min-h-[44px] p-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-all text-zinc-400 hover:text-white"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -655,7 +655,7 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                             <button 
                               type="button"
                               onClick={handleViewLog}
-                              className="bg-zinc-800 text-white font-black uppercase tracking-widest py-3 rounded-xl hover:bg-zinc-700 transition-all active:scale-95 flex items-center justify-center gap-2 border border-zinc-700"
+                              className="min-h-[44px] bg-zinc-800 text-white font-black uppercase tracking-widest py-3 rounded-xl hover:bg-zinc-700 transition-all active:scale-95 flex items-center justify-center gap-2 border border-zinc-700"
                             >
                               <ClipboardList className="w-4 h-4 text-m2m-green" />
                               System Log
@@ -663,7 +663,7 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                             <button 
                               type="button"
                               onClick={handleForceReload}
-                              className="bg-zinc-800 text-red-500 font-black uppercase tracking-widest py-3 rounded-xl hover:bg-zinc-700 transition-all active:scale-95 flex items-center justify-center gap-2 border border-zinc-700"
+                              className="min-h-[44px] bg-zinc-800 text-red-500 font-black uppercase tracking-widest py-3 rounded-xl hover:bg-zinc-700 transition-all active:scale-95 flex items-center justify-center gap-2 border border-zinc-700"
                             >
                               <RefreshCw className="w-4 h-4" />
                               Reload App
@@ -790,7 +790,7 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
 
                   <button 
                     onClick={handleSave}
-                    className="w-full bg-m2m-green text-black font-black uppercase tracking-widest py-4 rounded-xl hover:bg-m2m-green-ink hover:text-m2m-ivory transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl"
+                    className="min-h-[44px] w-full bg-m2m-green text-black font-black uppercase tracking-widest py-4 rounded-xl hover:bg-m2m-green-ink hover:text-m2m-ivory transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl"
                   >
                     <Save className="w-5 h-5" />
                     Save & Close
@@ -824,7 +824,7 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={handleClearLog}
-                    className="p-3 bg-zinc-800 text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                    className="min-h-[44px] p-3 bg-zinc-800 text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                     title="Clear Logs"
                   >
                     <Trash2 className="w-5 h-5" />

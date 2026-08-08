@@ -1264,7 +1264,10 @@ export default function App() {
         <div className="grid grid-cols-2 gap-5 shrink-0">
           <button
             onClick={() => startFlow('pregrade')}
-            className="rounded-3xl border-2 border-m2m-green bg-m2m-green/10 px-7 py-6 text-left transition-all hover:bg-m2m-green/20 active:scale-[0.99]"
+            // IDENTICAL surface to Full submission. The RECOMMENDED pill and the green
+            // price carry the emphasis; a green FIELD beside a grey one is what read as
+            // sloppy, and it also broke the rule that green is an accent, never a field.
+            className="rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 px-7 py-6 text-left transition-all hover:border-zinc-600 hover:bg-zinc-900 active:scale-[0.99]"
           >
             <div className="flex items-center gap-3">
               <span className="text-sm font-bold uppercase tracking-[0.25em] text-m2m-green">Pregrade</span>
@@ -1308,12 +1311,20 @@ export default function App() {
           </button>
         </div>
 
-        {/* ── The $24.00, disclosed early and verbatim. Customers assume it is per card. ── */}
-        <div className="flex items-center justify-between gap-6 rounded-3xl border border-m2m-green/40 bg-m2m-green/[0.08] px-7 py-4 shrink-0">
+        {/*
+          ── The $24.00, disclosed early and verbatim. Customers assume it is per card. ──
+
+          This was the SECOND green field on a screen that already had one, which is the
+          thing "green is an accent, not a field" exists to prevent. It still has to be
+          impossible to miss, so the emphasis moves from a coloured panel to TYPOGRAPHY —
+          the figure is the largest thing in the row, on the same grey surface as the price
+          cards above it. Nothing is quieter; the loudness just stops being colour.
+        */}
+        <div className="flex items-center justify-between gap-6 rounded-3xl border border-zinc-800 bg-zinc-900/60 px-7 py-4 shrink-0">
           <p className="tabular-nums text-2xl font-bold text-m2m-ivory leading-tight">
             {SHIPPING_DISCLOSURE}
           </p>
-          <p className="shrink-0 text-sm font-bold uppercase tracking-widest text-m2m-green text-right leading-tight">
+          <p className="shrink-0 text-sm font-bold uppercase tracking-widest text-zinc-400 text-right leading-tight">
             Shipping &amp; insurance<br />
             <span className="text-zinc-500">One time per order</span>
           </p>
@@ -1513,16 +1524,20 @@ export default function App() {
             <ChevronLeft className="w-6 h-6" />
             Back
           </button>
-          <div className="h-12 w-px bg-m2m-green" />
-          <div className="space-y-1">
-            <h2 className="text-3xl font-black text-white uppercase italic tracking-tight">
-              Recommended Services
+          <div className="h-12 w-px bg-zinc-800" />
+          {/*
+            Was an italic uppercase black heading over a glowing green pill reading
+            "N MATCHING SERVICE(S) FOUND". The glow communicated nothing, and "(S)" is
+            programmer shorthand that reached a customer. Typography carries the hierarchy
+            now: the count is the heading, and what it counts is the quiet line under it.
+          */}
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight text-m2m-ivory">
+              {remainingServices.length === 1
+                ? 'One service matches'
+                : `${remainingServices.length} services match`}
             </h2>
-            <div className="inline-flex items-center bg-zinc-950 border border-m2m-green/50 px-8 py-3 rounded-full shadow-[0_0_20px_rgba(0,200,5,0.1)]">
-              <p className="text-m2m-green font-black uppercase tracking-widest text-sm">
-                {remainingServices.length} Matching Service(s) Found
-              </p>
-            </div>
+            <p className="text-base text-zinc-400">Pick the turnaround that suits you.</p>
           </div>
         </div>
         
@@ -1542,15 +1557,15 @@ export default function App() {
               </button>
             </div>
           )}
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">Main Menu</span>
-            <button 
-              onClick={handleReset}
-              className="p-4 bg-zinc-900 border-2 border-m2m-green rounded-2xl shadow-sm active:scale-90 transition-transform"
-            >
-              <Home className="w-6 h-6 text-m2m-green" />
-            </button>
-          </div>
+          {/* Secondary action, styled as one. It was a green-bordered box with a green
+              label — louder than the primary action beside it. */}
+          <button
+            onClick={handleReset}
+            className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-3 text-base font-semibold text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white active:scale-95"
+          >
+            <Home className="h-5 w-5" />
+            Main menu
+          </button>
         </div>
       </div>
 
@@ -1575,13 +1590,24 @@ export default function App() {
           <div className="max-w-5xl mx-auto w-full space-y-12">
             {/* Speed Selection Intermediary Screen */}
             {remainingServices.length > 1 && (
-              <div className="h-[72vh] flex flex-col justify-center snap-start relative">
-                <div className="text-center mb-12">
-                  <h3 className="text-5xl font-black text-white uppercase italic tracking-tighter mb-4">CHOOSE A TIER...</h3>
-                  <p className="text-m2m-green text-xl uppercase tracking-widest font-black">Choose a tier to see full details below</p>
+              <div className="flex flex-col justify-start snap-start relative pt-4 pb-10">
+                {/*
+                  Was "CHOOSE A TIER..." in italic uppercase black, immediately followed by
+                  "CHOOSE A TIER TO SEE FULL DETAILS BELOW" in green uppercase — the same
+                  instruction twice, stacked. One heading now, sentence case, and the
+                  second line does the job the first was only repeating: it says what
+                  tapping actually DOES, which was never stated anywhere.
+
+                  The fixed 72vh height with justify-center is also gone. It forced a large
+                  dead gap between the cards and the bottom of the screen and pushed the
+                  scroll hint through the viewport edge, where it was sliced mid-word.
+                */}
+                <div className="text-center mb-10">
+                  <h3 className="text-4xl font-bold tracking-tight text-m2m-ivory">Choose a turnaround</h3>
+                  <p className="mt-2 text-lg text-zinc-400">Tap one to see full details and add it to your order.</p>
                 </div>
-                
-                <div className={`grid grid-cols-1 gap-6 mb-24 ${
+
+                <div className={`grid grid-cols-1 gap-6 mb-10 ${
                   speedTiers.length >= 4 ? 'md:grid-cols-4' : 'md:grid-cols-3'
                 }`}>
                   {speedTiers.map((tier, idx) => (
@@ -1590,46 +1616,65 @@ export default function App() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: idx * 0.1 } }}
                       onClick={() => scrollToTile(tier.index)}
-                      className="bg-zinc-900 border-2 border-zinc-800 p-8 rounded-[2.5rem] text-left hover:border-m2m-green transition-all group active:scale-95 flex flex-col justify-between h-64 shadow-2xl"
+                      className="flex h-56 flex-col justify-between rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 p-7 text-left transition-all hover:border-zinc-600 hover:bg-zinc-900 active:scale-[0.99]"
                     >
+                      {/*
+                        THE NUMBERS ARE THE CONTENT. A customer at a counter is comparing
+                        price and turnaround, so those are the two largest things here and
+                        the price is the larger of them — it was the smallest before, under
+                        a turnaround set twice its size.
+
+                        Sentence case, no italics, no uppercase tracking. The service name
+                        is a label; the figures are the decision.
+                      */}
                       <div>
                         {tier.label && (
-                          <span className="text-m2m-green font-black text-xs uppercase tracking-[0.3em] mb-4 block italic">{tier.label}</span>
+                          <span className="mb-3 block text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">
+                            {tier.label}
+                          </span>
                         )}
-                        <h4 className="text-2xl font-black text-white uppercase italic leading-tight transition-colors">{tier.service.name}</h4>
+                        <h4 className="text-xl font-semibold leading-tight text-zinc-300">{tier.service.name}</h4>
                       </div>
-                      <div className="space-y-2">
-                        <p className="text-4xl font-black text-white uppercase italic tracking-tighter">
-                          {formatTurnaroundDays(tier.service.businessDays)}{' '}
-                          <span className="text-sm text-white tracking-widest">BUSINESS DAYS</span>
-                        </p>
-                        <p className="text-2xl font-black text-m2m-green">
-                          {cardShowMode && tier.service.name.toLowerCase().includes('pregrading') 
-                            ? `$${showPregradingPrice.toFixed(2)}` 
+                      <div>
+                        <p className="tabular-nums text-4xl font-bold leading-none text-m2m-ivory">
+                          {cardShowMode && tier.service.name.toLowerCase().includes('pregrading')
+                            ? `$${showPregradingPrice.toFixed(2)}`
                             : tier.service.cost}
+                        </p>
+                        <p className="mt-2 tabular-nums text-lg text-zinc-400">
+                          {formatTurnaround(tier.service.businessDays).toLowerCase()}
                         </p>
                       </div>
                     </motion.button>
                   ))}
                 </div>
 
-                {/* Animated Scroll Hint */}
+                {/*
+                  Scroll hint. Was absolutely positioned at -bottom-16 with a green glow and
+                  0.5em tracking, which put it THROUGH the viewport edge — in the audit
+                  screenshot the word "DETAILS" is sliced in half. A hint that is itself
+                  unreadable is worse than no hint.
+
+                  Now it sits in normal flow, so it cannot be cut by an edge it does not
+                  reach. No glow: a glow communicates nothing. Normal tracking, because
+                  0.5em on a 2xl uppercase string fights legibility for decoration.
+                */}
                 <AnimatePresence>
                   {showScrollIndicator && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 0 }}
-                      animate={{ opacity: 1, y: [0, 15, 0] }}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1, y: [0, 6, 0] }}
                       exit={{ opacity: 0 }}
-                      transition={{ 
+                      transition={{
                         opacity: { duration: 0.3 },
                         y: { duration: 2, repeat: Infinity, ease: "easeInOut" }
                       }}
-                      className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-50 pointer-events-none"
+                      className="flex flex-col items-center gap-1 pointer-events-none"
                     >
-                      <span className="text-m2m-green text-2xl font-black uppercase tracking-[0.5em] italic block drop-shadow-[0_0_10px_rgba(0,200,5,0.5)]">
-                        SCROLL FOR FULL DETAILS
+                      <span className="text-base font-medium text-zinc-400">
+                        Scroll for full details
                       </span>
-                      <ChevronDown className="w-12 h-12 text-m2m-green drop-shadow-[0_0_10px_rgba(0,200,5,0.5)]" />
+                      <ChevronDown className="h-6 w-6 text-zinc-500" />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1647,15 +1692,19 @@ export default function App() {
                 <div className="p-8 space-y-6 flex-1 overflow-hidden flex flex-col">
                   <div className="shrink-0 space-y-4">
                     <div className="flex justify-between items-center gap-10">
-                      <h3 className="text-4xl font-black leading-tight text-white uppercase italic tracking-tight">{service.name}</h3>
+                      {/* Sentence case, no italics — the landing screen's standard. The
+                          price stays the largest thing on the card because it is the
+                          decision, but it no longer shouts in green at 6xl beside an
+                          italic uppercase black heading competing with it. */}
+                      <h3 className="text-4xl font-bold leading-tight tracking-tight text-m2m-ivory">{service.name}</h3>
                       <div className="text-right shrink-0">
-                        <div className="text-m2m-green font-black text-6xl leading-none">
+                        <div className="tabular-nums text-6xl font-bold leading-none text-m2m-ivory">
                           {cardShowMode && service.name.toLowerCase().includes('pregrading')
                             ? `$${showPregradingPrice.toFixed(2)}`
                             : service.cost}
                         </div>
                         {service.priceIsMinimum && (
-                          <p className="mt-1 text-xs font-black uppercase tracking-widest text-m2m-green">Minimum</p>
+                          <p className="mt-1 text-xs font-bold uppercase tracking-widest text-m2m-green">Minimum</p>
                         )}
                       </div>
                     </div>
@@ -1679,12 +1728,12 @@ export default function App() {
                     
                     <div className="flex gap-4 w-full">
                       <div className="bg-zinc-950 px-6 py-3 rounded-2xl border border-zinc-800 flex-1 text-center whitespace-nowrap">
-                        <p className="text-[12px] font-black text-m2m-green uppercase tracking-widest mb-1">Estimated Turnaround</p>
-                        <p className="text-lg font-black text-white uppercase italic">{formatTurnaround(service.businessDays)}</p>
+                        <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">Estimated turnaround</p>
+                        <p className="tabular-nums text-lg font-semibold text-m2m-ivory">{formatTurnaround(service.businessDays).toLowerCase()}</p>
                       </div>
                       <div className="bg-zinc-950 px-6 py-3 rounded-2xl border border-zinc-800 flex-1 text-center whitespace-nowrap">
-                        <p className="text-[12px] font-black text-m2m-green uppercase tracking-widest mb-1">Max Insured Value (If Lost/Damaged)</p>
-                        <p className="text-lg font-black text-white uppercase italic">{service.maxValue}</p>
+                        <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">Max insured value (if lost or damaged)</p>
+                        <p className="tabular-nums text-lg font-semibold text-m2m-ivory">{service.maxValue}</p>
                       </div>
                     </div>
                   </div>
@@ -2358,7 +2407,10 @@ export default function App() {
                             ) : (
                               <button
                                 onClick={() => setOpenMinGradeLines((prev) => [...prev, item.id])}
-                                className="flex items-center gap-2 text-sm font-bold text-zinc-500 hover:text-zinc-300 active:scale-95 transition-all"
+                                // -mx-3 keeps it visually the same quiet line while giving
+                                // it a real 44px target. It must stay easy to ignore AND
+                                // possible to hit.
+                                className="-mx-3 flex min-h-[44px] items-center gap-2 rounded-xl px-3 text-sm font-bold text-zinc-500 hover:text-zinc-300 active:scale-95 transition-all"
                               >
                                 <Plus className="h-4 w-4" />
                                 {MIN_GRADE_COLLAPSED_LABEL}
@@ -2505,7 +2557,7 @@ export default function App() {
                             type="checkbox"
                             checked={policyAccepted}
                             onChange={(e) => setPolicyAccepted(e.target.checked)}
-                            className="w-8 h-8 accent-m2m-green rounded-lg scale-125 bg-zinc-900 border-zinc-700"
+                            className="h-11 w-11 shrink-0 accent-m2m-green rounded-lg bg-zinc-900 border-zinc-700"
                           />
                           <span className="text-base md:text-lg font-black select-none text-zinc-100 uppercase italic tracking-tight leading-tight">
                             I acknowledge and agree to all <span className="whitespace-nowrap">Market 2 Mint</span> service policies
@@ -2537,7 +2589,6 @@ export default function App() {
                         {policyAccepted ? 'Complete Order' : 'Acknowledge to continue'}
                       </button>
                     </div>
-                    <p className="text-center text-base text-white uppercase font-black tracking-[0.3em]">Secure Checkout Powered by M2M</p>
                   </div>
                 </div>
               )}

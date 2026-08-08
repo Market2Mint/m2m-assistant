@@ -19,8 +19,37 @@
 import { BUILD_COMMIT, BUILD_TIME } from './buildInfo';
 import type { UpdateHealth } from './updatePolicy';
 
-/** Where beacons go. Unset until configured, and inert while unset. */
+/** Where beacons go. A localStorage entry under this key overrides the built-in default. */
 export const TELEMETRY_URL_KEY = 'm2m_telemetry_url';
+
+/**
+ * The deployed receiver, baked into the build.
+ *
+ * ⚠️ THIS IS BAKED IN ON PURPOSE, AND THE ALTERNATIVE IS WHY.
+ *
+ * The roster only means something if every kiosk reports without anyone visiting it. Left
+ * as a localStorage-only setting, switching telemetry on would mean typing this URL into
+ * twenty-one iPads in twenty-one shops — and the kiosks that most need watching are exactly
+ * the ones nobody is going to get to. Silence would then be ambiguous again: is that shop
+ * broken, or did we simply never configure it? A default in the build removes that question.
+ *
+ * Nothing secret is here. The endpoint is deliberately open ("Anyone", because a kiosk
+ * cannot sign in), it only accepts writes, and it returns nothing. Publishing it in a
+ * client bundle costs nothing that deploying it did not already cost.
+ *
+ * Apps Script container-bound web app, market2mint@gmail.com, deployed 2026-08-08.
+ */
+export const DEFAULT_TELEMETRY_URL =
+  'https://script.google.com/macros/s/AKfycbwDJ3hcKIuNDfpoxPNpVN7vkv1sJ0dKDsAhIweVjpG8t2gPm9ClKJTGIOiFDCw5EtgFng/exec';
+
+/**
+ * Store this as the URL to silence one device.
+ *
+ * A baked-in default with no way to turn it off is a trap: the moment one kiosk misbehaves —
+ * a runaway send loop, a shop that objects — the only remedy would be shipping a new build to
+ * the whole fleet. This is the local off switch.
+ */
+export const TELEMETRY_OFF = 'off';
 
 /** Stable per-device identity, generated once. */
 export const DEVICE_ID_KEY = 'm2m_device_id';
@@ -72,12 +101,25 @@ export const deviceId = (): string => {
   }
 };
 
+/**
+ * Falls back to the built-in endpoint, so a kiosk reports without ever being configured.
+ *
+ * A stored value wins — that is how a single device is redirected at a test receiver or
+ * silenced with `TELEMETRY_OFF`. A blank or whitespace-only entry is treated as "not set"
+ * rather than as "off", because a half-cleared field is far more likely to be a slip than a
+ * deliberate opt-out, and the failure it would cause — one silently dark kiosk — is the one
+ * this whole system exists to prevent.
+ */
 export const telemetryUrl = (): string | null => {
   try {
-    const url = localStorage.getItem(TELEMETRY_URL_KEY);
-    return url && url.trim() ? url : null;
+    const stored = localStorage.getItem(TELEMETRY_URL_KEY);
+    const trimmed = stored ? stored.trim() : '';
+    if (!trimmed) return DEFAULT_TELEMETRY_URL || null;
+    if (trimmed.toLowerCase() === TELEMETRY_OFF) return null;
+    return trimmed;
   } catch {
-    return null;
+    // localStorage can throw in private-mode iOS. The endpoint is still known, so still report.
+    return DEFAULT_TELEMETRY_URL || null;
   }
 };
 

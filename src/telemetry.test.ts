@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EMPTY_HEALTH } from './updatePolicy';
 import {
+  DEFAULT_TELEMETRY_URL,
   MIN_SEND_INTERVAL_MS,
+  TELEMETRY_OFF,
   TELEMETRY_URL_KEY,
   buildPayload,
   resetSendState,
@@ -37,16 +39,71 @@ const payload = (over: Partial<Parameters<typeof buildPayload>[0]> = {}) =>
     ...over,
   });
 
-describe('it is inert until configured', () => {
-  it('has no destination by default', () => {
+describe('it reports without being configured', () => {
+  // The point of the roster is that an unvisited kiosk still reports. If these fail, a
+  // freshly imaged iPad goes dark and reads as a dead shop.
+  it('falls back to the deployed endpoint', () => {
+    expect(telemetryUrl()).toBe(DEFAULT_TELEMETRY_URL);
+  });
+
+  it('points at a real https Apps Script /exec URL', () => {
+    expect(DEFAULT_TELEMETRY_URL).toMatch(
+      /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/,
+    );
+  });
+
+  it('sends on the very first call with nothing stored', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await sendTelemetry(payload(), Date.now())).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith(DEFAULT_TELEMETRY_URL, expect.anything());
+  });
+
+  it('still reports when localStorage throws, as it does in private mode', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => {
+        throw new Error('SecurityError');
+      },
+      removeItem: () => {},
+    });
+    expect(telemetryUrl()).toBe(DEFAULT_TELEMETRY_URL);
+  });
+});
+
+describe('a stored value overrides the default', () => {
+  it('prefers an explicit URL', () => {
+    store.set(TELEMETRY_URL_KEY, 'https://example.invalid/beacon');
+    expect(telemetryUrl()).toBe('https://example.invalid/beacon');
+  });
+
+  it('trims surrounding whitespace, which a paste into a text field leaves behind', () => {
+    store.set(TELEMETRY_URL_KEY, '  https://example.invalid/beacon\n');
+    expect(telemetryUrl()).toBe('https://example.invalid/beacon');
+  });
+
+  it('treats TELEMETRY_OFF as a local off switch, case-insensitively', () => {
+    store.set(TELEMETRY_URL_KEY, TELEMETRY_OFF);
+    expect(telemetryUrl()).toBeNull();
+    store.set(TELEMETRY_URL_KEY, 'OFF');
     expect(telemetryUrl()).toBeNull();
   });
 
-  it('sends nothing when there is no URL', async () => {
+  it('sends nothing once silenced', async () => {
+    store.set(TELEMETRY_URL_KEY, TELEMETRY_OFF);
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     expect(await sendTelemetry(payload(), Date.now())).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('treats a blank entry as unset, not as off', () => {
+    // A half-cleared field is a slip far more often than a deliberate opt-out, and the
+    // failure it would otherwise cause is a silently dark kiosk.
+    store.set(TELEMETRY_URL_KEY, '   ');
+    expect(telemetryUrl()).toBe(DEFAULT_TELEMETRY_URL);
   });
 });
 

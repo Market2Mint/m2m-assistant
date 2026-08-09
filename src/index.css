@@ -21,6 +21,17 @@
   --color-m2m-charcoal: #2f3031;   /* secondary dark surface */
   --color-m2m-ivory: #f2efe6;      /* reversed type on dark — never pure #FFFFFF in layouts */
   --color-m2m-bg: #0d0f0e;         /* = jet */
+  /*
+   * Landing-screen neutrals from the approved mockup (kiosk_attract_messi_2026-08-07.html).
+   * ink2/ink3 replace the old zinc greys for secondary/tertiary copy; panel/line are the
+   * card surfaces. All neutrals — the ONLY green anywhere stays #00C805 (alphas of it are
+   * fine; other green hexes are not).
+   */
+  --color-m2m-ink2: #cdd2c9;       /* secondary copy */
+  --color-m2m-ink3: #9aa096;       /* tertiary/labels only, never body copy */
+  --color-m2m-panel: #111413;      /* card surface, top of gradient */
+  --color-m2m-panel-deep: #0a0c0b; /* card surface, bottom of gradient */
+  --color-m2m-line: #232725;       /* hairline borders on dark */
   --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
 
   /* iPad Landscape Typography */
@@ -69,4 +80,99 @@
 /* Landscape Container */
 .landscape-container {
   @apply w-full h-screen max-w-[1366px] max-h-[1024px] mx-auto flex flex-col;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * LANDING (attract) SCREEN — ported from the approved mockup
+ * Kiosk v3/kiosk_attract_messi_2026-08-07.html. Tailwind handles layout and
+ * type in the TSX; this block holds what Tailwind expresses badly — layered
+ * gradients and keyframes. Hero anatomy (alcove/pedestal/rotation) arrives in
+ * the hero commit and lives here too.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/* The page ground. Full-bleed behind the content column so a wider tablet
+ * (1.44:1) never shows letterbox bars — the gradient is the whole viewport. */
+.landing-stage {
+  background:
+    radial-gradient(1200px 800px at 74% 40%, rgba(0, 200, 5, 0.07), transparent 60%),
+    radial-gradient(900px 700px at 12% 96%, rgba(0, 200, 5, 0.04), transparent 55%),
+    linear-gradient(160deg, #0b0d0c 0%, #060807 55%, #040505 100%);
+}
+
+/* Service cards. The primary (pregrade) card carries the green treatment —
+ * a wash gradient plus soft outer glow. Accent, not a field: the wash tops out
+ * at 10% alpha and fades to the same dark panel as its neighbour. */
+.svc-plain {
+  background: linear-gradient(175deg, var(--color-m2m-panel) 0%, var(--color-m2m-panel-deep) 100%);
+  border: 1px solid var(--color-m2m-line);
+}
+.svc-primary {
+  border: 1.5px solid rgba(0, 200, 5, 0.55);
+  background: linear-gradient(
+    175deg,
+    rgba(0, 200, 5, 0.1) 0%,
+    rgba(0, 200, 5, 0.03) 45%,
+    var(--color-m2m-panel-deep) 100%
+  );
+  box-shadow:
+    0 0 44px rgba(0, 200, 5, 0.1),
+    inset 0 0 0 1px rgba(0, 200, 5, 0.08);
+}
+
+/* Shipping bar: the one green-tinted row, fading out by mid-width. */
+.ship-bar {
+  background: linear-gradient(90deg, rgba(0, 200, 5, 0.09) 0%, rgba(255, 255, 255, 0.02) 45%);
+}
+
+/* Pregrade meter — C·C·E·S bars filling in sequence. Decorative. */
+.meter-bar {
+  width: 38px;
+  height: 4px;
+  border-radius: 3px;
+  background: #20241f;
+  overflow: hidden;
+}
+.meter-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--color-m2m-green);
+  border-radius: 3px;
+  box-shadow: 0 0 8px rgba(0, 200, 5, 0.38);
+  animation: meter-fill 5.5s ease-in-out infinite;
+}
+@keyframes meter-fill {
+  0% { width: 0; }
+  30% { width: 88%; }
+  70% { width: 88%; }
+  100% { width: 0; }
+}
+
+/* RECENT GRADES marquee. The track holds the item list TWICE; sliding -50%
+ * then looping is what makes the join seamless. */
+.marq {
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.marq-track {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marq-scroll 38s linear infinite;
+}
+@keyframes marq-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.live-dot {
+  animation: live-blink 1.6s ease-in-out infinite;
+}
+@keyframes live-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* A public terminal still honours a motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  .meter-bar i { animation: none; width: 88%; }
+  .marq-track { animation: none; }
+  .live-dot { animation: none; }
 }

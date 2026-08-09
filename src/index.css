@@ -91,12 +91,264 @@
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /* The page ground. Full-bleed behind the content column so a wider tablet
- * (1.44:1) never shows letterbox bars — the gradient is the whole viewport. */
+ * (1.44:1) never shows letterbox bars — the gradient is the whole viewport.
+ *
+ * FLUID SIZE VARIABLES — the compact-height pass. The design targets a 1000px-tall
+ * reference; a real iPad Air landscape viewport is 820px. Every vertical size that
+ * matters clamps between a compact floor and the design value on viewport height,
+ * so the WHOLE attract screen fits with no scroll at 1180×820 and grows back to the
+ * mockup's proportions at 1000px. Continuous, not a breakpoint — nothing "pops".
+ * The fleet runs standalone (Home Screen) apps, so vh is stable — no URL-bar lies.
+ *
+ * --slabH is the single variable the entire hero cluster is derived from: card box,
+ * pedestal, badge, alcove and overlaps all scale off it, so the §2 geometry (the
+ * 292:452 box, the standing-on-the-disc overlap) holds at every size. */
 .landing-stage {
+  /* Each var interpolates between its COMPACT value at an 820px-tall viewport and
+   * its DESIGN value at 1000px — calc(Xvh − Ypx) passes through both points exactly,
+   * the clamp caps it at the design size above 1000 and floors it below ~800. A plain
+   * Nvh term cannot hit both targets; that is why these look odd. */
+  --slabH: clamp(300px, calc(55.22vh - 100.2px), 452px);
+  --pad-t: clamp(8px, calc(6.67vh - 42.7px), 24px);
+  --pad-b: clamp(8px, calc(4.44vh - 24.4px), 20px);
+  --gap-main: clamp(5px, calc(4.44vh - 28.4px), 16px);
+  --h1: clamp(31px, calc(8.33vh - 32.3px), 51px);
+  --sub: clamp(12px, calc(2.22vh - 4.7px), 17.5px);
+  --price: clamp(33px, calc(6.11vh - 14.1px), 47px);
+  --copy-minh: clamp(33px, calc(12.22vh - 60.2px), 62px);
+  --svc-pt: clamp(9px, calc(5vh - 29px), 21px);
+  --svc-pb: clamp(9px, calc(4.44vh - 24.4px), 20px);
+  --row-my: clamp(5px, calc(5.56vh - 37.6px), 18px);
+  --how-py: clamp(5px, calc(3.89vh - 23.9px), 15px);
+  --live-py: clamp(2px, calc(2.78vh - 18.8px), 9px);
+  --qr: clamp(40px, calc(8.89vh - 26.9px), 62px);
+  --badge-w: clamp(32px, calc(5.56vh - 7.6px), 48px);
+  --wordmark: clamp(20px, calc(3.33vh - 4.3px), 29px);
+  --stepn: clamp(20px, calc(2.22vh + 3.8px), 26px);
+  --stept: 13px;   /* step title */
+  --stepd: 11px;   /* step description */
+  --hero-col: clamp(370px, 32%, 470px);
   background:
     radial-gradient(1200px 800px at 74% 40%, rgba(0, 200, 5, 0.07), transparent 60%),
     radial-gradient(900px 700px at 12% 96%, rgba(0, 200, 5, 0.04), transparent 55%),
     linear-gradient(160deg, #0b0d0c 0%, #060807 55%, #040505 100%);
+}
+/* 10.2" iPads (1080×810 landscape): the narrower stage makes copy wrap taller, so
+ * the hero column gives width back and wrap-prone type steps down one notch. */
+@media (max-width: 1120px) {
+  .landing-stage {
+    --hero-col: clamp(330px, 30%, 470px);
+    /* the four step descriptions wrap at this width and balloon the strip */
+    --stept: 12px;
+    --stepd: 10px;
+    --gap-main: 4px;
+    --row-my: 4px;
+    --how-py: 5px;
+  }
+}
+
+/* ── HERO — badge → alcove → pedestal → rotation → turn (design record §2) ──
+ * Paint order is DOM order, back to front. Every decorative layer is sized against
+ * the COLUMN (min(100%, …)) and the column is overflow-hidden, so nothing in here
+ * can ever bleed left over copy the customer has to read — sizing these in absolute
+ * px was a real bug in the mockup.
+ * Perspective lives on the container so the slab turns in real 3D; a skewed
+ * rectangle reads as a printing error, a rotated one as an object on a surface. */
+.hero-col {
+  perspective: 1500px;
+  perspective-origin: 50% 44%;
+  /* The whole column is scenery. On the fleet's iPads a long-press on the big slab
+   * image would otherwise pop the native Save Image callout, and the images drag. */
+  pointer-events: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.hero-halo {
+  position: absolute;
+  width: min(100%, calc(var(--slabH) * 0.885));
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 200, 5, 0.16) 0%, transparent 62%);
+  animation: hero-breathe 6s ease-in-out infinite;
+}
+/* Scenery, not the logo: flanking panels + a hexagonal recess echoing the badge's
+ * geometry. Dark fills, green on the EDGES only — a filled green panel here is the
+ * green-as-a-field failure the live printed panel already makes. */
+.hero-wings {
+  position: absolute;
+  width: min(100%, calc(var(--slabH) * 0.951));
+  aspect-ratio: 640 / 536;
+  pointer-events: none;
+  opacity: 0.95;
+}
+.hero-wings svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.hero-plate {
+  position: absolute;
+  width: min(100%, calc(var(--slabH) * 0.885));
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 200, 5, 0.09) 0%, rgba(6, 8, 7, 0.55) 46%, transparent 70%);
+}
+/* The REAL badge master (1016×1172), never redrawn. Opacity 0.30: line art on
+ * black reads as lit metal; brighter at this size and it becomes a green field. */
+.hero-mark {
+  position: absolute;
+  width: min(84%, calc(var(--slabH) * 0.752));
+  height: auto;
+  /* Tucks the badge's bottom tip (and its glow spill) behind the pedestal at
+   * COMPACT sizes only — the flow cluster below the card shrinks less than the
+   * badge, so the tip peeks out under the disc at 820vh. Interpolates to ZERO at
+   * the 1000px design height, where the mockup's dead-centre position is exact. */
+  margin-bottom: clamp(0px, calc(116.7px - 11.67vh), 30px);
+  opacity: 0.3;
+  pointer-events: none;
+  filter: drop-shadow(0 0 30px rgba(0, 200, 5, 0.42)) drop-shadow(0 0 80px rgba(0, 200, 5, 0.18));
+  animation: hero-breathe 6s ease-in-out infinite;
+}
+/* Two wrappers ON PURPOSE: .hero-cardwrap owns the float (translateY only) and
+ * .hero-tilt owns the turn. One element cannot hold both — the keyframe's transform
+ * would overwrite the rotation every frame and the card would snap flat. */
+.hero-cardwrap {
+  position: relative;
+  z-index: 2;
+  animation: hero-floaty 7s ease-in-out infinite;
+}
+/* A FIXED box (292:452), because three slabs of different proportions crossfade
+ * here. Each is sized BY HEIGHT and centred so their widths differ naturally, the
+ * way real slabs do — sizing by width would bounce the pedestal and proof band on
+ * every swap, the one thing a fixed attract screen must never do.
+ * The turn faces INWARD: the hero is the right-hand column, so a POSITIVE rotateY
+ * angles the face toward screen centre and the person standing at it. 8°–22° over
+ * 14s — ambient, never far enough off-axis to foreshorten the PSA/BGS label; that
+ * label is the proof the whole screen is selling. 22° is a ceiling. */
+.hero-tilt {
+  position: relative;
+  height: var(--slabH);
+  aspect-ratio: 292 / 452;
+  transform-origin: 34% 50%;
+  animation: hero-turn 14s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes hero-turn {
+  0%, 100% { transform: rotateY(8deg) rotateZ(0.5deg) translateX(0); }
+  50% { transform: rotateY(22deg) rotateZ(1.8deg) translateX(16px); }
+}
+.hero-slab {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 100%;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+  border-radius: 14px;
+  box-shadow:
+    -22px 34px 70px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 0 60px rgba(0, 200, 5, 0.13);
+}
+.hero-slab.on { opacity: 1; }
+.hero-slab img {
+  height: 100%;
+  width: auto;
+  display: block;
+  border-radius: 14px;
+}
+/* The glare lives INSIDE each slab, not on the tilt box — on the box it would
+ * sweep the 292px stage and overhang the two narrower cards. */
+.hero-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.hero-slab.on .hero-glare::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  width: 34%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+  transform: translateX(-260%) rotate(8deg);
+  animation: hero-sweep 8.5s ease-in-out infinite;
+}
+@keyframes hero-sweep {
+  0%, 52% { transform: translateX(-260%) rotate(8deg); }
+  72%, 100% { transform: translateX(420%) rotate(8deg); }
+}
+@keyframes hero-floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+@keyframes hero-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.07); opacity: 1; }
+}
+/* ── The pedestal: a real object with weight, not a smudge of light. Four layers:
+ * plinth body (thickness) → disc (dark elliptical top, lit green rim) → contact
+ * shadow (the card sits IN the light) → glow spill. The card overlaps the disc's
+ * back edge (negative margin) so it reads as STANDING on the platform. All inner
+ * offsets are % of the pedestal so the whole object scales with --slabH. ── */
+.hero-pedestal {
+  position: relative;
+  z-index: 1;
+  margin-top: calc(var(--slabH) * -0.0885);
+  width: calc(var(--slabH) * 0.7788);
+  height: calc(var(--slabH) * 0.2301);
+  flex-shrink: 0;
+}
+.hero-pedestal .p-body {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 28.8%;
+  height: 53.8%;
+  border-radius: 0 0 46% 46% / 0 0 78% 78%;
+  background: linear-gradient(180deg, #0d100f 0%, #070908 58%, #040605 100%);
+  box-shadow:
+    0 20px 36px rgba(0, 0, 0, 0.78),
+    inset 0 -12px 24px rgba(0, 200, 5, 0.09);
+}
+.hero-pedestal .p-disc {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 73.1%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 26%, #171b19 0%, #0a0c0b 60%, #050706 100%);
+  border: 2.5px solid var(--color-m2m-green);
+  box-shadow:
+    0 0 26px rgba(0, 200, 5, 0.5),
+    0 0 78px rgba(0, 200, 5, 0.24),
+    inset 0 12px 28px rgba(0, 0, 0, 0.92),
+    inset 0 -7px 20px rgba(0, 200, 5, 0.1);
+}
+.hero-pedestal .p-contact {
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 15.4%;
+  height: 25%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.85) 0%, transparent 72%);
+  filter: blur(5px);
+}
+.hero-pedestal .p-spill {
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  top: 55.8%;
+  height: 32.7%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 200, 5, 0.5) 0%, rgba(0, 200, 5, 0.11) 52%, transparent 76%);
+  filter: blur(9px);
+  animation: hero-breathe 6s ease-in-out infinite;
 }
 
 /* Service cards. The primary (pregrade) card carries the green treatment —
@@ -162,17 +414,18 @@
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
-.live-dot {
-  animation: live-blink 1.6s ease-in-out infinite;
-}
-@keyframes live-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
+/* (The pulsing "live" dot was removed 2026-08-09 on Cayden's ruling: a live
+ * indicator on SAMPLE data turns placeholder text into a claim a shop has to
+ * defend at its own counter. It returns the day the dashboard feed is real.) */
 
-/* A public terminal still honours a motion preference. */
+/* A public terminal still honours a motion preference. The card holds MID-TURN,
+ * not flat — freezing at 0° would hide the exact thing the turn exists to
+ * reveal. The crossfade interval is also gated in the component. */
 @media (prefers-reduced-motion: reduce) {
   .meter-bar i { animation: none; width: 88%; }
   .marq-track { animation: none; }
-  .live-dot { animation: none; }
+  .hero-tilt { animation: none; transform: rotateY(16deg) rotateZ(1.2deg) translateX(10px); }
+  .hero-cardwrap, .hero-mark, .hero-halo, .hero-pedestal .p-spill { animation: none; }
+  .hero-slab { transition: none; }
+  .hero-slab.on .hero-glare::before { animation: none; }
 }

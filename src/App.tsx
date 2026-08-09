@@ -39,6 +39,7 @@ import {
   shippingFeeForCart,
 } from './pricing';
 import { LANDING, TICKER_SAMPLE } from './landingStrings';
+import { HERO_DWELL_MS, HERO_SLABS } from './heroSlabs';
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
 import { hardReload } from './utils/hardReload';
@@ -239,6 +240,36 @@ const CHIP_ICON_PATHS: readonly React.ReactNode[] = [
     <path d="M7 13l3-3 2.5 2.5L17 8" />
   </>,
 ];
+
+/*
+ * The hero alcove — flanking angled panels plus a hexagonal recess echoing the
+ * badge's own geometry, carried across from the approved mockup verbatim. Dark
+ * fills, green on the EDGES only: this is scenery, not the logo. The green strokes
+ * are #00C805 at low opacity — edge light, never a filled green panel.
+ */
+const HERO_WINGS = (
+  <svg viewBox="0 0 640 536" aria-hidden>
+    <defs>
+      <linearGradient id="hero-wgL" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stopColor="#040605" />
+        <stop offset="1" stopColor="#0E1211" />
+      </linearGradient>
+      <linearGradient id="hero-wgR" x1="1" y1="0" x2="0" y2="0">
+        <stop offset="0" stopColor="#040605" />
+        <stop offset="1" stopColor="#0C100F" />
+      </linearGradient>
+    </defs>
+    {/* flanking panels, angled away from the recess */}
+    <polygon points="14,158 162,92 162,444 14,378" fill="url(#hero-wgL)" />
+    <polygon points="626,158 478,92 478,444 626,378" fill="url(#hero-wgR)" />
+    <polygon points="14,158 162,92 162,444 14,378" fill="none" stroke="#00C805" strokeOpacity=".20" strokeWidth="1.2" />
+    <polygon points="626,158 478,92 478,444 626,378" fill="none" stroke="#00C805" strokeOpacity=".20" strokeWidth="1.2" />
+    {/* hexagonal recess the badge sits inside */}
+    <polygon points="320,44 480,136 480,400 320,492 160,400 160,136" fill="#080A09" />
+    <polygon points="320,44 480,136 480,400 320,492 160,400 160,136" fill="none" stroke="#00C805" strokeOpacity=".38" strokeWidth="1.6" />
+    <polygon points="320,84 446,156 446,380 320,452 194,380 194,156" fill="none" stroke="#00C805" strokeOpacity=".15" strokeWidth="1" />
+  </svg>
+);
 
 /** Delivery truck beside the shipping disclosure. */
 const SHIP_ICON = (
@@ -1259,6 +1290,20 @@ export default function App() {
    */
   const landingPregradePrice = cardShowMode ? showPregradingPrice : PREGRADE_PRICE_KIOSK;
 
+  /*
+   * Hero crossfade: 9s dwell, deliberately NOT a divisor of the 14s CSS turn, so the
+   * swap lands at a different angle each cycle and never reads as a scripted loop.
+   * Gated on the landing step (no work while a customer is mid-order) and on
+   * prefers-reduced-motion (the first card simply stays up, mid-turn per the CSS).
+   */
+  const [heroSlab, setHeroSlab] = useState(0);
+  useEffect(() => {
+    if (step !== 'landing') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = setInterval(() => setHeroSlab((i) => (i + 1) % HERO_SLABS.length), HERO_DWELL_MS);
+    return () => clearInterval(id);
+  }, [step]);
+
   const renderLanding = () => (
     <div className="landing-stage h-full w-full overflow-hidden">
       {/*
@@ -1270,8 +1315,8 @@ export default function App() {
           left-aligned, so give the column extra top room then or the banner sits on
           the badge. */}
       <div
-        className={`mx-auto flex h-full w-full max-w-[1366px] flex-col overflow-y-auto px-10 pb-5 ${
-          cardShowMode ? 'pt-14' : 'pt-6'
+        className={`mx-auto flex h-full w-full max-w-[1366px] flex-col overflow-y-auto px-10 pb-[var(--pad-b)] ${
+          cardShowMode ? 'pt-14' : 'pt-[var(--pad-t)]'
         }`}
       >
 
@@ -1283,12 +1328,12 @@ export default function App() {
           <img
             src={badgeUrl}
             alt=""
-            className="h-auto w-12 [filter:drop-shadow(0_0_14px_rgba(0,200,5,0.30))]"
+            className="h-auto w-[var(--badge-w)] [filter:drop-shadow(0_0_14px_rgba(0,200,5,0.30))]"
           />
           <div>
             {/* Wordmark set in type: ivory words, green 2. Brand mark — not in LANDING
                 because it never translates. */}
-            <p className="text-[29px] font-extrabold leading-none tracking-[0.5px] text-m2m-ivory">
+            <p className="text-[length:var(--wordmark)] font-extrabold leading-none tracking-[0.5px] text-m2m-ivory">
               MARKET
               <span className="text-m2m-green [text-shadow:0_0_18px_rgba(0,200,5,0.38)]">2</span>
               MINT
@@ -1303,10 +1348,10 @@ export default function App() {
             on a short viewport the row keeps its content height and the outer
             overflow-y-auto scrolls, instead of the columns painting over the strips
             below. */}
-        <div className="mt-4 grid flex-1 grid-cols-[minmax(0,1fr)_clamp(370px,32%,470px)] gap-[30px]">
+        <div className="mt-[var(--gap-main)] grid flex-1 grid-cols-[minmax(0,1fr)_var(--hero-col)] gap-[30px]">
           <div className="min-w-0">
             {/* ── WHAT IS THIS? ── */}
-            <h1 className="mt-1 text-[51px] font-extrabold leading-[1.06] tracking-[-0.4px] text-m2m-ivory">
+            <h1 className="mt-1 text-[length:var(--h1)] font-extrabold leading-[1.06] tracking-[-0.4px] text-m2m-ivory">
               {LANDING.h1Line1}
               <br />
               <span className="text-m2m-green [text-shadow:0_0_26px_rgba(0,200,5,0.38)]">
@@ -1314,11 +1359,11 @@ export default function App() {
               </span>
               {LANDING.h1Tail}
             </h1>
-            <p className="mt-3.5 max-w-[620px] text-[17.5px] leading-[1.5] text-m2m-ink2">
+            <p className="mt-[clamp(8px,1.4vh,14px)] max-w-[620px] text-[length:var(--sub)] leading-[1.5] text-m2m-ink2">
               {LANDING.sub}
             </p>
 
-            <div className="mt-5 flex gap-6">
+            <div className="mt-[clamp(10px,2vh,20px)] flex gap-6">
               {LANDING.chips.map((chip, i) => (
                 <div key={chip.label} className="flex items-center gap-2.5">
                   <span className="flex h-[35px] w-[35px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-[rgba(0,200,5,0.55)] bg-[rgba(0,200,5,0.12)]">
@@ -1352,10 +1397,10 @@ export default function App() {
               inside is visual. Pregrade leads; submissions sit beside it, never behind
               it. Both start the same flow with a different opening filter.
             */}
-            <div className="mt-[22px] grid grid-cols-[1.06fr_1fr] gap-[18px]">
+            <div className="mt-[clamp(12px,2.2vh,22px)] grid grid-cols-[1.06fr_1fr] gap-[18px]">
               <button
                 onClick={() => startFlow('pregrade')}
-                className="svc-primary relative overflow-hidden rounded-[18px] px-6 pb-5 pt-[21px] text-left transition-transform duration-[120ms] active:scale-[0.985]"
+                className="svc-primary relative overflow-hidden rounded-[18px] px-6 pb-[var(--svc-pb)] pt-[var(--svc-pt)] text-left transition-transform duration-[120ms] active:scale-[0.985]"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-[12.5px] font-bold tracking-[2.6px] text-m2m-green [text-shadow:0_0_12px_rgba(0,200,5,0.38)]">
@@ -1367,14 +1412,14 @@ export default function App() {
                 </div>
                 <div className="mt-[9px] flex items-baseline gap-2.5">
                   {/* Never a literal price — card-show mode quotes the show figure. */}
-                  <span className="tabular-nums text-[47px] font-extrabold leading-none tracking-[-0.8px] text-m2m-green [text-shadow:0_0_26px_rgba(0,200,5,0.38)]">
+                  <span className="tabular-nums text-[length:var(--price)] font-extrabold leading-none tracking-[-0.8px] text-m2m-green [text-shadow:0_0_26px_rgba(0,200,5,0.38)]">
                     {formatUSD(landingPregradePrice)}
                   </span>
                   <span className="text-[11px] font-bold tracking-[1.8px] text-m2m-ink3">
                     {LANDING.pregrade.perUnit}
                   </span>
                 </div>
-                <p className="mt-[9px] min-h-[62px] text-sm leading-[1.5] text-m2m-ink2">
+                <p className="mt-[9px] min-h-[var(--copy-minh)] text-sm leading-[1.5] text-m2m-ink2">
                   <strong className="font-semibold text-m2m-ivory">
                     {LANDING.pregrade.copyStrong}
                   </strong>
@@ -1390,7 +1435,7 @@ export default function App() {
                     </span>
                   ))}
                 </div>
-                <span className="mt-[13px] inline-flex min-h-[44px] items-center gap-[9px] rounded-xl bg-m2m-green px-[22px] text-sm font-bold tracking-[1.3px] text-m2m-jet [box-shadow:0_6px_26px_rgba(0,200,5,0.35)]">
+                <span className="mt-[clamp(8px,1.3vh,13px)] inline-flex min-h-[clamp(40px,4.4vh,44px)] items-center gap-[9px] rounded-xl bg-m2m-green px-[22px] text-sm font-bold tracking-[1.3px] text-m2m-jet [box-shadow:0_6px_26px_rgba(0,200,5,0.35)]">
                   {LANDING.pregrade.cta}
                   <span className="font-extrabold">›</span>
                 </span>
@@ -1398,7 +1443,7 @@ export default function App() {
 
               <button
                 onClick={() => startFlow('submissions')}
-                className="svc-plain relative overflow-hidden rounded-[18px] px-6 pb-5 pt-[21px] text-left transition-transform duration-[120ms] active:scale-[0.985]"
+                className="svc-plain relative overflow-hidden rounded-[18px] px-6 pb-[var(--svc-pb)] pt-[var(--svc-pt)] text-left transition-transform duration-[120ms] active:scale-[0.985]"
               >
                 <span className="block text-[12.5px] font-bold tracking-[2.6px] text-m2m-ivory">
                   {LANDING.submission.label}
@@ -1407,17 +1452,17 @@ export default function App() {
                   <span className="text-lg font-semibold text-m2m-ink2">
                     {LANDING.submission.from}
                   </span>
-                  <span className="tabular-nums text-[47px] font-extrabold leading-none tracking-[-0.8px] text-m2m-ivory">
+                  <span className="tabular-nums text-[length:var(--price)] font-extrabold leading-none tracking-[-0.8px] text-m2m-ivory">
                     {formatUSD(SUBMISSION_FROM_PRICE)}
                   </span>
                   <span className="text-[11px] font-bold tracking-[1.8px] text-m2m-ink3">
                     {LANDING.submission.perUnit}
                   </span>
                 </div>
-                <p className="mt-[9px] min-h-[62px] text-sm leading-[1.5] text-m2m-ink2">
+                <p className="mt-[9px] min-h-[var(--copy-minh)] text-sm leading-[1.5] text-m2m-ink2">
                   {LANDING.submission.copy}
                 </p>
-                <span className="mt-[13px] inline-flex min-h-[44px] items-center gap-[9px] rounded-xl border-[1.5px] border-[rgba(0,200,5,0.55)] bg-[rgba(0,200,5,0.06)] px-[22px] text-sm font-bold tracking-[1.3px] text-m2m-ivory">
+                <span className="mt-[clamp(8px,1.3vh,13px)] inline-flex min-h-[clamp(40px,4.4vh,44px)] items-center gap-[9px] rounded-xl border-[1.5px] border-[rgba(0,200,5,0.55)] bg-[rgba(0,200,5,0.06)] px-[22px] text-sm font-bold tracking-[1.3px] text-m2m-ivory">
                   {LANDING.submission.cta}
                   <span className="font-extrabold">›</span>
                 </span>
@@ -1427,9 +1472,9 @@ export default function App() {
             {/* ── The shipping fee, disclosed early. Customers assume it is per card.
                 The figure is composed from pricing.ts; landingStrings.test.ts proves
                 figure + tail === SHIPPING_DISCLOSURE, so this line cannot drift. ── */}
-            <div className="ship-bar mt-[18px] flex items-center gap-[15px] rounded-[14px] border border-m2m-line px-[22px] py-[14px]">
+            <div className="ship-bar mt-[var(--row-my)] flex items-center gap-[15px] rounded-[14px] border border-m2m-line px-[22px] py-[clamp(8px,1.4vh,14px)]">
               {SHIP_ICON}
-              <p className="text-[17.5px] font-semibold text-m2m-ivory">
+              <p className="text-[length:var(--sub)] font-semibold text-m2m-ivory">
                 <b className="tabular-nums font-extrabold text-m2m-green [text-shadow:0_0_14px_rgba(0,200,5,0.38)]">
                   {formatUSD(SHIPPING_AND_INSURANCE)}
                 </b>{' '}
@@ -1448,20 +1493,42 @@ export default function App() {
 
           {/* ── HERO COLUMN ── overflow-hidden is load-bearing: everything decorative
               in here is sized against the COLUMN and clipped to it, so nothing this
-              block ever does can cover copy the customer has to read. The full
-              anatomy — badge in its faceted alcove, lit pedestal, three-slab
-              rotation — lands in the hero commit; the proof band is structure and
-              sits here from the start. */}
-          <div className="relative flex min-h-0 flex-col items-center justify-center overflow-hidden">
-            <div className="text-center">
+              block ever does can cover copy the customer has to read. Anatomy per
+              design record §2, painted back to front — halo, alcove, plate, badge,
+              slab rotation, pedestal, proof band. Entirely inert: nothing in this
+              column is tappable. */}
+          <div className="hero-col relative flex min-h-0 flex-col items-center justify-center overflow-hidden">
+            <div className="hero-halo" />
+            <div className="hero-wings">{HERO_WINGS}</div>
+            <div className="hero-plate" />
+            {/* The hero backdrop reuses the header's badge asset — one source, so a
+                badge update can never leave the two out of step. */}
+            <img className="hero-mark" src={badgeUrl} alt="" />
+            <div className="hero-cardwrap">
+              <div className="hero-tilt">
+                {HERO_SLABS.map((slab, i) => (
+                  <div key={slab.src} className={`hero-slab${i === heroSlab ? ' on' : ''}`}>
+                    <img src={slab.src} alt={slab.alt} />
+                    <i className="hero-glare" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="hero-pedestal">
+              <span className="p-body" />
+              <span className="p-disc" />
+              <span className="p-contact" />
+              <span className="p-spill" />
+            </div>
+            <div className="z-[2] mt-[clamp(8px,1.8vh,18px)] text-center">
               <p className="text-[11.5px] font-bold tracking-[3.2px] text-m2m-ink3">
                 {LANDING.proof.label}
               </p>
               {/* Type, never logos — rights uncleared. nowrap makes a seventh name fail
-                  loudly by overflowing instead of quietly wrapping the band. Below
-                  1240px viewport the hero column floors at 370px, narrower than the
-                  band at full size — so the band steps down instead of clipping. */}
-              <p className="mt-1.5 whitespace-nowrap text-[15.5px] font-bold tracking-[2.8px] text-m2m-ivory max-[1240px]:text-[13.5px] max-[1240px]:tracking-[2px]">
+                  loudly by overflowing instead of quietly wrapping the band. The hero
+                  column floors at 370px (330px below 1120px viewports) — narrower than
+                  the band at full size, so the band steps down instead of clipping. */}
+              <p className="mt-1.5 whitespace-nowrap text-[15.5px] font-bold tracking-[2.8px] text-m2m-ivory max-[1240px]:text-[13.5px] max-[1240px]:tracking-[2px] max-[1120px]:text-[12px] max-[1120px]:tracking-[1.5px]">
                 {LANDING.proof.partners.map((partner, i) => (
                   <React.Fragment key={partner}>
                     {i > 0 && <span className="px-1.5 font-medium text-m2m-ink3">·</span>}
@@ -1475,7 +1542,7 @@ export default function App() {
 
         {/* ── HOW IT WORKS ── four steps, one line each (copy lengths enforced by
             landingStrings.test.ts). */}
-        <div className="mt-[18px] flex shrink-0 items-center gap-2 rounded-2xl border border-m2m-line bg-white/[0.022] px-6 py-[15px]">
+        <div className="mt-[var(--row-my)] flex shrink-0 items-center gap-2 rounded-2xl border border-m2m-line bg-white/[0.022] px-6 py-[var(--how-py)]">
           <p className="mr-4 whitespace-nowrap text-base font-extrabold leading-[1.15] tracking-[0.5px] text-m2m-green [text-shadow:0_0_14px_rgba(0,200,5,0.38)]">
             {LANDING.how.headLine1}
             <br />
@@ -1485,14 +1552,14 @@ export default function App() {
             <React.Fragment key={step.title}>
               {i > 0 && <span className="px-2 text-xl font-extrabold text-m2m-green opacity-80">›</span>}
               <div className="flex flex-1 items-center gap-3">
-                <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-m2m-green text-[13px] font-extrabold text-m2m-jet [box-shadow:0_0_14px_rgba(0,200,5,0.38)]">
+                <span className="flex h-[var(--stepn)] w-[var(--stepn)] shrink-0 items-center justify-center rounded-full bg-m2m-green text-[13px] font-extrabold text-m2m-jet [box-shadow:0_0_14px_rgba(0,200,5,0.38)]">
                   {i + 1}
                 </span>
                 <span>
-                  <span className="block text-[13px] font-bold tracking-[0.6px] text-m2m-ivory">
+                  <span className="block text-[length:var(--stept)] font-bold tracking-[0.6px] text-m2m-ivory">
                     {step.title}
                   </span>
-                  <span className="mt-0.5 block text-[11px] leading-[1.35] text-m2m-ink2">
+                  <span className="mt-0.5 block text-[length:var(--stepd)] leading-[1.35] text-m2m-ink2">
                     {step.desc}
                   </span>
                 </span>
@@ -1504,9 +1571,8 @@ export default function App() {
         {/* ── RECENT GRADES ── sample data today; the dashboard feed replaces
             TICKER_SAMPLE and nothing else (see landingStrings.ts). Card, grade and
             company only — never a customer name on the attract screen. */}
-        <div className="mt-3 flex shrink-0 items-center gap-3.5 overflow-hidden rounded-xl border border-m2m-line bg-m2m-panel-deep px-[18px] py-[9px]">
+        <div className="mt-[clamp(6px,1.2vh,12px)] flex shrink-0 items-center gap-3.5 overflow-hidden rounded-xl border border-m2m-line bg-m2m-panel-deep px-[18px] py-[var(--live-py)]">
           <span className="flex items-center gap-2 whitespace-nowrap text-[11.5px] font-extrabold tracking-[2.6px] text-m2m-green">
-            <span className="live-dot h-2 w-2 rounded-full bg-m2m-green [box-shadow:0_0_10px_rgba(0,200,5,0.38)]" />
             {LANDING.tickerTag}
           </span>
           <div className="marq min-w-0 flex-1 overflow-hidden whitespace-nowrap">
@@ -1535,7 +1601,7 @@ export default function App() {
             centred in the empty middle, quieter than the service cards — for people
             who want it, never a step in the flow. 44px targets throughout: the person
             tapping may be elderly, or holding a stack of cards. */}
-        <footer className="mt-[13px] flex shrink-0 items-center gap-6">
+        <footer className="mt-[clamp(8px,1.3vh,13px)] flex shrink-0 items-center gap-6">
           <div className="-my-2 flex">
             {LANDING.footer.links.map(({ modal, label }) => (
               <button
@@ -1565,8 +1631,8 @@ export default function App() {
                 <br />
                 {LANDING.footer.qr.line2}
               </p>
-              <span className="flex h-[62px] w-[62px] items-center justify-center rounded-[10px] bg-m2m-ivory p-[5px]">
-                <QRCodeSVG value="https://market2mint.com" size={52} bgColor="#f2efe6" fgColor="#0d0f0e" />
+              <span className="flex h-[var(--qr)] w-[var(--qr)] items-center justify-center rounded-[10px] bg-m2m-ivory p-[5px]">
+                <QRCodeSVG value="https://market2mint.com" size={52} bgColor="#f2efe6" fgColor="#0d0f0e" className="h-full w-full" />
               </span>
             </div>
             <p className="text-[15px] font-extrabold tracking-[2.5px] text-m2m-ivory">

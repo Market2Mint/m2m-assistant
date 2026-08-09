@@ -17,6 +17,12 @@
  * ~900px tall; the hero renders at ≤452px. All three are cropped to near-identical
  * framing on near-black; the hero sizes them BY HEIGHT, so their differing widths
  * (aspect 0.591 / 0.641 / 0.590) read as real slab proportions.
+ *
+ * 🔒 BUNDLE BUDGET (Cayden 2026-08-09): the curated set is capped at FOUR slabs and
+ * ~450KB total. The idle-video costing already concluded video cannot ride in the
+ * bundle; images must not creep the same way one card at a time. Adding a slab means
+ * compressing it to fit the budget, or removing one. `heroSlabs.test.ts` enforces
+ * both limits mechanically — it will fail the build gate, not just this comment.
  */
 import slabMessi from './assets/slab_messi.jpg';
 import slabPikachu from './assets/slab_pikachu.jpg';

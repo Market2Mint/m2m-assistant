@@ -109,19 +109,23 @@
    * the clamp caps it at the design size above 1000 and floors it below ~800. A plain
    * Nvh term cannot hit both targets; that is why these look odd. */
   --slabH: clamp(300px, calc(55.22vh - 100.2px), 452px);
-  --pad-t: clamp(8px, calc(6.67vh - 42.7px), 24px);
-  --pad-b: clamp(8px, calc(4.44vh - 24.4px), 20px);
+  --pad-t: clamp(7px, calc(6.67vh - 42.7px), 24px);
+  --pad-b: clamp(7px, calc(4.44vh - 24.4px), 20px);
   --gap-main: clamp(5px, calc(4.44vh - 28.4px), 16px);
-  --h1: clamp(31px, calc(8.33vh - 32.3px), 51px);
+  --h1: clamp(30px, calc(8.33vh - 32.3px), 51px);
   --sub: clamp(12px, calc(2.22vh - 4.7px), 17.5px);
   --price: clamp(33px, calc(6.11vh - 14.1px), 47px);
-  --copy-minh: clamp(33px, calc(12.22vh - 60.2px), 62px);
-  --svc-pt: clamp(9px, calc(5vh - 29px), 21px);
-  --svc-pb: clamp(9px, calc(4.44vh - 24.4px), 20px);
+  --copy-minh: clamp(31px, calc(12.22vh - 60.2px), 62px);
+  --svc-pt: clamp(8px, calc(5vh - 29px), 21px);
+  --svc-pb: clamp(8px, calc(4.44vh - 24.4px), 20px);
   --row-my: clamp(5px, calc(5.56vh - 37.6px), 18px);
   --how-py: clamp(5px, calc(3.89vh - 23.9px), 15px);
   --live-py: clamp(2px, calc(2.78vh - 18.8px), 9px);
-  --qr: clamp(40px, calc(8.89vh - 26.9px), 62px);
+  /* PROTECTED, like the prices (Cayden 2026-08-09): 90px of actual code + 2×5px
+   * padding. The mockup's 62px box gave 1.79px per module — borderline unscannable
+   * in the approved design itself. 90px ≈ 3.1px/module. The QR is the one
+   * functional element on the screen; it does not participate in the fluid shrink. */
+  --qr: 100px;
   --badge-w: clamp(32px, calc(5.56vh - 7.6px), 48px);
   --wordmark: clamp(20px, calc(3.33vh - 4.3px), 29px);
   --stepn: clamp(20px, calc(2.22vh + 3.8px), 26px);

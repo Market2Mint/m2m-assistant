@@ -1363,10 +1363,10 @@ export default function App() {
               {LANDING.sub}
             </p>
 
-            <div className="mt-[clamp(10px,2vh,20px)] flex gap-6">
+            <div className="mt-[clamp(10px,2vh,20px)] flex gap-6 max-[1120px]:gap-4">
               {LANDING.chips.map((chip, i) => (
                 <div key={chip.label} className="flex items-center gap-2.5">
-                  <span className="flex h-[35px] w-[35px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-[rgba(0,200,5,0.55)] bg-[rgba(0,200,5,0.12)]">
+                  <span className="flex h-[35px] w-[35px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-[rgba(0,200,5,0.55)] bg-[rgba(0,200,5,0.12)] max-[1120px]:h-[29px] max-[1120px]:w-[29px]">
                     <svg
                       viewBox="0 0 24 24"
                       className="h-4 w-4 stroke-m2m-green"
@@ -1380,10 +1380,10 @@ export default function App() {
                     </svg>
                   </span>
                   <span>
-                    <span className="block text-[14.5px] font-semibold leading-tight text-m2m-ivory">
+                    <span className="block text-[14.5px] font-semibold leading-tight text-m2m-ivory max-[1120px]:text-[12.5px]">
                       {chip.label}
                     </span>
-                    <span className="mt-px block text-[11px] font-medium text-m2m-ink3">
+                    <span className="mt-px block text-[11px] font-medium text-m2m-ink3 max-[1120px]:text-[10px]">
                       {chip.caption}
                     </span>
                   </span>
@@ -1481,10 +1481,10 @@ export default function App() {
                 {LANDING.ship.tail}
               </p>
               <span className="ml-auto text-right leading-tight">
-                <span className="block text-[11px] font-bold tracking-[2px] text-m2m-ivory">
+                <span className="block text-[11px] font-bold tracking-[2px] text-m2m-ivory max-[1120px]:text-[10px] max-[1120px]:tracking-[1px]">
                   {LANDING.ship.labelA}
                 </span>
-                <span className="mt-0.5 block text-[10px] font-semibold tracking-[1.8px] text-m2m-ink3">
+                <span className="mt-0.5 block text-[10px] font-semibold tracking-[1.8px] text-m2m-ink3 max-[1120px]:text-[9px] max-[1120px]:tracking-[1px]">
                   {LANDING.ship.labelB}
                 </span>
               </span>
@@ -1568,78 +1568,87 @@ export default function App() {
           ))}
         </div>
 
-        {/* ── RECENT GRADES ── sample data today; the dashboard feed replaces
-            TICKER_SAMPLE and nothing else (see landingStrings.ts). Card, grade and
-            company only — never a customer name on the attract screen. */}
-        <div className="mt-[clamp(6px,1.2vh,12px)] flex shrink-0 items-center gap-3.5 overflow-hidden rounded-xl border border-m2m-line bg-m2m-panel-deep px-[18px] py-[var(--live-py)]">
-          <span className="flex items-center gap-2 whitespace-nowrap text-[11.5px] font-extrabold tracking-[2.6px] text-m2m-green">
-            {LANDING.tickerTag}
-          </span>
-          <div className="marq min-w-0 flex-1 overflow-hidden whitespace-nowrap">
-            {/* The list renders TWICE; the keyframe slides -50%, so the loop joins
-                seamlessly. The second pass is aria-hidden. */}
-            <div className="marq-track">
-              {[0, 1].map((half) => (
-                <span key={half} aria-hidden={half === 1}>
-                  {TICKER_SAMPLE.map((entry) => (
-                    <span
-                      key={`${half}-${entry.card}`}
-                      className="pr-14 text-[13px] font-semibold text-m2m-ink2"
-                    >
-                      <span className="font-extrabold text-m2m-green">{entry.grade}</span>
-                      {'\u2002'}
-                      <b className="font-bold text-m2m-ivory">{entry.card}</b>
+        {/* ── BOTTOM BLOCK: ticker + footer stacked, with the QR spanning BOTH
+            rows on the right. The QR is PROTECTED at 90px of actual code, like the
+            prices — the mockup's 62px box was 1.79px/module, borderline unscannable
+            in the approved design itself. Stacking the two rows beside it costs far
+            less height than growing the footer row to hold it; what gives is the
+            TICKER'S WIDTH — its marquee simply ends ~210px earlier. */}
+        <div className="mt-[clamp(6px,1.2vh,12px)] flex shrink-0 items-stretch gap-4">
+          <div className="flex min-w-0 flex-1 flex-col">
+            {/* ── RECENT GRADES ── sample data today; the dashboard feed replaces
+                TICKER_SAMPLE and nothing else (see landingStrings.ts). Card, grade and
+                company only — never a customer name on the attract screen. */}
+            <div className="flex items-center gap-3.5 overflow-hidden rounded-xl border border-m2m-line bg-m2m-panel-deep px-[18px] py-[var(--live-py)]">
+              <span className="flex items-center whitespace-nowrap text-[11.5px] font-extrabold tracking-[2.6px] text-m2m-green">
+                {LANDING.tickerTag}
+              </span>
+              <div className="marq min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+                {/* The list renders TWICE; the keyframe slides -50%, so the loop joins
+                    seamlessly. The second pass is aria-hidden. */}
+                <div className="marq-track">
+                  {[0, 1].map((half) => (
+                    <span key={half} aria-hidden={half === 1}>
+                      {TICKER_SAMPLE.map((entry) => (
+                        <span
+                          key={`${half}-${entry.card}`}
+                          className="pr-14 text-[13px] font-semibold text-m2m-ink2"
+                        >
+                          <span className="font-extrabold text-m2m-green">{entry.grade}</span>
+                          {'\u2002'}
+                          <b className="font-bold text-m2m-ivory">{entry.card}</b>
+                        </span>
+                      ))}
                     </span>
                   ))}
-                </span>
-              ))}
+                </div>
+              </div>
             </div>
+
+            {/* ── FOOTER ── policies reachable but not leading; the video invitation
+                sits centred in the empty middle, quieter than the service cards — for
+                people who want it, never a step in the flow. 44px targets throughout:
+                the person tapping may be elderly, or holding a stack of cards. */}
+            <footer className="mt-auto flex items-center gap-6 pt-[clamp(4px,1vh,10px)]">
+              <div className="-my-2 flex">
+                {LANDING.footer.links.map(({ modal, label }) => (
+                  <button
+                    key={modal}
+                    onClick={() => setActiveModal(modal)}
+                    className="flex min-h-[44px] items-center rounded-xl px-3.5 text-[13px] font-medium text-m2m-ink3 transition-colors hover:text-m2m-green active:text-m2m-green"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex min-w-0 flex-1 justify-center">
+                <button
+                  onClick={() => setActiveModal('video')}
+                  className="flex min-h-[44px] items-center gap-2.5 rounded-xl border border-m2m-line bg-white/[0.02] px-5 text-xs font-bold tracking-[1.5px] text-m2m-ink2 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98]"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  {LANDING.footer.video}
+                </button>
+              </div>
+              <p className="text-[15px] font-extrabold tracking-[2.5px] text-m2m-ivory">
+                MARKET<b className="text-m2m-green">2</b>MINT.COM
+              </p>
+            </footer>
+          </div>
+
+          {/* One labelled QR + the .com — the only contact routes on any surface. */}
+          <div className="flex shrink-0 items-center gap-3">
+            <p className="text-right text-[10.5px] font-bold leading-[1.6] tracking-[2px] text-m2m-ink3">
+              <b className="text-m2m-ivory">{LANDING.footer.qr.strong}</b>
+              {LANDING.footer.qr.line1Rest}
+              <br />
+              {LANDING.footer.qr.line2}
+            </p>
+            <span className="flex h-[var(--qr)] w-[var(--qr)] items-center justify-center rounded-[10px] bg-m2m-ivory p-[5px]">
+              <QRCodeSVG value="https://market2mint.com" size={90} bgColor="#f2efe6" fgColor="#0d0f0e" className="h-full w-full" />
+            </span>
           </div>
         </div>
-
-        {/* ── FOOTER ── policies reachable but not leading; the video invitation sits
-            centred in the empty middle, quieter than the service cards — for people
-            who want it, never a step in the flow. 44px targets throughout: the person
-            tapping may be elderly, or holding a stack of cards. */}
-        <footer className="mt-[clamp(8px,1.3vh,13px)] flex shrink-0 items-center gap-6">
-          <div className="-my-2 flex">
-            {LANDING.footer.links.map(({ modal, label }) => (
-              <button
-                key={modal}
-                onClick={() => setActiveModal(modal)}
-                className="flex min-h-[44px] items-center rounded-xl px-3.5 text-[13px] font-medium text-m2m-ink3 transition-colors hover:text-m2m-green active:text-m2m-green"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex min-w-0 flex-1 justify-center">
-            <button
-              onClick={() => setActiveModal('video')}
-              className="flex min-h-[44px] items-center gap-2.5 rounded-xl border border-m2m-line bg-white/[0.02] px-5 text-xs font-bold tracking-[1.5px] text-m2m-ink2 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98]"
-            >
-              <Play className="h-4 w-4 fill-current" />
-              {LANDING.footer.video}
-            </button>
-          </div>
-          <div className="flex items-center gap-[18px]">
-            {/* One labelled QR + the .com — the only contact routes on any surface. */}
-            <div className="flex items-center gap-3">
-              <p className="text-right text-[10.5px] font-bold leading-[1.6] tracking-[2px] text-m2m-ink3">
-                <b className="text-m2m-ivory">{LANDING.footer.qr.strong}</b>
-                {LANDING.footer.qr.line1Rest}
-                <br />
-                {LANDING.footer.qr.line2}
-              </p>
-              <span className="flex h-[var(--qr)] w-[var(--qr)] items-center justify-center rounded-[10px] bg-m2m-ivory p-[5px]">
-                <QRCodeSVG value="https://market2mint.com" size={52} bgColor="#f2efe6" fgColor="#0d0f0e" className="h-full w-full" />
-              </span>
-            </div>
-            <p className="text-[15px] font-extrabold tracking-[2.5px] text-m2m-ivory">
-              MARKET<b className="text-m2m-green">2</b>MINT.COM
-            </p>
-          </div>
-        </footer>
       </div>
     </div>
   );

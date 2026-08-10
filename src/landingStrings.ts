@@ -87,8 +87,10 @@ export const LANDING = {
       { modal: 'submission', label: 'Submission Policy' },
     ] as const,
     video: 'HOW IT WORKS',
-    // Renders as two lines: "SCAN TO TRACK / YOUR ORDER", SCAN emphasised.
-    qr: { strong: 'SCAN', line1Rest: ' TO TRACK', line2: 'YOUR ORDER' },
+    // The QR carries no label (Cayden 2026-08-09): the footer renders
+    // market2mint.com immediately beside it, and a QR next to a URL is
+    // self-explanatory. It also removed a promise ("SCAN TO TRACK YOUR
+    // ORDER") the destination could not keep.
   },
 } as const;
 
@@ -109,6 +111,18 @@ export interface TickerEntry {
   grade: string; // e.g. "PSA 10"
   card: string; //  e.g. "2018 Topps Update Ohtani RC"
 }
+
+/**
+ * Where the footer QR goes. It deliberately carries NO label — the footer renders
+ * this same address beside it, and the code goes exactly where the text says.
+ *
+ * ⚠️ The QR renders 90px of code. This short URL encodes as a 25-module code =
+ * 3.60px/module; a longer URL bumps the QR version, the module count rises, and the
+ * code silently shrinks below the 3.10px/module scannability floor with no error
+ * anywhere. `qrDestination.test.ts` pins this — change the URL and the test makes
+ * you prove it still scans.
+ */
+export const QR_DESTINATION = 'https://market2mint.com';
 
 export const TICKER_SAMPLE: readonly TickerEntry[] = [
   { grade: 'PSA 10', card: '2026 Prizm World Cup Lionel Messi Auto' },

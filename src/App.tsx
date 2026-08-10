@@ -38,7 +38,7 @@ import {
   lineTotal,
   shippingFeeForCart,
 } from './pricing';
-import { LANDING, TICKER_SAMPLE } from './landingStrings';
+import { LANDING, QR_DESTINATION, TICKER_SAMPLE } from './landingStrings';
 import { HERO_DWELL_MS, HERO_SLABS } from './heroSlabs';
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
@@ -1333,10 +1333,14 @@ export default function App() {
           <div>
             {/* Wordmark set in type: ivory words, green 2. Brand mark — not in LANDING
                 because it never translates. */}
+            {/* Market2Mint — mixed case per the lockup spec §7: the 2 is a lining
+                figure at cap height, so between lowercase t and M it stands taller
+                than its neighbours and reads as distinct by SHAPE before colour —
+                which is what survives one-colour reproduction. */}
             <p className="text-[length:var(--wordmark)] font-extrabold leading-none tracking-[0.5px] text-m2m-ivory">
-              MARKET
+              Market
               <span className="text-m2m-green [text-shadow:0_0_18px_rgba(0,200,5,0.38)]">2</span>
-              MINT
+              Mint
             </p>
             <p className="mt-[5px] text-[10.5px] font-semibold tracking-[4px] text-m2m-ink3">
               {LANDING.tagline}
@@ -1630,22 +1634,19 @@ export default function App() {
                   {LANDING.footer.video}
                 </button>
               </div>
+              {/* The address, not the wordmark — all lowercase, green 2 retained. */}
               <p className="text-[15px] font-extrabold tracking-[2.5px] text-m2m-ivory">
-                MARKET<b className="text-m2m-green">2</b>MINT.COM
+                market<b className="text-m2m-green">2</b>mint.com
               </p>
             </footer>
           </div>
 
-          {/* One labelled QR + the .com — the only contact routes on any surface. */}
-          <div className="flex shrink-0 items-center gap-3">
-            <p className="text-right text-[10.5px] font-bold leading-[1.6] tracking-[2px] text-m2m-ink3">
-              <b className="text-m2m-ivory">{LANDING.footer.qr.strong}</b>
-              {LANDING.footer.qr.line1Rest}
-              <br />
-              {LANDING.footer.qr.line2}
-            </p>
+          {/* The QR + the .com beside it — the only contact routes on any surface.
+              No label: the footer renders market2mint.com right next to it, and the
+              code goes exactly where the text says. A label would say it twice. */}
+          <div className="flex shrink-0 items-center">
             <span className="flex h-[var(--qr)] w-[var(--qr)] items-center justify-center rounded-[10px] bg-m2m-ivory p-[5px]">
-              <QRCodeSVG value="https://market2mint.com" size={90} bgColor="#f2efe6" fgColor="#0d0f0e" className="h-full w-full" />
+              <QRCodeSVG value={QR_DESTINATION} size={90} bgColor="#f2efe6" fgColor="#0d0f0e" className="h-full w-full" />
             </span>
           </div>
         </div>

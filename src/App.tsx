@@ -24,7 +24,7 @@ import {
   Trash2,
   Play
 } from 'lucide-react';
-import { POLICY, TERMS_OF_USE_SECTIONS, PRIVACY_POLICY_SECTIONS, SUBMISSION_POLICY_SECTIONS } from './data';
+import { POLICY, POLICY_VERSION, TERMS_OF_USE_SECTIONS, PRIVACY_POLICY_SECTIONS, SUBMISSION_POLICY_SECTIONS } from './data';
 import { ACTIVE_SERVICES, copyFor, type ServiceRecord } from './serviceMenu';
 import badgeUrl from './assets/M2M_badge.png';
 import {
@@ -313,6 +313,12 @@ export default function App() {
   
   const [step, setStep] = useState<'landing' | 'questions' | 'results' | 'handoff'>('landing');
   const [policyAccepted, setPolicyAccepted] = useState(false);
+  /**
+   * WHEN the box was ticked — captured at the tick, not at submit, so the record
+   * matches the moment of agreement. Re-ticking updates it to the LAST tick;
+   * unticking clears it. Travels with the order as `policyAcknowledgedAt`.
+   */
+  const [policyAcknowledgedAt, setPolicyAcknowledgedAt] = useState<string | null>(null);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [showYearQuestion, setShowYearQuestion] = useState(false);
   // `auto` marks an answer the kiosk chose because it was the only one available. The
@@ -1139,6 +1145,7 @@ export default function App() {
     }
     setStep('landing');
     setPolicyAccepted(false);
+    setPolicyAcknowledgedAt(null);
     setCurrentQuestionIdx(0);
     setSelectedAnswers([]);
     setHistory([]);
@@ -2140,6 +2147,13 @@ export default function App() {
       storeCode: savedStoreCode,
       customerNotes,
       cashAtShow: cardShowMode && paymentMethod === 'cash',
+      // Null until the box is ticked — and an unticked box cannot reach the handoff
+      // screen, because Complete Order is gated on it. The three JotForm field names
+      // this becomes are case-sensitive literals; see buildHandoffUrl.
+      policy:
+        policyAccepted && policyAcknowledgedAt
+          ? { acknowledgedAt: policyAcknowledgedAt, version: POLICY_VERSION }
+          : null,
     });
 
     return {
@@ -2150,7 +2164,7 @@ export default function App() {
     // getEstimatedDate reads today's date, so this is not a pure function of its inputs.
     // That is harmless: the only way to sit on this screen across midnight is to leave a
     // finished order untouched, and the inactivity timer resets the kiosk long before then.
-  }, [cart, cardShowMode, globalDiscount, showPregradingPrice, shippingFee, total, storeCode, showName, paymentMethod, customerNotes]);
+  }, [cart, cardShowMode, globalDiscount, showPregradingPrice, shippingFee, total, storeCode, showName, paymentMethod, customerNotes, policyAccepted, policyAcknowledgedAt]);
 
   // Handoff Screen Timer (60s)
   useEffect(() => {
@@ -2780,7 +2794,12 @@ export default function App() {
                           <input
                             type="checkbox"
                             checked={policyAccepted}
-                            onChange={(e) => setPolicyAccepted(e.target.checked)}
+                            onChange={(e) => {
+                              setPolicyAccepted(e.target.checked);
+                              // The record of WHEN — at the tick itself. Unticking
+                              // clears it; re-ticking stamps the last tick.
+                              setPolicyAcknowledgedAt(e.target.checked ? new Date().toISOString() : null);
+                            }}
                             className="h-11 w-11 shrink-0 accent-m2m-green rounded-lg bg-zinc-900 border-zinc-700"
                           />
                           <span className="text-base md:text-lg font-black select-none text-zinc-100 uppercase italic tracking-tight leading-tight">

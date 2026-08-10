@@ -67,6 +67,20 @@ export interface HandoffOrder {
   /** Free text from "Additional Instructions". Never carries minimum-grade data. */
   customerNotes: string;
   cashAtShow: boolean;
+  /**
+   * The policy acknowledgement, or null when the box is unticked. Complete Order is
+   * already gated on the box, so a null here never reaches a rendered QR — but the
+   * field is REQUIRED so every caller decides, rather than an optional silently
+   * defaulting the record away.
+   */
+  policy: PolicyAcknowledgement | null;
+}
+
+export interface PolicyAcknowledgement {
+  /** UTC ISO 8601, captured at the moment the box was TICKED, not at submit. */
+  acknowledgedAt: string;
+  /** POLICY_VERSION at render time — which text was on screen that day. */
+  version: string;
 }
 
 /**
@@ -84,6 +98,17 @@ export const buildHandoffUrl = (order: HandoffOrder): string => {
     `customernotes=${encodeURIComponent(order.customerNotes)}`,
     `totalAmountBridge=${order.total}`,
   ];
+  if (order.policy) {
+    // ⚠️ THE CASING OF THESE THREE LITERALS IS LOAD-BEARING. The JotForm fields were
+    // hand-corrected to exactly this camelCase (JotForm auto-generates lowercase); a
+    // mismatch does not error — JotForm silently stores NOTHING, forever, on every
+    // order. Do not tidy them, derive them, or reword them.
+    params.push(
+      'policyAcknowledged=Yes',
+      `policyAcknowledgedAt=${encodeURIComponent(order.policy.acknowledgedAt)}`,
+      `policyVersion=${encodeURIComponent(order.policy.version)}`,
+    );
+  }
   return `${base}?${params.join('&')}`;
 };
 

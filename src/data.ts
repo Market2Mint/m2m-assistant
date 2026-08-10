@@ -16,6 +16,20 @@
  * customer who never expanded the control at all. Do not add a second checkbox or a
  * confirmation dialog for them — a modal on a kiosk gets dismissed without reading.
  */
+/**
+ * WHICH policy text the customer's acknowledgement refers to.
+ *
+ * Sent with every order as `policyVersion`, beside `policyAcknowledged` and
+ * `policyAcknowledgedAt`. "They agreed" is worth very little without proof of WHAT
+ * they agreed to — when the policy text changes, this changes, and old orders stay
+ * tied to the text that was actually on screen the day they were placed.
+ *
+ * ISO date form. It changes when the acknowledged TEXT changes, and ONLY then —
+ * `policyVersion.test.ts` hashes the acknowledged copy and fails if the text moves
+ * without this moving with it (or vice versa). Do not bump it for code changes.
+ */
+export const POLICY_VERSION = '2026-08-10';
+
 export const POLICY = [
   "Turnaround times begin upon induction at grading facilities and are not guaranteed.",
   "Market2Mint is not affiliated with this card shop. We take full responsibility for your items while they are in our possession.",

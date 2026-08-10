@@ -18,6 +18,7 @@ import {
   buildHandoffUrl,
   fitHandoffUrl,
   urlByteLength,
+  variationHandoffFragment,
 } from './handoff';
 
 /**
@@ -240,6 +241,52 @@ describe('how the order degrades when it will not fit', () => {
 
   it('reports droppedDates as false when it gives up entirely', () => {
     expect(worstOrder(400, true)).toEqual({ url: null, droppedDates: false });
+  });
+});
+
+describe('the Q6 variation is the PRODUCT and must reach the shop, by value', () => {
+  // RULED 2026-08-10: "Authenticate Only" is a real product — no grade for the card or
+  // the autograph, the slab comes back sealed and labelled Authentic — at the SAME
+  // price as grading. It differs from "Card Grade Only" ONLY in questions[5], which
+  // until today appeared in zero tests despite being what the shop invoices and
+  // submits from. The same-outcome collapse conflated the two for a few hours before
+  // being withdrawn; these tests make that class of change fail a gate instead.
+
+  it('formats the variation from questions[5], and refuses the three placeholders', () => {
+    expect(variationHandoffFragment('Authenticate Only')).toBe(' (Authenticate Only)');
+    expect(variationHandoffFragment('Card Grade Only')).toBe(' (Card Grade Only)');
+    expect(variationHandoffFragment('Skip Question')).toBe('');
+    expect(variationHandoffFragment('Either')).toBe('');
+    expect(variationHandoffFragment('X')).toBe('');
+    expect(variationHandoffFragment(undefined)).toBe('');
+  });
+
+  it('THE PATH THAT MATTERS: a live PSA Regular Authenticate Only record reaches the URL intact', () => {
+    // From the real menu, not a fixture: the record a customer lands on by answering
+    // Trading Cards → PSA → not autographed → Authenticate Only. If routing renames or
+    // drops this variation, the find() fails and a human looks.
+    const rec = ACTIVE_SERVICES.find(
+      (r) => r.name === 'PSA Regular' && r.questions?.[5] === 'Authenticate Only',
+    );
+    expect(rec).toBeDefined();
+
+    // The exact line shape App.tsx builds for the handoff (variation beside the name).
+    const line = `• ${rec!.name}${variationHandoffFragment(rec!.questions![5])} - $84.99 (x1)`;
+    const url = buildHandoffUrl({
+      servicesPlainString: line,
+      total: '108.99',
+      storeCode: 'HH',
+      customerNotes: '',
+      cashAtShow: false,
+      policy: null,
+    });
+
+    // Assert the VALUE inside the servicesOrdered parameter — not mere presence of a
+    // parenthesis. This is what the shop reads to know which product was bought.
+    const sent = new URL(url).searchParams.get('servicesOrdered');
+    expect(sent).toContain('PSA Regular (Authenticate Only)');
+    // And the two same-price products remain distinguishable end to end.
+    expect(sent).not.toContain('(Card Grade Only)');
   });
 });
 

@@ -88,6 +88,26 @@ export interface PolicyAcknowledgement {
  * fields that all receive the same figure — that is the form's design, not a bug, and
  * removing one silently breaks payment on the far side.
  */
+/**
+ * The Q6 variation fragment of an order line — ` (Authenticate Only)` — or '' when the
+ * routing slot holds a placeholder rather than a variation.
+ *
+ * ⚠️ `questions[5]` IS THE PRODUCT, not routing metadata (ruled 2026-08-10):
+ * "Authenticate Only" means no grade for the card or the autograph — the slab comes
+ * back sealed and labelled Authentic, at the same price as grading. The shop invoices
+ * and submits from the line this fragment lands on, so dropping it changes what the
+ * customer receives and nothing on any screen errors. That is not hypothetical: the
+ * same-outcome question collapse conflated these variations for a few hours the same
+ * day, and was withdrawn for exactly this reason. handoff.test.ts pins the VALUE all
+ * the way into the URL.
+ */
+export const variationHandoffFragment = (q6: string | undefined): string => {
+  if (!q6) return '';
+  const normalized = q6.toLowerCase();
+  if (normalized === 'skip question' || normalized === 'either' || normalized === 'x') return '';
+  return ` (${q6})`;
+};
+
 export const buildHandoffUrl = (order: HandoffOrder): string => {
   const base = order.cashAtShow ? JOTFORM_CASH_FORM : JOTFORM_CARD_FORM;
   const params = [

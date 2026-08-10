@@ -45,7 +45,7 @@ import { addLog } from './utils/logger';
 import { hardReload } from './utils/hardReload';
 import { summariseTiers } from './tiers';
 import { buildPayload, sendTelemetry } from './telemetry';
-import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl } from './handoff';
+import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl, variationHandoffFragment } from './handoff';
 import { EMPTY_HEALTH, UPDATE_WINDOWS, shouldApplyUpdate, type UpdateHealth } from './updatePolicy';
 import { refreshPublishedMenu, resolveMenuAtBoot } from './menuSource';
 import {
@@ -2187,10 +2187,8 @@ export default function App() {
       }
       
       const estDate = getEstimatedDate(item.service.turnaround);
-      const val = item.service.questions[5];
-      const variationStr = (val && val.toLowerCase() !== 'skip question' && val.toLowerCase() !== 'either' && val.toLowerCase() !== 'x')
-        ? ` (${val})`
-        : '';
+      // questions[5] is the PRODUCT (ruled 2026-08-10) — see variationHandoffFragment.
+      const variationStr = variationHandoffFragment(item.service.questions[5]);
       // MIN GRADE rides on the service line, next to OVERSIZED, for the same reason —
       // a term the customer is financially exposed to has to reach the shop legibly. It
       // deliberately does NOT go in `customerNotes` (brief §5.2b).

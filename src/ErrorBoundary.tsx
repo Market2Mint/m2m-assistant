@@ -160,7 +160,7 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
         <p style={{ fontSize: '0.875rem', color: '#52525B', margin: 0 }}>
           {this.state.willRecover
             ? 'This screen will reset on its own in a few seconds.'
-            : 'This kiosk needs attention from Market 2 Mint.'}
+            : 'This kiosk needs attention from Market2Mint.'}
         </p>
       </div>
     );

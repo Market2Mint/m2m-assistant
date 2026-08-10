@@ -196,9 +196,9 @@ describe('comics and magazines are split, and priced per format', () => {
 describe('BGS Priority is live', () => {
   it('offers both variants at the sheet prices and turnarounds', () => {
     expect(priceOf('BGS Priority').price.customer).toBe(150.0);
-    expect(priceOf('BGS Priority').businessDays).toBe(25);
+    expect(priceOf('BGS Priority').businessDays).toBe(20);
     expect(priceOf('BGS Priority w/Auto').price.customer).toBe(155.0);
-    expect(priceOf('BGS Priority w/Auto').businessDays).toBe(30);
+    expect(priceOf('BGS Priority w/Auto').businessDays).toBe(25);
   });
 
   it('is what BGS still offers now Base and Standard are gone', () => {

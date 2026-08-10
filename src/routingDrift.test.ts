@@ -76,8 +76,9 @@ const readRoutingRows = (): CsvRow[] =>
     }));
 
 /**
- * The drift measured 2026-08-09, keyed `csvName @ csvPrice`. 17 variants across 28 CSV
- * rows. Delete entries as Cayden confirms and the CSV (or alias table) is corrected.
+ * The drift measured 2026-08-09, keyed `csvName @ csvPrice`. Started at 17 variants
+ * across 28 CSV rows; the set below is current (the ratchet's own stale-entry check
+ * keeps it so). Delete entries as Cayden confirms and the CSV (or alias) is corrected.
  */
 const KNOWN_DRIFT = new Set([
   'PSA Super Express @ 474',            // alias join key, sheet corrected Dual to 475.00
@@ -87,8 +88,8 @@ const KNOWN_DRIFT = new Set([
   'JSA Memorabilia Certification @ 25',
   'PSA Crossover Plus @ 54.99',
   'PSA Crossover Plus @ 69.99',
-  'PSA Crossover Express @ 154',
-  'PSA Crossover Express @ 204',
+  // PSA Crossover Express @ 154 / @ 204: resolved 2026-08-10 — the sheet moved Express
+  // to 20d (tie fix) and the CSV fallbacks were synced to 20/25. The ratchet shrinks.
   'PSA Reholder <$2000 @ 17.99',
   'CGC Movies & Videos @ 55',           // alias fans out to three CGC Standard Video tiers
   'CGC Movies & Videos @ 65',

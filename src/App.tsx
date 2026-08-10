@@ -45,7 +45,7 @@ import { addLog } from './utils/logger';
 import { hardReload } from './utils/hardReload';
 import { summariseTiers } from './tiers';
 import { buildPayload, sendTelemetry } from './telemetry';
-import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl } from './handoff';
+import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl, variationHandoffFragment } from './handoff';
 import { EMPTY_HEALTH, UPDATE_WINDOWS, shouldApplyUpdate, type UpdateHealth } from './updatePolicy';
 import { refreshPublishedMenu, resolveMenuAtBoot } from './menuSource';
 import {
@@ -55,6 +55,16 @@ import {
   isCardFactQuestion,
   singleOptionDetails,
 } from './flow';
+import {
+  MAX_QUANTITY_PER_LINE,
+  MIN_QUANTITY_PER_LINE,
+  keypadBackspacePressed,
+  keypadDigitPressed,
+  keypadQuantity,
+  openKeypadState,
+  stepQuantity,
+  type KeypadState,
+} from './quantity';
 import {
   CARD_REFERENCE_LABEL,
   CARD_REFERENCE_MAX_LENGTH,
@@ -111,6 +121,13 @@ interface ModalProps {
   children: React.ReactNode;
   showMainMenu?: boolean;
   onMainMenuClick?: () => void;
+  /**
+   * Rendered OUTSIDE the scrolling body, pinned to the modal's bottom edge. For
+   * actions: nothing a customer must PRESS may require scrolling to reach (Phase 1
+   * measured the acknowledgement checkbox arriving below the fold while every
+   * mechanics press sat above it). Scrolling to READ stays; scrolling to ACT is gone.
+   */
+  footer?: React.ReactNode;
 }
 
 // --- Helpers ---
@@ -136,7 +153,7 @@ const toService = (r: ServiceRecord): Service => ({
 
 // --- Components ---
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMainMenu, onMainMenuClick }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMainMenu, onMainMenuClick, footer }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/90 backdrop-blur-xl">
@@ -171,6 +188,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMai
         <div className="p-10 overflow-y-auto flex-1 text-zinc-300">
           {children}
         </div>
+        {footer && (
+          <div className="shrink-0 border-t border-zinc-800 bg-zinc-950/50 px-10 py-6">
+            {footer}
+          </div>
+        )}
       </motion.div>
     </div>
   );
@@ -310,6 +332,11 @@ export default function App() {
     () => menuAtBoot.services.filter((s) => s.active && s.questions !== null).map(toService),
     [menuAtBoot],
   );
+  /** The one service the checkout can offer as a quick add — see the cart's upsell row. */
+  const pregradeService = useMemo(
+    () => allServices.find((s) => s.questions[0] === PREGRADE_CATEGORY) ?? null,
+    [allServices],
+  );
   
   const [step, setStep] = useState<'landing' | 'questions' | 'results' | 'handoff'>('landing');
   const [policyAccepted, setPolicyAccepted] = useState(false);
@@ -386,17 +413,11 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    if (step === 'results') {
-      playUIAudio(650, 0.12);
-    } else if (step === 'handoff') {
-      playUIAudio(880, 0.2);
-    } else if (step === 'questions') {
-      playUIAudio(580, 0.1);
-    } else if (step === 'landing') {
-      playUIAudio(500, 0.1); 
-    }
-  }, [step]);
+  // Sound is for COMMITTED ACTIONS ONLY (ruled 2026-08-10): add to cart, quantity
+  // changes to a cart line, complete order. A step-change chime used to play here on
+  // EVERY transition — including Back and the inactivity reset — which is exactly the
+  // "never scroll or back" case the ruling forbids. Feedback for navigation is visual
+  // (active states, the transition itself), not audible.
 
   useEffect(() => {
     if (step === 'results') {
@@ -929,18 +950,55 @@ export default function App() {
     return formatDate(estimatedDate);
   };
 
-  const updateQuantity = (serviceName: string, delta: number) => {
+  const updateQuantity = (serviceName: string, delta: 1 | -1) => {
     setQuantities(prev => ({
       ...prev,
-      [serviceName]: Math.max(1, (prev[serviceName] || 1) + delta)
+      [serviceName]: stepQuantity(prev[serviceName] || 1, delta),
     }));
   };
 
-  const addToCart = (service: Service) => {
+  /**
+   * Bulk quantity entry (Phase 2 P5). The stepper is right at real quantities — the
+   * five most common orders never pass three cards — but 30 cards must not be 29
+   * taps. Tapping the quantity NUMBER (results stepper or a cart line) opens this
+   * keypad. Digits give visual feedback only; the commit sound plays on Done when it
+   * changes a cart line, because that is the moment the order changes.
+   */
+  const [keypadTarget, setKeypadTarget] = useState<
+    { kind: 'results'; name: string } | { kind: 'line'; id: number } | null
+  >(null);
+  // The calculator convention lives in quantity.ts as a pure state machine, tested
+  // there — this is only the React shell around it.
+  const [keypadState, setKeypadState] = useState<KeypadState>({ entry: '', pristine: true });
+
+  const openKeypad = (
+    target: { kind: 'results'; name: string } | { kind: 'line'; id: number },
+    current: number,
+  ) => {
+    setKeypadTarget(target);
+    setKeypadState(openKeypadState(current));
+  };
+
+  const commitKeypad = () => {
+    const qty = keypadQuantity(keypadState.entry);
+    if (qty === null || keypadTarget === null) return;
+    if (keypadTarget.kind === 'line') {
+      playUIAudio(700, 0.08);
+      updateCartLine(keypadTarget.id, { quantity: qty });
+    } else {
+      setQuantities((prev) => ({ ...prev, [keypadTarget.name]: qty }));
+    }
+    setKeypadTarget(null);
+  };
+
+  const addToCart = (service: Service, qtyOverride?: number) => {
     playUIAudio(700, 0.08);
     const oversized = !!oversizedSel[service.name] && service.oversizedSurcharge !== null;
     addLog(`Added ${service.name}${oversized ? ' (oversized)' : ''} to Cart`);
-    const qty = quantities[service.name] || 1;
+    // `qtyOverride` exists for callers that never showed a quantity control — the
+    // cart's quick-add row says "per card" and must add exactly one, not whatever
+    // count a previous visit to the results stepper left in `quantities`.
+    const qty = qtyOverride ?? (quantities[service.name] || 1);
     setCart(prev => {
       // Merge on service AND oversized: the same service at two different prices is two
       // lines, otherwise one flag would silently reprice cards the customer already added.
@@ -969,6 +1027,11 @@ export default function App() {
     // Reset local quantity after adding
     setQuantities(prev => ({ ...prev, [service.name]: 1 }));
     setOversizedSel(prev => ({ ...prev, [service.name]: false }));
+    // Adding shows you your order (Phase 2 P1a): the checkout IS the confirmation of
+    // what the press just did, and the Cart-button press it replaces carried no
+    // information — every completed order pressed it next anyway. "Another Service"
+    // remains one press away, on this modal's own footer.
+    setActiveModal('cart');
   };
 
   const removeFromCart = (id: number) => {
@@ -1035,7 +1098,8 @@ export default function App() {
    * what made people ask "what is Market2Mint?" while standing in front of the kiosk.
    */
   const startFlow = (entry: 'pregrade' | 'submissions') => {
-    playUIAudio(700, 0.08);
+    // No sound: starting the flow is navigation, not a commitment. The tap sound is
+    // reserved for actions that change the order, so it always means the same thing.
     addLog(`START_SUBMISSION: ${entry}`);
 
     const isPregrade = (s: Service) => s.questions[0] === PREGRADE_CATEGORY;
@@ -1157,6 +1221,11 @@ export default function App() {
     setOpenMinGradeLines([]);
     setCustomerNotes('');
     setPaymentMethod('card');
+    // The keypad renders above every step, so an abandoned one would sit over the
+    // NEXT customer's attract screen — and a stale Done could commit the previous
+    // customer's count into their session. Found by review 2026-08-10.
+    setKeypadTarget(null);
+    setKeypadState({ entry: '', pristine: true });
   };
 
   /**
@@ -2038,18 +2107,33 @@ export default function App() {
                     </button>
                   )}
                   <div className="flex items-center bg-zinc-900 rounded-3xl p-2 border border-zinc-800 shrink-0">
-                    <button 
+                    {/* At either bound the button goes visibly dead — a press that
+                        changes nothing must never look like a press that might have. */}
+                    <button
                       onClick={() => updateQuantity(service.name, -1)}
-                      className="p-3 hover:bg-zinc-800 rounded-2xl transition-all text-m2m-green active:scale-90"
+                      disabled={(quantities[service.name] || 1) <= MIN_QUANTITY_PER_LINE}
+                      className={`p-3 rounded-2xl transition-all ${
+                        (quantities[service.name] || 1) <= MIN_QUANTITY_PER_LINE
+                          ? 'text-zinc-700 cursor-not-allowed'
+                          : 'text-m2m-green hover:bg-zinc-800 active:scale-90'
+                      }`}
                     >
                       <Minus className="w-6 h-6" />
                     </button>
-                    <span className="w-16 text-center font-black text-m2m-green text-3xl">
+                    <button
+                      onClick={() => openKeypad({ kind: 'results', name: service.name }, quantities[service.name] || 1)}
+                      className="w-16 min-h-[44px] text-center font-black text-m2m-green text-3xl rounded-xl hover:bg-zinc-800 active:scale-95 transition-all tabular-nums"
+                    >
                       {quantities[service.name] || 1}
-                    </span>
-                    <button 
+                    </button>
+                    <button
                       onClick={() => updateQuantity(service.name, 1)}
-                      className="p-3 hover:bg-zinc-800 rounded-2xl transition-all text-m2m-green active:scale-90"
+                      disabled={(quantities[service.name] || 1) >= MAX_QUANTITY_PER_LINE}
+                      className={`p-3 rounded-2xl transition-all ${
+                        (quantities[service.name] || 1) >= MAX_QUANTITY_PER_LINE
+                          ? 'text-zinc-700 cursor-not-allowed'
+                          : 'text-m2m-green hover:bg-zinc-800 active:scale-90'
+                      }`}
                     >
                       <Plus className="w-6 h-6" />
                     </button>
@@ -2103,10 +2187,8 @@ export default function App() {
       }
       
       const estDate = getEstimatedDate(item.service.turnaround);
-      const val = item.service.questions[5];
-      const variationStr = (val && val.toLowerCase() !== 'skip question' && val.toLowerCase() !== 'either' && val.toLowerCase() !== 'x')
-        ? ` (${val})`
-        : '';
+      // questions[5] is the PRODUCT (ruled 2026-08-10) — see variationHandoffFragment.
+      const variationStr = variationHandoffFragment(item.service.questions[5]);
       // MIN GRADE rides on the service line, next to OVERSIZED, for the same reason —
       // a term the customer is financially exposed to has to reach the shop legibly. It
       // deliberately does NOT go in `customerNotes` (brief §5.2b).
@@ -2474,12 +2556,111 @@ export default function App() {
           </Modal>
         )}
         {activeModal === 'cart' && (
-          <Modal 
-            isOpen 
-            title="Checkout Cart" 
+          <Modal
+            isOpen
+            title="Checkout Cart"
             onClose={() => setActiveModal(null)}
             showMainMenu
             onMainMenuClick={handleReset}
+            footer={
+              cart.length > 0 ? (
+                <div className="space-y-5">
+                  {/*
+                    The acknowledgement lives in the PINNED footer so completing an
+                    order never requires scrolling to act — Phase 1 measured this
+                    checkbox arriving below the fold on every single order. The policy
+                    list it refers to sits in the scrolling body at the TOP of the
+                    summary card, directly under the order lines — first thing offered,
+                    though a long cart can still push it below the fold. That is the
+                    same trade the old layout made in the other direction, minus the
+                    forced swipe.
+                  */}
+                  {cardShowMode && (
+                    <div className="flex items-center gap-4">
+                      <span className="shrink-0 text-sm font-black uppercase tracking-widest text-m2m-green">Paying by</span>
+                      <button
+                        onClick={() => setPaymentMethod('card')}
+                        className={`min-h-[44px] flex-1 rounded-2xl border-2 py-3 font-black uppercase tracking-widest transition-all active:scale-95 ${
+                          paymentMethod === 'card'
+                            ? 'border-m2m-green bg-m2m-green text-black shadow-[0_0_20px_rgba(0,200,5,0.3)]'
+                            : 'border-zinc-700 bg-zinc-800 text-white hover:border-zinc-600'
+                        }`}
+                      >
+                        Card
+                      </button>
+                      <button
+                        onClick={() => setPaymentMethod('cash')}
+                        className={`min-h-[44px] flex-1 rounded-2xl border-2 py-3 font-black uppercase tracking-widest transition-all active:scale-95 ${
+                          paymentMethod === 'cash'
+                            ? 'border-m2m-green bg-m2m-green text-black shadow-[0_0_20px_rgba(0,200,5,0.3)]'
+                            : 'border-zinc-700 bg-zinc-800 text-white hover:border-zinc-600'
+                        }`}
+                      >
+                        Cash
+                      </button>
+                    </div>
+                  )}
+                  <label className="flex items-center gap-5 p-5 bg-zinc-950/60 rounded-2xl cursor-pointer transition-all active:scale-[0.99] border-2 border-transparent has-[:checked]:border-m2m-green">
+                    <input
+                      type="checkbox"
+                      checked={policyAccepted}
+                      onChange={(e) => {
+                        setPolicyAccepted(e.target.checked);
+                        // The record of WHEN — at the tick itself. Unticking
+                        // clears it; re-ticking stamps the last tick.
+                        setPolicyAcknowledgedAt(e.target.checked ? new Date().toISOString() : null);
+                      }}
+                      className="h-11 w-11 shrink-0 accent-m2m-green rounded-lg bg-zinc-900 border-zinc-700"
+                    />
+                    <span className="text-base md:text-lg font-black select-none text-zinc-100 uppercase italic tracking-tight leading-tight">
+                      I acknowledge and agree to all <span className="whitespace-nowrap">Market2Mint</span> service policies
+                    </span>
+                  </label>
+                  <div className="flex gap-6">
+                    {/*
+                      A second card is ONE press from here (Phase 2 P3): this restarts
+                      the questions across the whole menu, Pregrading included. Plain
+                      "close and look again" stays on the modal's X.
+                    */}
+                    <button
+                      onClick={() => {
+                        setActiveModal(null);
+                        handleSelectAnother();
+                      }}
+                      className="flex-1 flex items-center justify-center gap-3 bg-zinc-800 text-m2m-green py-5 rounded-[1.5rem] font-black text-lg uppercase tracking-[0.1em] hover:bg-zinc-700 transition-all shadow-2xl active:scale-95"
+                    >
+                      <PlusCircle className="w-6 h-6" />
+                      Another Service
+                    </button>
+                    <button
+                      disabled={!policyAccepted}
+                      className={`flex-[2] py-5 rounded-[1.5rem] font-black text-lg uppercase tracking-[0.1em] transition-all shadow-2xl ${
+                        policyAccepted
+                          ? 'bg-m2m-green text-black hover:bg-m2m-green-ink hover:text-m2m-ivory active:scale-95'
+                          : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                      }`}
+                      onClick={() => {
+                        if (!policyAccepted) return;
+                        // The confirm sound — a committed action, the only other one
+                        // besides changing the order itself.
+                        playUIAudio(880, 0.2);
+                        setStep('handoff');
+                        setActiveModal(null);
+                      }}
+                    >
+                      {/* The figure rides on the button: with the checkout opening
+                          straight from Add to Cart and nothing forcing a scroll
+                          through the summary, this is the one place the customer is
+                          GUARANTEED to see what they are committing to. "so far"
+                          whenever a minimum-priced line makes the total a floor. */}
+                      {policyAccepted
+                        ? `Complete Order — $${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${cartHasMinimumPricedItem ? ' so far' : ''}`
+                        : 'Acknowledge to continue'}
+                    </button>
+                  </div>
+                </div>
+              ) : undefined
+            }
           >
             <div className="flex flex-col h-full">
               {cart.length === 0 ? (
@@ -2656,20 +2837,110 @@ export default function App() {
                             )
                           )}
                         </div>
-                        <button
-                          onClick={() => removeFromCart(item.id)}
-                          className="p-6 bg-zinc-950 hover:bg-red-500/10 rounded-3xl transition-all group/del active:scale-90 border border-zinc-800"
-                        >
-                          <Trash2 className="w-8 h-8 text-zinc-700 group-hover/del:text-red-500" />
-                        </button>
+                        <div className="flex flex-col items-center gap-4 shrink-0">
+                          {/*
+                            One more card of a service already chosen is ONE press
+                            (Phase 2 P3a) — nothing about the six answers changes when
+                            the count does. Both directions change what the customer
+                            pays, so both carry the commit sounds. Tapping the NUMBER
+                            opens the keypad for bulk counts.
+                          */}
+                          <div className="flex items-center bg-zinc-950 rounded-3xl p-2 border border-zinc-800">
+                            <button
+                              onClick={() => {
+                                if (item.quantity <= MIN_QUANTITY_PER_LINE) return;
+                                playUIAudio(450, 0.08);
+                                updateCartLine(item.id, { quantity: stepQuantity(item.quantity, -1) });
+                              }}
+                              disabled={item.quantity <= MIN_QUANTITY_PER_LINE}
+                              className={`p-3 rounded-2xl transition-all ${
+                                item.quantity <= MIN_QUANTITY_PER_LINE
+                                  ? 'text-zinc-700 cursor-not-allowed'
+                                  : 'text-m2m-green hover:bg-zinc-800 active:scale-90'
+                              }`}
+                            >
+                              <Minus className="w-6 h-6" />
+                            </button>
+                            <button
+                              onClick={() => openKeypad({ kind: 'line', id: item.id }, item.quantity)}
+                              className="w-16 min-h-[44px] text-center font-black text-m2m-green text-3xl rounded-xl hover:bg-zinc-800 active:scale-95 transition-all tabular-nums"
+                            >
+                              {item.quantity}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (item.quantity >= MAX_QUANTITY_PER_LINE) return;
+                                playUIAudio(700, 0.08);
+                                updateCartLine(item.id, { quantity: stepQuantity(item.quantity, 1) });
+                              }}
+                              disabled={item.quantity >= MAX_QUANTITY_PER_LINE}
+                              className={`p-3 rounded-2xl transition-all ${
+                                item.quantity >= MAX_QUANTITY_PER_LINE
+                                  ? 'text-zinc-700 cursor-not-allowed'
+                                  : 'text-m2m-green hover:bg-zinc-800 active:scale-90'
+                              }`}
+                            >
+                              <Plus className="w-6 h-6" />
+                            </button>
+                          </div>
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="p-6 bg-zinc-950 hover:bg-red-500/10 rounded-3xl transition-all group/del active:scale-90 border border-zinc-800"
+                          >
+                            <Trash2 className="w-8 h-8 text-zinc-700 group-hover/del:text-red-500" />
+                          </button>
+                        </div>
                       </div>
                     ))}
+
+                    {/*
+                      SELLING MORE, as ruled 2026-08-10: the natural next thing, at the
+                      moment it is relevant, ONCE — a quiet row, never a popup, nothing
+                      pre-ticked, and declining is simply ignoring it. It disappears
+                      the moment the order has a pregrade. The year-2000 restriction is
+                      the one consequence a pregrade carries, so it rides on the button.
+                    */}
+                    {pregradeService && !cart.some((item) => item.service.questions[0] === PREGRADE_CATEGORY) && (
+                      <button
+                        onClick={() => addToCart(pregradeService, 1)}
+                        className="flex w-full min-h-[56px] items-center gap-4 rounded-[2rem] border-2 border-dashed border-zinc-700 bg-zinc-900/40 px-8 py-5 text-left transition-all hover:border-m2m-green/60 active:scale-[0.99]"
+                      >
+                        <PlusCircle className="h-7 w-7 shrink-0 text-m2m-green" />
+                        <span className="text-lg font-bold text-zinc-200">
+                          Add a pregrade — <span className="tabular-nums text-m2m-green">{formatUSD(unitPriceOf(pregradeService))}</span> per card
+                          <span className="ml-3 text-sm font-semibold uppercase tracking-widest text-zinc-500">cards from 2000 or newer</span>
+                        </span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Order Summary Section */}
                   <div className="bg-zinc-900 rounded-[2.5rem] p-10 border border-zinc-800 shadow-2xl space-y-8 shrink-0">
                     <div className="space-y-8">
-                      <h3 className="text-3xl font-black uppercase italic text-white border-b border-zinc-800 pb-6 tracking-tight">Order Summary</h3>
+                      {/*
+                        SUBMISSION ESSENTIALS — moved here from the landing screen on
+                        2026-08-05, and to the TOP of this card on 2026-08-10: the
+                        acknowledgement checkbox now lives in the always-visible pinned
+                        footer, so the list it refers to must be the first thing the
+                        scrolling body offers after the order lines — not the last
+                        thing below the notes box, where only customers who scroll to
+                        the very bottom would ever meet it.
+                      */}
+                      <div className="space-y-5">
+                        <h3 className="flex items-center gap-3 text-xl font-black uppercase italic tracking-tight text-white">
+                          <Shield className="w-6 h-6 text-m2m-green" />
+                          Submission Essentials
+                        </h3>
+                        <div className="space-y-3">
+                          {POLICY.map((item, i) => (
+                            <div key={i} className="flex gap-3 text-base leading-snug text-zinc-300 items-start">
+                              <CheckCircle2 className="w-5 h-5 text-m2m-green shrink-0 mt-0.5" />
+                              <span>{item}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <h3 className="text-3xl font-black uppercase italic text-white border-b border-zinc-800 pb-6 tracking-tight pt-2">Order Summary</h3>
                       <div className="space-y-4">
                         <div className="flex justify-between items-center">
                           <span className="text-m2m-green font-black uppercase tracking-widest text-lg">Subtotal</span>
@@ -2740,97 +3011,10 @@ export default function App() {
                         />
                       </div>
 
-                      {/* Payment Method Selection */}
-                      {cardShowMode && (
-                        <div className="space-y-4 pt-6 border-t border-zinc-800">
-                          <div className="flex flex-col gap-4">
-                            <span className="text-m2m-green font-black uppercase tracking-widest text-lg">Payment Method</span>
-                            <div className="flex gap-4">
-                              <button 
-                                onClick={() => setPaymentMethod('card')}
-                                className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 border-2 ${
-                                  paymentMethod === 'card' 
-                                    ? 'bg-m2m-green text-black border-m2m-green shadow-[0_0_20px_rgba(0,200,5,0.3)]' 
-                                    : 'bg-zinc-800 text-white border-zinc-700 hover:border-zinc-600'
-                                }`}
-                              >
-                                Card
-                              </button>
-                              <button 
-                                onClick={() => setPaymentMethod('cash')}
-                                className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 border-2 ${
-                                  paymentMethod === 'cash' 
-                                    ? 'bg-m2m-green text-black border-m2m-green shadow-[0_0_20px_rgba(0,200,5,0.3)]' 
-                                    : 'bg-zinc-800 text-white border-zinc-700 hover:border-zinc-600'
-                                }`}
-                              >
-                                Cash
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {/*
-                        SUBMISSION ESSENTIALS — moved here from the landing screen on
-                        2026-08-05. This is a real liability control and it stays, but it
-                        belongs at the point of commitment, not in front of a stranger who
-                        does not yet know what Market2Mint is. The acknowledgement still
-                        gates completion — it now gates THIS button instead of Start.
-                      */}
-                      <div className="space-y-5 pt-6 border-t border-zinc-800">
-                        <h3 className="flex items-center gap-3 text-xl font-black uppercase italic tracking-tight text-white">
-                          <Shield className="w-6 h-6 text-m2m-green" />
-                          Submission Essentials
-                        </h3>
-                        <div className="space-y-3">
-                          {POLICY.map((item, i) => (
-                            <div key={i} className="flex gap-3 text-base leading-snug text-zinc-300 items-start">
-                              <CheckCircle2 className="w-5 h-5 text-m2m-green shrink-0 mt-0.5" />
-                              <span>{item}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <label className="flex items-center gap-5 p-5 bg-zinc-950/60 rounded-2xl cursor-pointer transition-all active:scale-[0.99] border-2 border-transparent has-[:checked]:border-m2m-green">
-                          <input
-                            type="checkbox"
-                            checked={policyAccepted}
-                            onChange={(e) => {
-                              setPolicyAccepted(e.target.checked);
-                              // The record of WHEN — at the tick itself. Unticking
-                              // clears it; re-ticking stamps the last tick.
-                              setPolicyAcknowledgedAt(e.target.checked ? new Date().toISOString() : null);
-                            }}
-                            className="h-11 w-11 shrink-0 accent-m2m-green rounded-lg bg-zinc-900 border-zinc-700"
-                          />
-                          <span className="text-base md:text-lg font-black select-none text-zinc-100 uppercase italic tracking-tight leading-tight">
-                            I acknowledge and agree to all <span className="whitespace-nowrap">Market2Mint</span> service policies
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-6 pt-4">
-                      <button
-                        onClick={() => setActiveModal(null)}
-                        className="flex-1 bg-zinc-800 text-white py-5 rounded-[1.5rem] font-black text-lg uppercase tracking-[0.1em] hover:bg-zinc-700 transition-all shadow-2xl active:scale-95"
-                      >
-                        Back
-                      </button>
-                      <button
-                        disabled={!policyAccepted}
-                        className={`flex-[2] py-5 rounded-[1.5rem] font-black text-lg uppercase tracking-[0.1em] transition-all shadow-2xl ${
-                          policyAccepted
-                            ? 'bg-m2m-green text-black hover:bg-m2m-green-ink hover:text-m2m-ivory active:scale-95'
-                            : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-                        }`}
-                        onClick={() => {
-                          if (!policyAccepted) return;
-                          setStep('handoff');
-                          setActiveModal(null);
-                        }}
-                      >
-                        {policyAccepted ? 'Complete Order' : 'Acknowledge to continue'}
-                      </button>
+                      {/* The payment-method choice (show mode) moved to the pinned
+                          footer with the acknowledgement — a cash payer routes to a
+                          different form, and a consequence that changes where the
+                          order goes must not be skippable by not scrolling. */}
                     </div>
                   </div>
                 </div>
@@ -2839,6 +3023,77 @@ export default function App() {
           </Modal>
         )}
       </AnimatePresence>
+
+      {/*
+        ── QUANTITY KEYPAD (Phase 2 P5) ──
+        Opens from either quantity number. Keys are 64px — the 44px rule is a floor,
+        not a target. Tapping outside cancels; Done stays disabled until the entry is
+        a real quantity (1–99), so invalid input is refused at the moment of entry
+        rather than silently corrected after it.
+      */}
+      {keypadTarget !== null && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-8"
+          onClick={() => setKeypadTarget(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-[2.5rem] border border-zinc-700 bg-zinc-900 p-8 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-2 text-center text-sm font-black uppercase tracking-[0.3em] text-zinc-500">
+              How many cards?
+            </p>
+            <div className="mb-6 flex h-20 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-950">
+              <span className={`text-5xl font-black tabular-nums ${keypadState.entry ? 'text-m2m-green' : 'text-zinc-700'}`}>
+                {keypadState.entry || '·'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setKeypadState((s) => keypadDigitPressed(s, d))}
+                  className="h-16 rounded-2xl bg-zinc-800 text-3xl font-black text-white transition-all hover:bg-zinc-700 active:scale-90 active:bg-zinc-600"
+                >
+                  {d}
+                </button>
+              ))}
+              <button
+                onClick={() => setKeypadState(keypadBackspacePressed)}
+                className="h-16 rounded-2xl bg-zinc-800 text-2xl font-black text-zinc-400 transition-all hover:bg-zinc-700 active:scale-90 active:bg-zinc-600"
+              >
+                ⌫
+              </button>
+              <button
+                onClick={() => setKeypadState((s) => keypadDigitPressed(s, '0'))}
+                className="h-16 rounded-2xl bg-zinc-800 text-3xl font-black text-white transition-all hover:bg-zinc-700 active:scale-90 active:bg-zinc-600"
+              >
+                0
+              </button>
+              <button
+                onClick={() => setKeypadTarget(null)}
+                className="h-16 rounded-2xl bg-zinc-800 text-base font-black uppercase tracking-widest text-zinc-400 transition-all hover:bg-zinc-700 active:scale-90"
+              >
+                Cancel
+              </button>
+            </div>
+            <button
+              disabled={keypadQuantity(keypadState.entry) === null}
+              onClick={commitKeypad}
+              className={`mt-4 h-16 w-full rounded-2xl text-lg font-black uppercase tracking-[0.1em] transition-all ${
+                keypadQuantity(keypadState.entry) !== null
+                  ? 'bg-m2m-green text-black hover:bg-m2m-green-ink hover:text-m2m-ivory active:scale-95'
+                  : 'cursor-not-allowed bg-zinc-800 text-zinc-600'
+              }`}
+            >
+              {keypadQuantity(keypadState.entry) !== null
+                ? `Done — ${keypadQuantity(keypadState.entry)} ${keypadQuantity(keypadState.entry) === 1 ? 'card' : 'cards'}`
+                : 'Enter 1–99'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/*
         ── "STILL THERE?" — the last 30 seconds before an inactivity reset. ──
 

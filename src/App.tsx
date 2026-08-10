@@ -29,6 +29,7 @@ import { ACTIVE_SERVICES, copyFor, type ServiceRecord } from './serviceMenu';
 import badgeUrl from './assets/M2M_badge.png';
 import {
   PREGRADE_PRICE_KIOSK,
+  SHIPPING_AND_INSURANCE,
   SHIPPING_DISCLOSURE,
   SUBMISSION_FROM_PRICE,
   formatTurnaround,
@@ -37,6 +38,8 @@ import {
   lineTotal,
   shippingFeeForCart,
 } from './pricing';
+import { LANDING, QR_DESTINATION, TICKER_SAMPLE } from './landingStrings';
+import { HERO_DWELL_MS, HERO_SLABS } from './heroSlabs';
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
 import { hardReload } from './utils/hardReload';
@@ -211,6 +214,80 @@ const IDLE_WARNING_AFTER_MS = IDLE_RESET_AFTER_MS - 30_000;
 /** Updater health. Persisted because the interesting failures span reloads. */
 const UPDATE_HEALTH_KEY = 'm2m_update_health';
 
+/*
+ * Landing-screen icons, carried across from the approved mockup
+ * (Kiosk v3/kiosk_attract_messi_2026-08-07.html) rather than swapped for lucide
+ * near-equivalents — the mockup's strokes were drawn to sit inside the 35px chip
+ * circles at these exact weights. Order matches LANDING.chips.
+ */
+const CHIP_ICON_PATHS: readonly React.ReactNode[] = [
+  // submitted-for-you: clipboard sheet + check
+  <>
+    <rect x="3.5" y="6.5" width="12" height="15" rx="2" />
+    <path d="M8 3.5h10a2 2 0 012 2v12" />
+    <path d="M7 12l2.2 2.2L13.5 10" />
+  </>,
+  // secure & insured: padlock
+  <>
+    <rect x="4" y="10" width="16" height="10" rx="2" />
+    <path d="M8 10V7a4 4 0 018 0v3" />
+  </>,
+  // dashboard: monitor + rising line
+  <>
+    <rect x="3" y="4" width="18" height="13" rx="2" />
+    <path d="M9 21h6" />
+    <path d="M12 17v4" />
+    <path d="M7 13l3-3 2.5 2.5L17 8" />
+  </>,
+];
+
+/*
+ * The hero alcove — flanking angled panels plus a hexagonal recess echoing the
+ * badge's own geometry, carried across from the approved mockup verbatim. Dark
+ * fills, green on the EDGES only: this is scenery, not the logo. The green strokes
+ * are #00C805 at low opacity — edge light, never a filled green panel.
+ */
+const HERO_WINGS = (
+  <svg viewBox="0 0 640 536" aria-hidden>
+    <defs>
+      <linearGradient id="hero-wgL" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stopColor="#040605" />
+        <stop offset="1" stopColor="#0E1211" />
+      </linearGradient>
+      <linearGradient id="hero-wgR" x1="1" y1="0" x2="0" y2="0">
+        <stop offset="0" stopColor="#040605" />
+        <stop offset="1" stopColor="#0C100F" />
+      </linearGradient>
+    </defs>
+    {/* flanking panels, angled away from the recess */}
+    <polygon points="14,158 162,92 162,444 14,378" fill="url(#hero-wgL)" />
+    <polygon points="626,158 478,92 478,444 626,378" fill="url(#hero-wgR)" />
+    <polygon points="14,158 162,92 162,444 14,378" fill="none" stroke="#00C805" strokeOpacity=".20" strokeWidth="1.2" />
+    <polygon points="626,158 478,92 478,444 626,378" fill="none" stroke="#00C805" strokeOpacity=".20" strokeWidth="1.2" />
+    {/* hexagonal recess the badge sits inside */}
+    <polygon points="320,44 480,136 480,400 320,492 160,400 160,136" fill="#080A09" />
+    <polygon points="320,44 480,136 480,400 320,492 160,400 160,136" fill="none" stroke="#00C805" strokeOpacity=".38" strokeWidth="1.6" />
+    <polygon points="320,84 446,156 446,380 320,452 194,380 194,156" fill="none" stroke="#00C805" strokeOpacity=".15" strokeWidth="1" />
+  </svg>
+);
+
+/** Delivery truck beside the shipping disclosure. */
+const SHIP_ICON = (
+  <svg
+    viewBox="0 0 24 24"
+    className="h-[29px] w-[29px] shrink-0 stroke-m2m-green [filter:drop-shadow(0_0_10px_rgba(0,200,5,0.38))]"
+    fill="none"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M3 7h11v9H3z" />
+    <path d="M14 10h4l3 3v3h-7" />
+    <circle cx="7" cy="18" r="1.8" />
+    <circle cx="17" cy="18" r="1.8" />
+  </svg>
+);
 
 export default function App() {
   // ACTIVE_SERVICES is already filtered to active + routable, so the merchandising
@@ -1045,7 +1122,7 @@ export default function App() {
    *
    * The policy acknowledgement does not gate this. It gates "Complete Order" at checkout,
    * where the customer is already committed. Leading a stranger with five disclaimers is
-   * what made people ask "what is Market 2 Mint?" while standing in front of the kiosk.
+   * what made people ask "what is Market2Mint?" while standing in front of the kiosk.
    */
   const startFlow = (entry: 'pregrade' | 'submissions') => {
     playUIAudio(700, 0.08);
@@ -1192,9 +1269,9 @@ export default function App() {
   /**
    * LANDING — the attract screen.
    *
-   * It has exactly one job: tell a stranger standing a few feet away what Market 2 Mint
+   * It has exactly one job: tell a stranger standing a few feet away what Market2Mint
    * does, what it costs, and how to start — in that order. Customers kept asking "what is
-   * Market 2 Mint?" while looking straight at this screen, because it used to open with
+   * Market2Mint?" while looking straight at this screen, because it used to open with
    * the app's own name, then five liability statements under the heading "Submission
    * Essentials", then a mandatory acknowledgement checkbox, then a 550px AI chat box.
    * There was no price anywhere on it.
@@ -1220,157 +1297,365 @@ export default function App() {
    */
   const landingPregradePrice = cardShowMode ? showPregradingPrice : PREGRADE_PRICE_KIOSK;
 
-  const renderLanding = () => (
-    <div className="landscape-container px-8 pt-10 pb-6 lg:px-12 overflow-y-auto">
-      {/*
-        `safe center` rather than plain `center`: centred vertically as asked, but if a
-        shorter viewport ever makes the block taller than the screen, alignment falls back
-        to the top instead of clipping the header off the top edge where it cannot be
-        scrolled back to.
-      */}
-      <div className="min-h-full w-full max-w-[1240px] mx-auto flex flex-col [justify-content:safe_center] gap-5">
+  /*
+   * Hero crossfade: 9s dwell, deliberately NOT a divisor of the 14s CSS turn, so the
+   * swap lands at a different angle each cycle and never reads as a scripted loop.
+   * Gated on the landing step (no work while a customer is mid-order) and on
+   * prefers-reduced-motion (the first card simply stays up, mid-turn per the CSS).
+   */
+  const [heroSlab, setHeroSlab] = useState(0);
+  useEffect(() => {
+    if (step !== 'landing') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = setInterval(() => setHeroSlab((i) => (i + 1) % HERO_SLABS.length), HERO_DWELL_MS);
+    return () => clearInterval(id);
+  }, [step]);
 
-        {/* ── WHO ── lateral lockup, centred as a PAIR. Never stack the badge above the
-            wordmark — that is the retired stacked lockup. */}
-        <header className="flex items-center justify-center gap-5 shrink-0">
+  const renderLanding = () => (
+    <div className="landing-stage h-full w-full overflow-hidden">
+      {/*
+        The gradient ground is full-bleed (the outer div) while the content column caps
+        at 1366px — so a wider 1.44:1 tablet gets more dark stage, never letterbox bars.
+        overflow-y-auto is a safety net only: on every iPad we mount, this fits.
+      */}
+      {/* Show mode paints a fixed banner in the top-left corner; the header is now
+          left-aligned, so give the column extra top room then or the banner sits on
+          the badge. */}
+      <div
+        className={`mx-auto flex h-full w-full max-w-[1366px] flex-col overflow-y-auto px-10 pb-[var(--pad-b)] ${
+          cardShowMode ? 'pt-14' : 'pt-[var(--pad-t)]'
+        }`}
+      >
+
+        {/* ── WHO ── lateral lockup. Never stack the badge above the wordmark — that is
+            the retired stacked lockup. The ESPAÑOL pill is deferred; its slot stays
+            empty on purpose, nothing else moves into it. */}
+        <header className="flex shrink-0 items-center gap-[18px]">
           {/* The real badge asset, embedded. Never redrawn, never recoloured. */}
-          <img src={badgeUrl} alt="" className="h-16 w-auto" />
+          <img
+            src={badgeUrl}
+            alt=""
+            className="h-auto w-[var(--badge-w)] [filter:drop-shadow(0_0_14px_rgba(0,200,5,0.30))]"
+          />
           <div>
-            {/*
-              The "2" is set larger than the words in em, so it scales with the wordmark
-              instead of needing a second number kept in step. Inline text sits on the
-              shared baseline, so it grows upward and the lockup stays one line.
-            */}
-            <p className="text-4xl font-extrabold tracking-tight text-m2m-ivory leading-none">
-              MARKET<span className="text-m2m-green text-[1.3em]">2</span>MINT
+            {/* Wordmark set in type: ivory words, green 2. Brand mark — not in LANDING
+                because it never translates. */}
+            {/* Market2Mint — mixed case per the lockup spec §7: the 2 is a lining
+                figure at cap height, so between lowercase t and M it stands taller
+                than its neighbours and reads as distinct by SHAPE before colour —
+                which is what survives one-colour reproduction. */}
+            <p className="text-[length:var(--wordmark)] font-extrabold leading-none tracking-[0.5px] text-m2m-ivory">
+              Market
+              <span className="text-m2m-green [text-shadow:0_0_18px_rgba(0,200,5,0.38)]">2</span>
+              Mint
             </p>
-            <p className="mt-2 text-xs font-bold uppercase tracking-[0.4em] text-zinc-500">
-              Your cards. Our passion.
+            <p className="mt-[5px] text-[10.5px] font-semibold tracking-[4px] text-m2m-ink3">
+              {LANDING.tagline}
             </p>
           </div>
         </header>
 
-        {/* ── WHAT IS THIS? ── */}
-        <div className="shrink-0 text-center">
-          <h1 className="text-5xl font-extrabold uppercase tracking-tight text-m2m-ivory leading-[1.05]">
-            We get your cards<br />professionally graded.
-          </h1>
-          <p className="mt-3 mx-auto max-w-[900px] text-xl text-zinc-400 leading-snug">
-            Leave your cards with us at this counter. We prepare and submit them to PSA, BGS, CGC
-            or SGC, track every step, and return them sealed in a protective case with an
-            official grade.
-          </p>
-        </div>
-
-        {/*
-          ── WHAT DOES IT COST, AND HOW DO I START? ──
-          The cards ARE the action. They used to be passive panels above a separate "Start
-          your order" button, which asked the customer to read a price and then press
-          something else. Pregrade leads; submissions sit beside it, never behind it.
-        */}
-        <div className="grid grid-cols-2 gap-5 shrink-0">
-          <button
-            onClick={() => startFlow('pregrade')}
-            // IDENTICAL surface to Full submission. The RECOMMENDED pill and the green
-            // price carry the emphasis; a green FIELD beside a grey one is what read as
-            // sloppy, and it also broke the rule that green is an accent, never a field.
-            className="rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 px-7 py-6 text-left transition-all hover:border-zinc-600 hover:bg-zinc-900 active:scale-[0.99]"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold uppercase tracking-[0.25em] text-m2m-green">Pregrade</span>
-              <span className="rounded-full bg-m2m-green px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest text-black">
-                Recommended
+        {/* flex-1 lets the row absorb spare height on a tall screen; no min-h-0 —
+            on a short viewport the row keeps its content height and the outer
+            overflow-y-auto scrolls, instead of the columns painting over the strips
+            below. */}
+        <div className="mt-[var(--gap-main)] grid flex-1 grid-cols-[minmax(0,1fr)_var(--hero-col)] gap-[30px]">
+          <div className="min-w-0">
+            {/* ── WHAT IS THIS? ── */}
+            <h1 className="mt-1 text-[length:var(--h1)] font-extrabold leading-[1.06] tracking-[-0.4px] text-m2m-ivory">
+              {LANDING.h1Line1}
+              <br />
+              <span className="text-m2m-green [text-shadow:0_0_26px_rgba(0,200,5,0.38)]">
+                {LANDING.h1Green}
               </span>
-            </div>
-            <div className="mt-3 flex items-baseline gap-3">
-              <span className="tabular-nums text-6xl font-extrabold leading-none text-m2m-green">
-                {formatUSD(landingPregradePrice)}
-              </span>
-              <span className="text-lg font-semibold uppercase tracking-widest text-zinc-400">per card</span>
-            </div>
-            <p className="mt-3 text-lg text-m2m-ivory leading-snug">
-              <span className="font-bold">Know before you commit.</span> We evaluate centering,
-              corners, edges and surfaces and project a grade — before you pay for grading.
+              {LANDING.h1Tail}
+            </h1>
+            <p className="mt-[clamp(8px,1.4vh,14px)] max-w-[620px] text-[length:var(--sub)] leading-[1.5] text-m2m-ink2">
+              {LANDING.sub}
             </p>
-            <span className="mt-4 flex items-center gap-2 text-base font-extrabold uppercase tracking-widest text-m2m-green">
-              Start a pregrade <ChevronRight className="h-5 w-5" />
-            </span>
-          </button>
 
-          <button
-            onClick={() => startFlow('submissions')}
-            className="rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 px-7 py-6 text-left transition-all hover:border-zinc-600 hover:bg-zinc-900 active:scale-[0.99]"
-          >
-            <span className="text-sm font-bold uppercase tracking-[0.25em] text-zinc-400">Full submission</span>
-            <div className="mt-3 flex items-baseline gap-3">
-              <span className="tabular-nums text-6xl font-extrabold leading-none text-m2m-ivory">
-                <span className="text-3xl align-baseline">From </span>{formatUSD(SUBMISSION_FROM_PRICE)}
-              </span>
-              <span className="text-lg font-semibold uppercase tracking-widest text-zinc-500">per card</span>
+            <div className="mt-[clamp(10px,2vh,20px)] flex gap-6 max-[1120px]:gap-4">
+              {LANDING.chips.map((chip, i) => (
+                <div key={chip.label} className="flex items-center gap-2.5">
+                  <span className="flex h-[35px] w-[35px] shrink-0 items-center justify-center rounded-full border-[1.5px] border-[rgba(0,200,5,0.55)] bg-[rgba(0,200,5,0.12)] max-[1120px]:h-[29px] max-[1120px]:w-[29px]">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4 stroke-m2m-green"
+                      fill="none"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      {CHIP_ICON_PATHS[i]}
+                    </svg>
+                  </span>
+                  <span>
+                    <span className="block text-[14.5px] font-semibold leading-tight text-m2m-ivory max-[1120px]:text-[12.5px]">
+                      {chip.label}
+                    </span>
+                    <span className="mt-px block text-[11px] font-medium text-m2m-ink3 max-[1120px]:text-[10px]">
+                      {chip.caption}
+                    </span>
+                  </span>
+                </div>
+              ))}
             </div>
-            <p className="mt-3 text-lg text-zinc-300 leading-snug">
-              Graded, authenticated and sealed by PSA, BGS, CGC or SGC. You choose the company and
-              the turnaround at the next step.
-            </p>
-            <span className="mt-4 flex items-center gap-2 text-base font-extrabold uppercase tracking-widest text-m2m-ivory">
-              Start a submission <ChevronRight className="h-5 w-5" />
-            </span>
-          </button>
-        </div>
 
-        {/*
-          ── The $24.00, disclosed early and verbatim. Customers assume it is per card. ──
+            {/*
+              ── WHAT DOES IT COST, AND HOW DO I START? ──
+              The cards ARE the action — the whole surface is the button; the CTA row
+              inside is visual. Pregrade leads; submissions sit beside it, never behind
+              it. Both start the same flow with a different opening filter.
+            */}
+            <div className="mt-[clamp(12px,2.2vh,22px)] grid grid-cols-[1.06fr_1fr] gap-[18px]">
+              <button
+                onClick={() => startFlow('pregrade')}
+                className="svc-primary relative overflow-hidden rounded-[18px] px-6 pb-[var(--svc-pb)] pt-[var(--svc-pt)] text-left transition-transform duration-[120ms] active:scale-[0.985]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-[12.5px] font-bold tracking-[2.6px] text-m2m-green [text-shadow:0_0_12px_rgba(0,200,5,0.38)]">
+                    {LANDING.pregrade.label}
+                  </span>
+                  <span className="rounded-full bg-m2m-green px-3 py-[5px] text-[10.5px] font-bold tracking-[1.6px] text-m2m-jet [box-shadow:0_0_16px_rgba(0,200,5,0.38)]">
+                    {LANDING.pregrade.pill}
+                  </span>
+                </div>
+                <div className="mt-[9px] flex items-baseline gap-2.5">
+                  {/* Never a literal price — card-show mode quotes the show figure. */}
+                  <span className="tabular-nums text-[length:var(--price)] font-extrabold leading-none tracking-[-0.8px] text-m2m-green [text-shadow:0_0_26px_rgba(0,200,5,0.38)]">
+                    {formatUSD(landingPregradePrice)}
+                  </span>
+                  <span className="text-[11px] font-bold tracking-[1.8px] text-m2m-ink3">
+                    {LANDING.pregrade.perUnit}
+                  </span>
+                </div>
+                <p className="mt-[9px] min-h-[var(--copy-minh)] text-sm leading-[1.5] text-m2m-ink2">
+                  <strong className="font-semibold text-m2m-ivory">
+                    {LANDING.pregrade.copyStrong}
+                  </strong>
+                  {LANDING.pregrade.copyRest}
+                </p>
+                <div className="mt-[9px] flex items-center gap-[7px]">
+                  <span className="mr-0.5 text-[10.5px] font-bold tracking-[1.2px] text-m2m-ink3">
+                    {LANDING.pregrade.meterLabel}
+                  </span>
+                  {[0, 1, 2, 3].map((i) => (
+                    <span key={i} className="meter-bar">
+                      <i style={{ animationDelay: `${i * 0.3}s` }} />
+                    </span>
+                  ))}
+                </div>
+                <span className="mt-[clamp(8px,1.3vh,13px)] inline-flex min-h-[clamp(40px,4.4vh,44px)] items-center gap-[9px] rounded-xl bg-m2m-green px-[22px] text-sm font-bold tracking-[1.3px] text-m2m-jet [box-shadow:0_6px_26px_rgba(0,200,5,0.35)]">
+                  {LANDING.pregrade.cta}
+                  <span className="font-extrabold">›</span>
+                </span>
+              </button>
 
-          This was the SECOND green field on a screen that already had one, which is the
-          thing "green is an accent, not a field" exists to prevent. It still has to be
-          impossible to miss, so the emphasis moves from a coloured panel to TYPOGRAPHY —
-          the figure is the largest thing in the row, on the same grey surface as the price
-          cards above it. Nothing is quieter; the loudness just stops being colour.
-        */}
-        <div className="flex items-center justify-between gap-6 rounded-3xl border border-zinc-800 bg-zinc-900/60 px-7 py-4 shrink-0">
-          <p className="tabular-nums text-2xl font-bold text-m2m-ivory leading-tight">
-            {SHIPPING_DISCLOSURE}
-          </p>
-          <p className="shrink-0 text-sm font-bold uppercase tracking-widest text-zinc-400 text-right leading-tight">
-            Shipping &amp; insurance<br />
-            <span className="text-zinc-500">One time per order</span>
-          </p>
-        </div>
+              <button
+                onClick={() => startFlow('submissions')}
+                className="svc-plain relative overflow-hidden rounded-[18px] px-6 pb-[var(--svc-pb)] pt-[var(--svc-pt)] text-left transition-transform duration-[120ms] active:scale-[0.985]"
+              >
+                <span className="block text-[12.5px] font-bold tracking-[2.6px] text-m2m-ivory">
+                  {LANDING.submission.label}
+                </span>
+                <div className="mt-[9px] flex items-baseline gap-2.5">
+                  <span className="text-lg font-semibold text-m2m-ink2">
+                    {LANDING.submission.from}
+                  </span>
+                  <span className="tabular-nums text-[length:var(--price)] font-extrabold leading-none tracking-[-0.8px] text-m2m-ivory">
+                    {formatUSD(SUBMISSION_FROM_PRICE)}
+                  </span>
+                  <span className="text-[11px] font-bold tracking-[1.8px] text-m2m-ink3">
+                    {LANDING.submission.perUnit}
+                  </span>
+                </div>
+                <p className="mt-[9px] min-h-[var(--copy-minh)] text-sm leading-[1.5] text-m2m-ink2">
+                  {LANDING.submission.copy}
+                </p>
+                <span className="mt-[clamp(8px,1.3vh,13px)] inline-flex min-h-[clamp(40px,4.4vh,44px)] items-center gap-[9px] rounded-xl border-[1.5px] border-[rgba(0,200,5,0.55)] bg-[rgba(0,200,5,0.06)] px-[22px] text-sm font-bold tracking-[1.3px] text-m2m-ivory">
+                  {LANDING.submission.cta}
+                  <span className="font-extrabold">›</span>
+                </span>
+              </button>
+            </div>
 
-        {/* The video stays secondary — it is for people who want it, not a step. */}
-        <div className="flex justify-center shrink-0">
-          <button
-            onClick={() => setActiveModal('video')}
-            className="flex items-center justify-center gap-4 rounded-2xl border-2 border-zinc-800 bg-zinc-900 px-10 py-4 text-base font-bold uppercase tracking-widest text-zinc-300 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98]"
-          >
-            <Play className="w-6 h-6 fill-current" />
-            How it works
-          </button>
-        </div>
-
-        {/*
-          ── Footer: policies stay reachable, they just stop leading. No phone numbers. ──
-
-          The three buttons carry a 44px minimum height with negative margin, so the touch
-          target meets the accessibility floor for a public terminal WITHOUT the row getting
-          visually taller. On a kiosk the person tapping may be elderly, or holding a stack
-          of cards in the other hand; a 16px target is a target only in theory.
-        */}
-        <div className="flex items-center justify-between gap-6 text-xs font-bold uppercase tracking-[0.2em] text-zinc-600 shrink-0">
-          <div className="-my-3 flex gap-2">
-            {([['terms', 'Terms of Use'], ['privacy', 'Privacy Policy'], ['submission', 'Submission Policy']] as const).map(
-              ([modal, label]) => (
-                <button
-                  key={modal}
-                  onClick={() => setActiveModal(modal)}
-                  className="flex min-h-[44px] items-center rounded-xl px-4 transition-colors hover:text-m2m-green active:text-m2m-green"
-                >
-                  {label}
-                </button>
-              ),
-            )}
+            {/* ── The shipping fee, disclosed early. Customers assume it is per card.
+                The figure is composed from pricing.ts; landingStrings.test.ts proves
+                figure + tail === SHIPPING_DISCLOSURE, so this line cannot drift. ── */}
+            <div className="ship-bar mt-[var(--row-my)] flex items-center gap-[15px] rounded-[14px] border border-m2m-line px-[22px] py-[clamp(8px,1.4vh,14px)]">
+              {SHIP_ICON}
+              <p className="text-[length:var(--sub)] font-semibold text-m2m-ivory">
+                <b className="tabular-nums font-extrabold text-m2m-green [text-shadow:0_0_14px_rgba(0,200,5,0.38)]">
+                  {formatUSD(SHIPPING_AND_INSURANCE)}
+                </b>{' '}
+                {LANDING.ship.tail}
+              </p>
+              <span className="ml-auto text-right leading-tight">
+                <span className="block text-[11px] font-bold tracking-[2px] text-m2m-ivory max-[1120px]:text-[10px] max-[1120px]:tracking-[1px]">
+                  {LANDING.ship.labelA}
+                </span>
+                <span className="mt-0.5 block text-[10px] font-semibold tracking-[1.8px] text-m2m-ink3 max-[1120px]:text-[9px] max-[1120px]:tracking-[1px]">
+                  {LANDING.ship.labelB}
+                </span>
+              </span>
+            </div>
           </div>
-          <span className="text-zinc-500 tracking-[0.2em]">market2mint.com</span>
+
+          {/* ── HERO COLUMN ── overflow-hidden is load-bearing: everything decorative
+              in here is sized against the COLUMN and clipped to it, so nothing this
+              block ever does can cover copy the customer has to read. Anatomy per
+              design record §2, painted back to front — halo, alcove, plate, badge,
+              slab rotation, pedestal, proof band. Entirely inert: nothing in this
+              column is tappable. */}
+          <div className="hero-col relative flex min-h-0 flex-col items-center justify-center overflow-hidden">
+            <div className="hero-halo" />
+            <div className="hero-wings">{HERO_WINGS}</div>
+            <div className="hero-plate" />
+            {/* The hero backdrop reuses the header's badge asset — one source, so a
+                badge update can never leave the two out of step. */}
+            <img className="hero-mark" src={badgeUrl} alt="" />
+            <div className="hero-cardwrap">
+              <div className="hero-tilt">
+                {HERO_SLABS.map((slab, i) => (
+                  <div key={slab.src} className={`hero-slab${i === heroSlab ? ' on' : ''}`}>
+                    <img src={slab.src} alt={slab.alt} />
+                    <i className="hero-glare" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="hero-pedestal">
+              <span className="p-body" />
+              <span className="p-disc" />
+              <span className="p-contact" />
+              <span className="p-spill" />
+            </div>
+            <div className="z-[2] mt-[clamp(8px,1.8vh,18px)] text-center">
+              <p className="text-[11.5px] font-bold tracking-[3.2px] text-m2m-ink3">
+                {LANDING.proof.label}
+              </p>
+              {/* Type, never logos — rights uncleared. nowrap makes a seventh name fail
+                  loudly by overflowing instead of quietly wrapping the band. The hero
+                  column floors at 370px (330px below 1120px viewports) — narrower than
+                  the band at full size, so the band steps down instead of clipping. */}
+              <p className="mt-1.5 whitespace-nowrap text-[15.5px] font-bold tracking-[2.8px] text-m2m-ivory max-[1240px]:text-[13.5px] max-[1240px]:tracking-[2px] max-[1120px]:text-[12px] max-[1120px]:tracking-[1.5px]">
+                {LANDING.proof.partners.map((partner, i) => (
+                  <React.Fragment key={partner}>
+                    {i > 0 && <span className="px-1.5 font-medium text-m2m-ink3">·</span>}
+                    {partner}
+                  </React.Fragment>
+                ))}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── HOW IT WORKS ── four steps, one line each (copy lengths enforced by
+            landingStrings.test.ts). */}
+        <div className="mt-[var(--row-my)] flex shrink-0 items-center gap-2 rounded-2xl border border-m2m-line bg-white/[0.022] px-6 py-[var(--how-py)]">
+          <p className="mr-4 whitespace-nowrap text-base font-extrabold leading-[1.15] tracking-[0.5px] text-m2m-green [text-shadow:0_0_14px_rgba(0,200,5,0.38)]">
+            {LANDING.how.headLine1}
+            <br />
+            {LANDING.how.headLine2}
+          </p>
+          {LANDING.how.steps.map((step, i) => (
+            <React.Fragment key={step.title}>
+              {i > 0 && <span className="px-2 text-xl font-extrabold text-m2m-green opacity-80">›</span>}
+              <div className="flex flex-1 items-center gap-3">
+                <span className="flex h-[var(--stepn)] w-[var(--stepn)] shrink-0 items-center justify-center rounded-full bg-m2m-green text-[13px] font-extrabold text-m2m-jet [box-shadow:0_0_14px_rgba(0,200,5,0.38)]">
+                  {i + 1}
+                </span>
+                <span>
+                  <span className="block text-[length:var(--stept)] font-bold tracking-[0.6px] text-m2m-ivory">
+                    {step.title}
+                  </span>
+                  <span className="mt-0.5 block text-[length:var(--stepd)] leading-[1.35] text-m2m-ink2">
+                    {step.desc}
+                  </span>
+                </span>
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* ── BOTTOM BLOCK: ticker + footer stacked, with the QR spanning BOTH
+            rows on the right. The QR is PROTECTED at 90px of actual code, like the
+            prices — the mockup's 62px box was 1.79px/module, borderline unscannable
+            in the approved design itself. Stacking the two rows beside it costs far
+            less height than growing the footer row to hold it; what gives is the
+            TICKER'S WIDTH — its marquee simply ends ~210px earlier. */}
+        <div className="mt-[clamp(6px,1.2vh,12px)] flex shrink-0 items-stretch gap-4">
+          <div className="flex min-w-0 flex-1 flex-col">
+            {/* ── RECENT GRADES ── sample data today; the dashboard feed replaces
+                TICKER_SAMPLE and nothing else (see landingStrings.ts). Card, grade and
+                company only — never a customer name on the attract screen. */}
+            <div className="flex items-center gap-3.5 overflow-hidden rounded-xl border border-m2m-line bg-m2m-panel-deep px-[18px] py-[var(--live-py)]">
+              <span className="flex items-center whitespace-nowrap text-[11.5px] font-extrabold tracking-[2.6px] text-m2m-green">
+                {LANDING.tickerTag}
+              </span>
+              <div className="marq min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+                {/* The list renders TWICE; the keyframe slides -50%, so the loop joins
+                    seamlessly. The second pass is aria-hidden. */}
+                <div className="marq-track">
+                  {[0, 1].map((half) => (
+                    <span key={half} aria-hidden={half === 1}>
+                      {TICKER_SAMPLE.map((entry) => (
+                        <span
+                          key={`${half}-${entry.card}`}
+                          className="pr-14 text-[13px] font-semibold text-m2m-ink2"
+                        >
+                          <span className="font-extrabold text-m2m-green">{entry.grade}</span>
+                          {'\u2002'}
+                          <b className="font-bold text-m2m-ivory">{entry.card}</b>
+                        </span>
+                      ))}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ── FOOTER ── policies reachable but not leading; the video invitation
+                sits centred in the empty middle, quieter than the service cards — for
+                people who want it, never a step in the flow. 44px targets throughout:
+                the person tapping may be elderly, or holding a stack of cards. */}
+            <footer className="mt-auto flex items-center gap-6 pt-[clamp(4px,1vh,10px)]">
+              <div className="-my-2 flex">
+                {LANDING.footer.links.map(({ modal, label }) => (
+                  <button
+                    key={modal}
+                    onClick={() => setActiveModal(modal)}
+                    className="flex min-h-[44px] items-center rounded-xl px-3.5 text-[13px] font-medium text-m2m-ink3 transition-colors hover:text-m2m-green active:text-m2m-green"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex min-w-0 flex-1 justify-center">
+                <button
+                  onClick={() => setActiveModal('video')}
+                  className="flex min-h-[44px] items-center gap-2.5 rounded-xl border border-m2m-line bg-white/[0.02] px-5 text-xs font-bold tracking-[1.5px] text-m2m-ink2 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98]"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  {LANDING.footer.video}
+                </button>
+              </div>
+              {/* The address, not the wordmark — all lowercase, green 2 retained. */}
+              <p className="text-[15px] font-extrabold tracking-[2.5px] text-m2m-ivory">
+                market<b className="text-m2m-green">2</b>mint.com
+              </p>
+            </footer>
+          </div>
+
+          {/* The QR + the .com beside it — the only contact routes on any surface.
+              No label: the footer renders market2mint.com right next to it, and the
+              code goes exactly where the text says. A label would say it twice. */}
+          <div className="flex shrink-0 items-center">
+            <span className="flex h-[var(--qr)] w-[var(--qr)] items-center justify-center rounded-[10px] bg-m2m-ivory p-[5px]">
+              <QRCodeSVG value={QR_DESTINATION} size={90} bgColor="#f2efe6" fgColor="#0d0f0e" className="h-full w-full" />
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -2550,7 +2835,7 @@ export default function App() {
                         SUBMISSION ESSENTIALS — moved here from the landing screen on
                         2026-08-05. This is a real liability control and it stays, but it
                         belongs at the point of commitment, not in front of a stranger who
-                        does not yet know what Market 2 Mint is. The acknowledgement still
+                        does not yet know what Market2Mint is. The acknowledgement still
                         gates completion — it now gates THIS button instead of Start.
                       */}
                       <div className="space-y-5 pt-6 border-t border-zinc-800">
@@ -2579,7 +2864,7 @@ export default function App() {
                             className="h-11 w-11 shrink-0 accent-m2m-green rounded-lg bg-zinc-900 border-zinc-700"
                           />
                           <span className="text-base md:text-lg font-black select-none text-zinc-100 uppercase italic tracking-tight leading-tight">
-                            I acknowledge and agree to all <span className="whitespace-nowrap">Market 2 Mint</span> service policies
+                            I acknowledge and agree to all <span className="whitespace-nowrap">Market2Mint</span> service policies
                           </span>
                         </label>
                       </div>

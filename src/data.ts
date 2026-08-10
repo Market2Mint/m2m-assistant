@@ -18,7 +18,7 @@
  */
 export const POLICY = [
   "Turnaround times begin upon induction at grading facilities and are not guaranteed.",
-  "Market 2 Mint is not affiliated with this card shop. We take full responsibility for your items while they are in our possession.",
+  "Market2Mint is not affiliated with this card shop. We take full responsibility for your items while they are in our possession.",
   "Unclaimed items will be considered abandoned after 120 days and three notification attempts.",
   "Inspect returned items at pickup. Claims must be filed within 7 days of shop return notification.",
   "Grading company upcharges will be invoiced as applicable.",
@@ -34,56 +34,56 @@ export const RECOMMENDATIONS = [
 
 export const TERMS_OF_USE_SECTIONS = [
   {
-    title: "Market 2 Mint – Kiosk Terms of Use",
-    content: "These Terms of Use (“Terms”) govern your access to and use of Market 2 Mint’s kiosk ordering system, website, and related services (collectively, the “Services”). By submitting items through the kiosk or using our Services, you acknowledge that you have read, understood, and agree to be bound by these Terms."
+    title: "Market2Mint – Kiosk Terms of Use",
+    content: "These Terms of Use (“Terms”) govern your access to and use of Market2Mint’s kiosk ordering system, website, and related services (collectively, the “Services”). By submitting items through the kiosk or using our Services, you acknowledge that you have read, understood, and agree to be bound by these Terms."
   },
   {
     title: "Use of Services",
-    content: "You agree to use Market 2 Mint Services only for lawful purposes. You may not:\n\n• Violate any applicable law or regulation\n• Submit items you do not legally own or have authority to submit\n• Interfere with or disrupt our systems or services\n• Attempt unauthorized access to Market 2 Mint systems or networks\n• Upload or transmit malicious code, malware, or viruses\n\nMarket 2 Mint reserves the right to refuse service to anyone for any reason permitted by law."
+    content: "You agree to use Market2Mint Services only for lawful purposes. You may not:\n\n• Violate any applicable law or regulation\n• Submit items you do not legally own or have authority to submit\n• Interfere with or disrupt our systems or services\n• Attempt unauthorized access to Market2Mint systems or networks\n• Upload or transmit malicious code, malware, or viruses\n\nMarket2Mint reserves the right to refuse service to anyone for any reason permitted by law."
   },
   {
     title: "Submission Authorization",
     content: "By submitting items, you represent and warrant that:\n\n• You are the lawful owner of the items submitted or have authority to submit them\n• The information provided about the items is accurate to the best of your knowledge\n• Items submitted do not violate any laws or intellectual property rights"
   },
   {
-    title: "Role of Market 2 Mint",
-    content: "Market 2 Mint acts solely as a submission facilitator and logistics intermediary for third-party grading services such as PSA, BGS, SGC, CGC, and others.\n\nMarket 2 Mint:\n• Does not determine grading results\n• Does not guarantee authentication outcomes\n• Does not control grading company turnaround times\n\nAll grading decisions are made solely by the grading company."
+    title: "Role of Market2Mint",
+    content: "Market2Mint acts solely as a submission facilitator and logistics intermediary for third-party grading services such as PSA, BGS, SGC, CGC, and others.\n\nMarket2Mint:\n• Does not determine grading results\n• Does not guarantee authentication outcomes\n• Does not control grading company turnaround times\n\nAll grading decisions are made solely by the grading company."
   },
   {
     title: "Turnaround Times",
-    content: "Estimated turnaround times are determined by grading companies and begin only once items are inducted into the grading company’s system. Turnaround times are estimates and are not guaranteed.\n\nMarket 2 Mint is not responsible for delays caused by grading companies, shipping carriers, customs inspections, or other external factors."
+    content: "Estimated turnaround times are determined by grading companies and begin only once items are inducted into the grading company’s system. Turnaround times are estimates and are not guaranteed.\n\nMarket2Mint is not responsible for delays caused by grading companies, shipping carriers, customs inspections, or other external factors."
   },
   {
     title: "Declared Value and Service Level Limits",
-    content: "Each grading service offered through Market 2 Mint includes a maximum declared value limit, which is displayed to the customer at the time of service selection. By selecting a service tier, the customer confirms that the declared value of the submitted item does not exceed the maximum value permitted for that service level.\n\nThe declared value selected by the customer determines:\n• eligibility for the grading service tier\n• insurance coverage during shipment (if applicable)\n• the maximum liability limit for Market 2 Mint\n\nCustomers are responsible for selecting the appropriate service tier based on the estimated market value of their item. Market 2 Mint is not responsible for incorrect service selection.\n\nIf a grading company determines that an item exceeds the declared value associated with the selected service tier, the grading company may assess an upcharge or service adjustment. Customers agree to pay any such upcharges prior to release or return of the graded item."
+    content: "Each grading service offered through Market2Mint includes a maximum declared value limit, which is displayed to the customer at the time of service selection. By selecting a service tier, the customer confirms that the declared value of the submitted item does not exceed the maximum value permitted for that service level.\n\nThe declared value selected by the customer determines:\n• eligibility for the grading service tier\n• insurance coverage during shipment (if applicable)\n• the maximum liability limit for Market2Mint\n\nCustomers are responsible for selecting the appropriate service tier based on the estimated market value of their item. Market2Mint is not responsible for incorrect service selection.\n\nIf a grading company determines that an item exceeds the declared value associated with the selected service tier, the grading company may assess an upcharge or service adjustment. Customers agree to pay any such upcharges prior to release or return of the graded item."
   },
   {
     title: "Clause for Services With No Declared Value Limit (Example: BGS)",
-    content: "Some grading services may not impose a maximum declared value limit. In these cases, the value entered by the customer during submission will be treated as the official declared value for insurance and liability purposes.\n\nFor submissions without a predefined service value limit:\n• The customer must provide a reasonable declared value at the time of submission.\n• Market 2 Mint’s maximum liability for any loss or damage claim will not exceed the declared value entered by the customer or the amount of service fees paid, whichever is lower.\n• Market 2 Mint reserves the right to request reasonable proof of value in the event of a claim.\n• Failure to provide an accurate declared value may limit or void any claim for loss or damage."
+    content: "Some grading services may not impose a maximum declared value limit. In these cases, the value entered by the customer during submission will be treated as the official declared value for insurance and liability purposes.\n\nFor submissions without a predefined service value limit:\n• The customer must provide a reasonable declared value at the time of submission.\n• Market2Mint’s maximum liability for any loss or damage claim will not exceed the declared value entered by the customer or the amount of service fees paid, whichever is lower.\n• Market2Mint reserves the right to request reasonable proof of value in the event of a claim.\n• Failure to provide an accurate declared value may limit or void any claim for loss or damage."
   },
   {
     title: "Excess Value Limitation",
-    content: "If the actual market value of a submitted item exceeds the declared value provided during submission, Market 2 Mint’s liability shall remain strictly limited to the declared value selected by the customer, regardless of the item’s actual market value.\n\nCustomers are responsible for ensuring declared values accurately reflect the value of their items."
+    content: "If the actual market value of a submitted item exceeds the declared value provided during submission, Market2Mint’s liability shall remain strictly limited to the declared value selected by the customer, regardless of the item’s actual market value.\n\nCustomers are responsible for ensuring declared values accurately reflect the value of their items."
   },
   {
     title: "Limitation of Liability",
-    content: "To the fullest extent permitted by law, Market 2 Mint shall not be liable for:\n\n• grading outcomes\n• grading company determinations\n• delays in grading services\n• market value fluctuations\n• lost profits or consequential damages\n\nMarket 2 Mint’s total liability for any claim shall not exceed the declared value of the submitted item or the amount of service fees paid, whichever is lower."
+    content: "To the fullest extent permitted by law, Market2Mint shall not be liable for:\n\n• grading outcomes\n• grading company determinations\n• delays in grading services\n• market value fluctuations\n• lost profits or consequential damages\n\nMarket2Mint’s total liability for any claim shall not exceed the declared value of the submitted item or the amount of service fees paid, whichever is lower."
   },
   {
     title: "Shipping and Transit Risk",
-    content: "Submitted items may be transported between:\n\n• partner shops\n• Market 2 Mint facilities\n• grading company facilities\n• shipping carriers\n\nMarket 2 Mint uses reasonable care in packaging and handling items. However, shipping carriers are independent third parties, and Market 2 Mint is not responsible for carrier delays or carrier negligence.\n\nInsurance coverage, if applicable, is limited to declared value."
+    content: "Submitted items may be transported between:\n\n• partner shops\n• Market2Mint facilities\n• grading company facilities\n• shipping carriers\n\nMarket2Mint uses reasonable care in packaging and handling items. However, shipping carriers are independent third parties, and Market2Mint is not responsible for carrier delays or carrier negligence.\n\nInsurance coverage, if applicable, is limited to declared value."
   },
   {
     title: "Force Majeure",
-    content: "Market 2 Mint shall not be responsible for delays or losses caused by events beyond its reasonable control, including but not limited to:\n\n• natural disasters\n• fire\n• theft\n• labor disputes\n• shipping carrier failures\n• government actions\n• grading company operational disruptions"
+    content: "Market2Mint shall not be responsible for delays or losses caused by events beyond its reasonable control, including but not limited to:\n\n• natural disasters\n• fire\n• theft\n• labor disputes\n• shipping carrier failures\n• government actions\n• grading company operational disruptions"
   },
   {
     title: "Intellectual Property",
-    content: "All trademarks, logos, content, and materials displayed on our Services are the property of Market 2 Mint or their respective owners. No content may be reproduced or distributed without prior written consent."
+    content: "All trademarks, logos, content, and materials displayed on our Services are the property of Market2Mint or their respective owners. No content may be reproduced or distributed without prior written consent."
   },
   {
     title: "Changes to Terms",
-    content: "Market 2 Mint reserves the right to update these Terms at any time. Continued use of our Services constitutes acceptance of updated Terms."
+    content: "Market2Mint reserves the right to update these Terms at any time. Continued use of our Services constitutes acceptance of updated Terms."
   }
 ];
 
@@ -92,20 +92,20 @@ export const TERMS_OF_USE = TERMS_OF_USE_SECTIONS.map(s => `${s.title}\n\n${s.co
 
 export const SUBMISSION_POLICY_SECTIONS = [
   {
-    title: "Market 2 Mint – Submission Policy",
-    content: "This policy governs all items submitted through Market 2 Mint."
+    title: "Market2Mint – Submission Policy",
+    content: "This policy governs all items submitted through Market2Mint."
   },
   {
     title: "Customer Responsibility",
-    content: "Customers are responsible for:\n\n• accurately identifying cards or collectibles submitted\n• declaring accurate item values\n• selecting the appropriate grading service tier\n\nMarket 2 Mint is not responsible for errors in customer-provided submission information."
+    content: "Customers are responsible for:\n\n• accurately identifying cards or collectibles submitted\n• declaring accurate item values\n• selecting the appropriate grading service tier\n\nMarket2Mint is not responsible for errors in customer-provided submission information."
   },
   {
     title: "Card Condition",
-    content: "Market 2 Mint does not guarantee the condition of submitted items and does not provide guarantees regarding grading outcomes.\n\nCards may contain defects including but not limited to:\n\n• scratches\n• print lines\n• surface wear\n• edge damage\n• centering issues\n\nGrading companies evaluate these factors independently."
+    content: "Market2Mint does not guarantee the condition of submitted items and does not provide guarantees regarding grading outcomes.\n\nCards may contain defects including but not limited to:\n\n• scratches\n• print lines\n• surface wear\n• edge damage\n• centering issues\n\nGrading companies evaluate these factors independently."
   },
   {
     title: "Grading Company Determinations",
-    content: "Authentication, grading, encapsulation, and rejection decisions are made solely by the grading company.\n\nMarket 2 Mint is not responsible for:\n\n• grading outcomes\n• rejection of items\n• altered or trimmed determinations\n• authentication failures"
+    content: "Authentication, grading, encapsulation, and rejection decisions are made solely by the grading company.\n\nMarket2Mint is not responsible for:\n\n• grading outcomes\n• rejection of items\n• altered or trimmed determinations\n• authentication failures"
   },
   {
     title: "Upcharges",
@@ -121,30 +121,30 @@ export const SUBMISSION_POLICY_SECTIONS = [
   },
   {
     title: "Handling and Packaging",
-    content: "Market 2 Mint handles all items with reasonable care.\n\nHowever, Market 2 Mint is not responsible for damage caused by:\n\n• pre-existing card defects\n• grading company handling\n• grading company encapsulation\n• shipping carrier handling"
+    content: "Market2Mint handles all items with reasonable care.\n\nHowever, Market2Mint is not responsible for damage caused by:\n\n• pre-existing card defects\n• grading company handling\n• grading company encapsulation\n• shipping carrier handling"
   },
   {
     title: "Liability Cap",
-    content: "Market 2 Mint’s liability for any loss or damage claim shall not exceed the declared value of the item or the amount of service fees paid, whichever is lower.\n\nProof of value may be required for claims."
+    content: "Market2Mint’s liability for any loss or damage claim shall not exceed the declared value of the item or the amount of service fees paid, whichever is lower.\n\nProof of value may be required for claims."
   },
   {
     title: "Limited Liability & Inspection Period",
-    content: "Market 2 Mint (M2M) and the Host Partner Card Shop are not liable for any discrepancies, damages, or grading errors once the item has been collected by the customer. Customers are required to inspect all graded items at the time of pickup. Any claims regarding item condition or grading errors must be filed within 7 business days of the 'Returned to Shop' notification. M2M maintains video records of all inductions for 30 days; claims made after this window cannot be verified and will not be honored."
+    content: "Market2Mint (M2M) and the Host Partner Card Shop are not liable for any discrepancies, damages, or grading errors once the item has been collected by the customer. Customers are required to inspect all graded items at the time of pickup. Any claims regarding item condition or grading errors must be filed within 7 business days of the 'Returned to Shop' notification. M2M maintains video records of all inductions for 30 days; claims made after this window cannot be verified and will not be honored."
   },
   {
     title: "Abandoned Items",
-    content: "Items not claimed within 120 days after notification may be considered abandoned.\n\nMarket 2 Mint will attempt to notify the customer at least three times. After abandonment, Market 2 Mint reserves the right to:\n\n• charge storage fees\n• liquidate items to recover costs\n• dispose of items in accordance with applicable law"
+    content: "Items not claimed within 120 days after notification may be considered abandoned.\n\nMarket2Mint will attempt to notify the customer at least three times. After abandonment, Market2Mint reserves the right to:\n\n• charge storage fees\n• liquidate items to recover costs\n• dispose of items in accordance with applicable law"
   },
   {
     title: "Partner Shop Locations",
-    content: "Market 2 Mint may operate submission services through partner shop locations.\n\nPartner shops act only as drop-off and pickup locations and are not responsible for grading outcomes or submission processing."
+    content: "Market2Mint may operate submission services through partner shop locations.\n\nPartner shops act only as drop-off and pickup locations and are not responsible for grading outcomes or submission processing."
   }
 ];
 
 export const PRIVACY_POLICY_SECTIONS = [
   {
-    title: "Market 2 Mint – Privacy Policy",
-    content: "Market 2 Mint respects your privacy and is committed to protecting your personal information."
+    title: "Market2Mint – Privacy Policy",
+    content: "Market2Mint respects your privacy and is committed to protecting your personal information."
   },
   {
     title: "Information We Collect",
@@ -156,7 +156,7 @@ export const PRIVACY_POLICY_SECTIONS = [
   },
   {
     title: "Third-Party Service Providers",
-    content: "Market 2 Mint may share information with trusted third-party providers necessary to operate our services, including:\n\n• payment processors\n• shipping carriers\n• grading companies\n• technology service providers\n\nThese parties may only use information for the purpose of providing services to Market 2 Mint."
+    content: "Market2Mint may share information with trusted third-party providers necessary to operate our services, including:\n\n• payment processors\n• shipping carriers\n• grading companies\n• technology service providers\n\nThese parties may only use information for the purpose of providing services to Market2Mint."
   },
   {
     title: "Data Security",
@@ -164,7 +164,7 @@ export const PRIVACY_POLICY_SECTIONS = [
   },
   {
     title: "Data Retention",
-    content: "Market 2 Mint may retain submission records, order information, and uploaded images for operational purposes, accounting requirements, and dispute resolution."
+    content: "Market2Mint may retain submission records, order information, and uploaded images for operational purposes, accounting requirements, and dispute resolution."
   },
   {
     title: "Customer Privacy Rights",
@@ -172,11 +172,11 @@ export const PRIVACY_POLICY_SECTIONS = [
   },
   {
     title: "Children's Privacy",
-    content: "Market 2 Mint services are not directed toward children under 13 years of age."
+    content: "Market2Mint services are not directed toward children under 13 years of age."
   },
   {
     title: "Policy Updates",
-    content: "Market 2 Mint may update this Privacy Policy periodically. Updated policies will be posted on our website and may be displayed on kiosk systems."
+    content: "Market2Mint may update this Privacy Policy periodically. Updated policies will be posted on our website and may be displayed on kiosk systems."
   }
 ];
 

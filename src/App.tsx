@@ -1116,7 +1116,7 @@ export default function App() {
    *
    * The policy acknowledgement does not gate this. It gates "Complete Order" at checkout,
    * where the customer is already committed. Leading a stranger with five disclaimers is
-   * what made people ask "what is Market 2 Mint?" while standing in front of the kiosk.
+   * what made people ask "what is Market2Mint?" while standing in front of the kiosk.
    */
   const startFlow = (entry: 'pregrade' | 'submissions') => {
     playUIAudio(700, 0.08);
@@ -1262,9 +1262,9 @@ export default function App() {
   /**
    * LANDING — the attract screen.
    *
-   * It has exactly one job: tell a stranger standing a few feet away what Market 2 Mint
+   * It has exactly one job: tell a stranger standing a few feet away what Market2Mint
    * does, what it costs, and how to start — in that order. Customers kept asking "what is
-   * Market 2 Mint?" while looking straight at this screen, because it used to open with
+   * Market2Mint?" while looking straight at this screen, because it used to open with
    * the app's own name, then five liability statements under the heading "Submission
    * Essentials", then a mandatory acknowledgement checkbox, then a 550px AI chat box.
    * There was no price anywhere on it.
@@ -2821,7 +2821,7 @@ export default function App() {
                         SUBMISSION ESSENTIALS — moved here from the landing screen on
                         2026-08-05. This is a real liability control and it stays, but it
                         belongs at the point of commitment, not in front of a stranger who
-                        does not yet know what Market 2 Mint is. The acknowledgement still
+                        does not yet know what Market2Mint is. The acknowledgement still
                         gates completion — it now gates THIS button instead of Start.
                       */}
                       <div className="space-y-5 pt-6 border-t border-zinc-800">
@@ -2845,7 +2845,7 @@ export default function App() {
                             className="h-11 w-11 shrink-0 accent-m2m-green rounded-lg bg-zinc-900 border-zinc-700"
                           />
                           <span className="text-base md:text-lg font-black select-none text-zinc-100 uppercase italic tracking-tight leading-tight">
-                            I acknowledge and agree to all <span className="whitespace-nowrap">Market 2 Mint</span> service policies
+                            I acknowledge and agree to all <span className="whitespace-nowrap">Market2Mint</span> service policies
                           </span>
                         </label>
                       </div>

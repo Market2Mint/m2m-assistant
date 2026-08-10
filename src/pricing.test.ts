@@ -178,11 +178,13 @@ describe('the shipped menu carries no internal pricing', () => {
     // Went live 2026-08-07. This test used to assert MBA was ABSENT — it was HOLD, priced
     // but with no routing. Adding it was four rows in the routing CSV and four ALIAS
     // entries, no code, which was the whole point of generating the menu.
+    // Turnarounds re-set 2026-08-09: Express 10->15, and w/Auto now adds five days at
+    // both tiers — the same +5 rule as BGS and CGC. SGC stays the deliberate exception.
     const expected = {
       'MBA Base': { price: 25.0, days: 30, insured: '$100.00' },
-      'MBA Base w/Auto': { price: 30.0, days: 30, insured: '$100.00' },
-      'MBA Express': { price: 65.0, days: 10, insured: '$1,000.00' },
-      'MBA Express w/Auto': { price: 70.0, days: 10, insured: '$1,000.00' },
+      'MBA Base w/Auto': { price: 30.0, days: 35, insured: '$100.00' },
+      'MBA Express': { price: 65.0, days: 15, insured: '$1,000.00' },
+      'MBA Express w/Auto': { price: 70.0, days: 20, insured: '$1,000.00' },
     };
     for (const [name, want] of Object.entries(expected)) {
       const matches = ACTIVE_SERVICES.filter((s) => s.name === name);
@@ -195,16 +197,16 @@ describe('the shipped menu carries no internal pricing', () => {
     }
   });
 
-  it('charges $5.00 for an MBA autograph and adds NO days', () => {
-    // Cayden, 2026-08-07: "w/Auto is +$5.00 and NO extra days." Pinned because it is the
-    // one MBA figure carrying an unconfirmed assumption — that MBA charges M2M nothing
-    // extra for the autograph, which no other grader does. If MBA turns out to bill for
-    // it, this is the line that has to move and the margin audit is what will catch it.
+  it('charges $5.00 for an MBA autograph and adds five days', () => {
+    // The 2026-08-07 launch assumption — "+$5.00 and NO extra days" — did not survive:
+    // Cayden re-set the sheet on 2026-08-09 and MBA now follows the same +5-day w/Auto
+    // rule as BGS and CGC. SGC remains the deliberate +$0/+0-day exception (the locked
+    // 8/06 correction) — do not normalise it to this rule.
     const priceOf = (n: string) => ACTIVE_SERVICES.find((s) => s.name === n)!;
     expect(priceOf('MBA Base w/Auto').price.customer - priceOf('MBA Base').price.customer).toBe(5);
     expect(priceOf('MBA Express w/Auto').price.customer - priceOf('MBA Express').price.customer).toBe(5);
-    expect(priceOf('MBA Base w/Auto').businessDays).toBe(priceOf('MBA Base').businessDays);
-    expect(priceOf('MBA Express w/Auto').businessDays).toBe(priceOf('MBA Express').businessDays);
+    expect(priceOf('MBA Base w/Auto').businessDays).toBe(priceOf('MBA Base').businessDays + 5);
+    expect(priceOf('MBA Express w/Auto').businessDays).toBe(priceOf('MBA Express').businessDays + 5);
   });
 
   it('never routes an MBA aftermarket autograph — MBA does not accept them', () => {

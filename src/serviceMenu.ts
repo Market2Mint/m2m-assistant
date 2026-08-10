@@ -144,8 +144,8 @@ export const SERVICE_COPY: Record<string, { description: string; details: string
   "Slab Cracking": { description: "We will carefully remove your card from its existing holder. Whether you're preparing for a resubmission or a fresh evaluation, we handle your card with precision and care. Every cracked card is wiped down and prepped for its next destination.", details: "" },
   "MBA Base": { description: "MBA authenticates, grades and encapsulates your card, insured up to $100.00. A straightforward, low-cost way to get a modern card slabbed. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "" },
   "MBA Express": { description: "MBA Express is the faster route, insured up to $1,000.00. Choose it when you want the card back quickly. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "" },
-  "MBA Base w/Auto": { description: "MBA authenticates, grades and encapsulates your card, insured up to $100.00. A straightforward, low-cost way to get a modern card slabbed. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "Pack-pulled autographs only, from 1999 or newer. MBA does not accept aftermarket autographs. The autograph adds $5.00 and no extra days." },
-  "MBA Express w/Auto": { description: "MBA Express is the faster route, insured up to $1,000.00. Choose it when you want the card back quickly. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "Pack-pulled autographs only, from 1999 or newer. MBA does not accept aftermarket autographs. The autograph adds $5.00 and no extra days." },
+  "MBA Base w/Auto": { description: "MBA authenticates, grades and encapsulates your card, insured up to $100.00. A straightforward, low-cost way to get a modern card slabbed. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "Pack-pulled autographs only, from 1999 or newer. MBA does not accept aftermarket autographs. The autograph adds $5.00 and about five business days." },
+  "MBA Express w/Auto": { description: "MBA Express is the faster route, insured up to $1,000.00. Choose it when you want the card back quickly. Every card submitted through Market 2 Mint receives a full wipe-down and is handled securely from drop-off to return.", details: "Pack-pulled autographs only, from 1999 or newer. MBA does not accept aftermarket autographs. The autograph adds $5.00 and about five business days." },
 };
 
 export const SERVICE_MENU: ServiceRecord[] = [
@@ -1845,7 +1845,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     questions: ["Trading Cards", "MBA", "No", "Skip Question", "Skip Question", "Card Grade Only"],
     price: { customer: 65.0, employee: null, owner: null },
     cost: null,
-    businessDays: 10,
+    businessDays: 15,
     maxInsuredValue: "$1,000.00",
     active: true,
     status: "NEW / CHANGED",
@@ -1858,7 +1858,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     questions: ["Trading Cards", "MBA", "Yes", "Pack-pulled", "1999 - Newer Only", "Card & Auto Grade"],
     price: { customer: 30.0, employee: null, owner: null },
     cost: null,
-    businessDays: 30,
+    businessDays: 35,
     maxInsuredValue: "$100.00",
     active: true,
     status: "NEW / CHANGED",
@@ -1871,7 +1871,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     questions: ["Trading Cards", "MBA", "Yes", "Pack-pulled", "1999 - Newer Only", "Card & Auto Grade"],
     price: { customer: 70.0, employee: null, owner: null },
     cost: null,
-    businessDays: 10,
+    businessDays: 20,
     maxInsuredValue: "$1,000.00",
     active: true,
     status: "NEW / CHANGED",

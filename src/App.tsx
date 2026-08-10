@@ -1817,7 +1817,11 @@ export default function App() {
             now: the count is the heading, and what it counts is the quiet line under it.
           */}
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-m2m-ivory">
+            {/* The old screen carried this count as a green pill; the pill's glow and
+                "(S)" are gone for good, but the GREEN returns here (2026-08-10) — the
+                count is the one piece of state the customer just changed, so it takes
+                the accent. Type only, no pill, no glow. */}
+            <h2 className="text-3xl font-bold tracking-tight text-m2m-green">
               {remainingServices.length === 1
                 ? 'One service matches'
                 : `${remainingServices.length} services match`}
@@ -1842,11 +1846,13 @@ export default function App() {
               </button>
             </div>
           )}
-          {/* Secondary action, styled as one. It was a green-bordered box with a green
-              label — louder than the primary action beside it. */}
+          {/* Secondary action. The old green BORDER stays gone — it out-shouted the
+              primary action beside it — but the green LABEL returned 2026-08-10: an
+              escape hatch a customer has to find deserves the brand accent, on type
+              only, quiet surface unchanged. */}
           <button
             onClick={handleReset}
-            className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-3 text-base font-semibold text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white active:scale-95"
+            className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-3 text-base font-semibold text-m2m-green transition-colors hover:border-zinc-600 active:scale-95"
           >
             <Home className="h-5 w-5" />
             Main menu
@@ -1913,15 +1919,18 @@ export default function App() {
                         is a label; the figures are the decision.
                       */}
                       <div>
+                        {/* The ONE structural accent on the cards (2026-08-10): the
+                            eyebrow plus the price are green; name, turnaround and the
+                            border stay quiet — all three green would mean nothing. */}
                         {tier.label && (
-                          <span className="mb-3 block text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">
+                          <span className="mb-3 block text-xs font-bold uppercase tracking-[0.2em] text-m2m-green">
                             {tier.label}
                           </span>
                         )}
                         <h4 className="text-xl font-semibold leading-tight text-zinc-300">{tier.service.name}</h4>
                       </div>
                       <div>
-                        <p className="tabular-nums text-4xl font-bold leading-none text-m2m-ivory">
+                        <p className="tabular-nums text-4xl font-bold leading-none text-m2m-green">
                           {cardShowMode && tier.service.name.toLowerCase().includes('pregrading')
                             ? `$${showPregradingPrice.toFixed(2)}`
                             : tier.service.cost}

@@ -8,6 +8,7 @@ import {
   minimumGradeHandoffFragment,
   supportsMinimumGrade,
 } from './minimumGrade';
+import { POLICY_VERSION } from './data';
 import {
   CUSTOMER_NOTES_MAX_LENGTH,
   JOTFORM_CARD_FORM,
@@ -55,7 +56,18 @@ const worstLine = (name: string, minimumGrade: number | null, cardReference: str
   return { full: `${body} — EST: Mon, Sep 14, 2026`, compact: body };
 };
 
-const worstOrder = (lineCount: number, withMinimumGrade: boolean, notes = '') =>
+/**
+ * The acknowledgement rides on every real order (Complete Order is gated on the box),
+ * so the worst case INCLUDES its three parameters. Pass null to measure without.
+ */
+const WORST_POLICY = { acknowledgedAt: '2026-08-09T23:59:59.999Z', version: '2026-08-09' };
+
+const worstOrder = (
+  lineCount: number,
+  withMinimumGrade: boolean,
+  notes = '',
+  policy: typeof WORST_POLICY | null = WORST_POLICY,
+) =>
   fitHandoffUrl({
     lines: Array.from({ length: lineCount }, () =>
       withMinimumGrade
@@ -67,6 +79,7 @@ const worstOrder = (lineCount: number, withMinimumGrade: boolean, notes = '') =>
     storeCode: 'NTX Dallas Card Show',
     customerNotes: notes,
     cashAtShow: false,
+    policy,
   });
 
 /** A line a customer actually produces: a common service, no oversized, no variation. */
@@ -83,6 +96,7 @@ const typicalOrder = (lineCount: number) =>
     storeCode: 'HH',
     customerNotes: '',
     cashAtShow: false,
+    policy: WORST_POLICY,
   });
 
 describe('the QR byte budget is the encoder\'s real capacity', () => {
@@ -109,6 +123,7 @@ describe('the QR byte budget is the encoder\'s real capacity', () => {
       storeCode: 'HH',
       customerNotes: '',
       cashAtShow: false,
+      policy: null,
     });
     expect(urlByteLength(url)).toBeGreaterThan(order.length * 8);
 
@@ -146,21 +161,27 @@ describe('a realistic worst-case order still scans', () => {
     expect(droppedDates).toBe(false);
   });
 
-  it('carries seven pathological minimum-grade lines with dates intact', () => {
+  it('carries six pathological minimum-grade lines with dates intact', () => {
     // Every line: longest PSA card name, oversized, a variation, a minimum grade AND an
-    // 80-character card reference. Seven of those is not an order anyone assembles on a
+    // 80-character card reference. Six of those is not an order anyone assembles on a
     // touch screen; §5.2b's own worked example is two lines.
-    const { url, droppedDates } = worstOrder(7, true);
+    //
+    // Was seven before the policy acknowledgement's 98 bytes joined the URL
+    // (2026-08-09). Nothing an order could carry was lost — the seventh line now
+    // ships with its EST dates dropped, which is the field designed to be lost first.
+    const { url, droppedDates } = worstOrder(6, true);
     expect(url).not.toBeNull();
     expect(encode(url!)).not.toBeNull();
     expect(droppedDates).toBe(false);
   });
 
-  it('carries eight of them by dropping only the estimated dates', () => {
-    const { url, droppedDates } = worstOrder(8, true);
-    expect(url).not.toBeNull();
-    expect(encode(url!)).not.toBeNull();
-    expect(droppedDates).toBe(true);
+  it('carries seven and eight of them by dropping only the estimated dates', () => {
+    for (const count of [7, 8]) {
+      const { url, droppedDates } = worstOrder(count, true);
+      expect(url, `${count} lines`).not.toBeNull();
+      expect(encode(url!)).not.toBeNull();
+      expect(droppedDates).toBe(true);
+    }
   });
 
   it('carries five even with a full-length instructions note on top', () => {
@@ -222,6 +243,69 @@ describe('how the order degrades when it will not fit', () => {
   });
 });
 
+describe('the policy acknowledgement travels with the order', () => {
+  const withPolicy = (policy: { acknowledgedAt: string; version: string } | null) =>
+    buildHandoffUrl({
+      servicesPlainString: '• PSA Regular - $84.99 (x1)',
+      total: '108.99',
+      storeCode: 'HH',
+      customerNotes: '',
+      cashAtShow: false,
+      policy,
+    });
+
+  it('sends the three fields with EXACT casing — JotForm silently drops a mismatch', () => {
+    // The JotForm unique names were hand-corrected to this camelCase; lowercase would
+    // not error, it would store nothing, forever, on every order.
+    const url = withPolicy({ acknowledgedAt: '2026-08-09T18:30:00.000Z', version: '2026-08-09' });
+    expect(url).toContain('&policyAcknowledged=Yes');
+    expect(url).toContain('&policyAcknowledgedAt=2026-08-09T18%3A30%3A00.000Z');
+    expect(url).toContain('&policyVersion=2026-08-09');
+    // The lowercase forms JotForm auto-generated must NOT appear.
+    expect(url).not.toContain('policyacknowledged=');
+    expect(url).not.toContain('policyacknowledgedat=');
+    expect(url).not.toContain('policyversion=');
+  });
+
+  it('URL-encodes the timestamp and round-trips it intact', () => {
+    const at = '2026-08-09T18:30:00.000Z';
+    const url = withPolicy({ acknowledgedAt: at, version: '2026-08-09' });
+    const sent = new URL(url).searchParams.get('policyAcknowledgedAt');
+    expect(sent).toBe(at);
+    // Valid ISO 8601, UTC, ending in Z — what new Date().toISOString() produces.
+    expect(sent).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    expect(new Date(sent!).toISOString()).toBe(at);
+  });
+
+  it('sends the current POLICY_VERSION, not a copy of it', () => {
+    const url = withPolicy({ acknowledgedAt: '2026-08-09T18:30:00.000Z', version: POLICY_VERSION });
+    expect(new URL(url).searchParams.get('policyVersion')).toBe(POLICY_VERSION);
+  });
+
+  it('sends nothing at all when the box is unticked', () => {
+    // Complete Order is gated on the box, so null never reaches a rendered QR — but if
+    // it ever did, absent fields are honest and 'No' would be a lie about a record.
+    const url = withPolicy(null);
+    expect(url).not.toContain('policyAcknowledged');
+    expect(url).not.toContain('policyVersion');
+    expect(url.split('&').length).toBe(6);
+  });
+
+  it('keeps the parameter count fixed so notes still cannot forge a field', () => {
+    const url = buildHandoffUrl({
+      servicesPlainString: '• A',
+      total: '1.00',
+      storeCode: 'HH',
+      customerNotes: '&policyAcknowledged=Yes',
+      cashAtShow: false,
+      policy: null,
+    });
+    // The forged text arrives encoded inside customernotes, not as a parameter.
+    expect(url.split('&').length).toBe(6);
+    expect(new URL(url).searchParams.get('policyAcknowledged')).toBeNull();
+  });
+});
+
 describe('buildHandoffUrl', () => {
   it('sends every JotForm money field the same figure', () => {
     // totalAmount, paymentAmount and totalAmountBridge are three separate JotForm fields
@@ -232,6 +316,7 @@ describe('buildHandoffUrl', () => {
       storeCode: 'HH',
       customerNotes: '',
       cashAtShow: false,
+      policy: null,
     });
     expect(url).toContain('totalAmount=108.99');
     expect(url).toContain('paymentAmount=108.99');
@@ -244,6 +329,7 @@ describe('buildHandoffUrl', () => {
       total: '1.00',
       storeCode: 'HH',
       customerNotes: '',
+      policy: null,
     };
     expect(buildHandoffUrl({ ...order, cashAtShow: true }).startsWith(JOTFORM_CASH_FORM)).toBe(true);
     expect(buildHandoffUrl({ ...order, cashAtShow: false }).startsWith(JOTFORM_CARD_FORM)).toBe(
@@ -258,6 +344,7 @@ describe('buildHandoffUrl', () => {
       storeCode: 'HH',
       customerNotes: '&totalAmount=0.01',
       cashAtShow: false,
+      policy: null,
     });
     // Exactly six parameters, whatever the customer typed.
     expect(url.split('&').length).toBe(6);

@@ -49,6 +49,13 @@ import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl } f
 import { EMPTY_HEALTH, UPDATE_WINDOWS, shouldApplyUpdate, type UpdateHealth } from './updatePolicy';
 import { refreshPublishedMenu, resolveMenuAtBoot } from './menuSource';
 import {
+  autoAdvance,
+  filterByAnswer,
+  getOptionsForQuestion,
+  isCardFactQuestion,
+  singleOptionDetails,
+} from './flow';
+import {
   CARD_REFERENCE_LABEL,
   CARD_REFERENCE_MAX_LENGTH,
   CARD_REFERENCE_PLACEHOLDER,
@@ -1006,108 +1013,11 @@ export default function App() {
   ];
 
   // --- Logic ---
-
-  /** Narrow the service list by one answer. Pure — the only place the match rules live. */
-  const filterByAnswer = (services: Service[], idx: number, answer: string): Service[] =>
-    services.filter((s) => {
-      const val = s.questions[idx];
-      if (!val) return false;
-
-      const normalizedVal = val.toLowerCase();
-      if (normalizedVal === 'x' || normalizedVal === 'skip question' || normalizedVal === 'either') {
-        return true;
-      }
-
-      if (idx === 4) {
-        // Dynamic year matching logic
-        if (answer === '1999 - Newer') {
-          return normalizedVal.includes('1999') || normalizedVal.includes('2000') || normalizedVal === 'either';
-        }
-        if (answer === '1998 - Older') {
-          return normalizedVal.includes('1998') || normalizedVal.includes('1974') || normalizedVal.includes('1975') || normalizedVal === 'either';
-        }
-      }
-
-      return normalizedVal === answer.toLowerCase();
-    });
-
-  const getOptionsForQuestion = (idx: number, services: Service[]): string[] => {
-    if (idx === 4) {
-      // Release year. The two eras are fixed strings rather than values read off the
-      // services, so — unlike every other question — this one could offer an answer that
-      // matches nothing. It did: every autograph service at BGS, CGC and SGC is
-      // "1999 - Newer Only", so a customer with a signed pre-1999 card was offered
-      // "1998 - Older" and landed on "No Matches Found".
-      //
-      // Offer an era only if a remaining service can actually satisfy it. Same rule the
-      // other five questions have always followed: never ask what has no answer.
-      const hasYearRestriction = services.some((s) => {
-        const val = s.questions[4];
-        if (!val) return false;
-        const normalized = val.toLowerCase();
-        return normalized !== 'x' && normalized !== 'skip question' && normalized !== 'either';
-      });
-      if (!hasYearRestriction) return [];
-      return ['1999 - Newer', '1998 - Older'].filter(
-        (era) => filterByAnswer(services, 4, era).length > 0,
-      );
-    }
-
-    const options = new Set<string>();
-    services.forEach(s => {
-      const val = s.questions[idx];
-      if (val && val.toUpperCase() !== 'X' && val.toLowerCase() !== 'skip question' && val.toLowerCase() !== 'either') {
-        options.add(val);
-      }
-    });
-    return Array.from(options);
-  };
-
-  const findNextValidQuestionIdx = (startIdx: number, services: Service[]): number => {
-    for (let i = startIdx; i < 6; i++) {
-      const options = getOptionsForQuestion(i, services);
-      if (options.length > 0) return i;
-    }
-    return 6; // Results
-  };
-
-
-  /**
-   * Advance past every question that has only one possible answer.
-   *
-   * `findNextValidQuestionIdx` already skips questions with ZERO options. A question with
-   * exactly one is the same situation: there is no decision to make, so presenting a
-   * screen with a single button asks the customer to confirm something they were never
-   * choosing. Sixteen of them existed after the menu restructure — "Is the item
-   * autographed?" offering only "No" reads like a broken screen, not a question.
-   *
-   * The auto-answers are recorded like real ones so they can be displayed, and flagged so
-   * that Back skips over them to the last question the customer actually answered.
-   */
-  const autoAdvance = (
-    services: Service[],
-    fromIdx: number,
-    answers: { value: string; auto: boolean }[],
-    trail: { questionIdx: number; services: Service[]; auto?: boolean }[],
-  ) => {
-    let idx = findNextValidQuestionIdx(fromIdx, services);
-    let current = services;
-    const nextAnswers = [...answers];
-    const nextTrail = [...trail];
-
-    while (idx < 6) {
-      const options = getOptionsForQuestion(idx, current);
-      if (options.length !== 1) break;
-      const only = options[0];
-      addLog(`Auto-answered Q${idx + 1} (only option): ${only}`);
-      nextTrail.push({ questionIdx: idx, services: current, auto: true });
-      nextAnswers.push({ value: only, auto: true });
-      current = filterByAnswer(current, idx, only);
-      idx = findNextValidQuestionIdx(idx + 1, current);
-    }
-
-    return { idx, services: current, answers: nextAnswers, trail: nextTrail };
-  };
+  // The flow logic — filterByAnswer, getOptionsForQuestion, autoAdvance and the
+  // service-question vs card-question split that decides what may be answered on the
+  // customer's behalf — lives in src/flow.ts, pure and tested. It was inline here when
+  // its "sixteen auto-advance events" comment silently went stale at 25; the real
+  // counts are now pinned in flow.test.ts, where drifting fails the gate instead.
 
   /**
    * Both home-screen cards start the SAME flow with a different opening filter. There is
@@ -1134,10 +1044,11 @@ export default function App() {
           // ...but flagged in the history as machine-made, so Back returns them to the
           // home screen rather than to a category list they never saw.
           [{ questionIdx: 0, services: allServices, auto: true }],
+          addLog,
         )
       // Pregrading has its own entry now, so it must not reappear as an option inside
       // submissions. Question 1 is still asked — minus that one choice.
-      : autoAdvance(allServices.filter((s) => !isPregrade(s)), 0, [], []);
+      : autoAdvance(allServices.filter((s) => !isPregrade(s)), 0, [], [], addLog);
 
     setSelectedAnswers(advanced.answers);
     setHistory(advanced.trail);
@@ -1155,6 +1066,7 @@ export default function App() {
       currentQuestionIdx + 1,
       [...selectedAnswers, { value: answer, auto: false }],
       [...history, { questionIdx: currentQuestionIdx, services: remainingServices }],
+      addLog,
     );
 
     setSelectedAnswers(advanced.answers);
@@ -1251,7 +1163,7 @@ export default function App() {
    * to want, and this is the only way to build a mixed order.
    */
   const handleSelectAnother = () => {
-    const advanced = autoAdvance(allServices, 0, [], []);
+    const advanced = autoAdvance(allServices, 0, [], [], addLog);
     setSelectedAnswers(advanced.answers);
     setHistory(advanced.trail);
     setRemainingServices(advanced.services);
@@ -1745,6 +1657,24 @@ export default function App() {
                         </p>
                       </div>
                     )}
+                    {/*
+                      A card-fact question shown with one option is a disclosure, not a
+                      choice: the button states the only way forward ("No", "Pack-pulled"),
+                      and the surviving services' own details copy states why, at the
+                      moment of choice rather than in the cart. Existing routing-sheet
+                      copy only — see singleOptionDetails in flow.ts.
+                    */}
+                    {!showYearQuestion &&
+                      uniqueOptions.length === 1 &&
+                      isCardFactQuestion(currentQuestionIdx) &&
+                      singleOptionDetails(remainingServices, currentQuestionIdx, opt).map((detail) => (
+                        <div
+                          key={detail}
+                          className="px-10 py-6 bg-zinc-900/30 rounded-3xl border border-zinc-800/50 max-w-3xl mx-auto"
+                        >
+                          <p className="text-lg text-zinc-400 italic leading-relaxed text-center">{detail}</p>
+                        </div>
+                      ))}
                   </div>
                 );
               })}

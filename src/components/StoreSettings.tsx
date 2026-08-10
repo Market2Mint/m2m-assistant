@@ -564,7 +564,11 @@ const StoreSettings: React.FC<StoreSettingsProps> = ({ onUpdate, onReset }) => {
                             <Volume2 className="w-3.5 h-3.5 text-zinc-400" />
                             Kiosk Sound Volume
                           </label>
-                          <span className="text-[10px] font-black text-white">{volume}%</span>
+                          {/* 0 is the off switch — say so, rather than making the owner
+                              guess whether "0%" means silent or broken. */}
+                          <span className={`text-[10px] font-black ${volume === 0 ? 'text-m2m-green' : 'text-white'}`}>
+                            {volume === 0 ? 'OFF' : `${volume}%`}
+                          </span>
                         </div>
                         <input 
                           type="range"

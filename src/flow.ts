@@ -149,6 +149,20 @@ export const singleOptionDetails = <T extends Routable & { details: string }>(
 ];
 
 /**
+ * ⚠️ DO NOT BUILD A "SAME-OUTCOME" QUESTION COLLAPSE. It was built on 2026-08-10 —
+ * skip any question whose every option leads to the same surviving services — and
+ * withdrawn the same day when adversarial review disproved its premise. Q6's ANSWER
+ * is itself order content: the handoff line the shop invoices from prints
+ * `service.questions[5]` as the variation, so "Card Grade Only" vs "Authenticate
+ * Only" are DIFFERENT PSA order types at the same price with the same surviving
+ * tiers. The collapse silently stamped every such order with the first option and
+ * made three genuine variations unorderable — a customer wanting authentication-only
+ * would get their card graded, and nothing on any screen or receipt would warn them.
+ * A press whose answer ships with the order carries information by definition, even
+ * when no comparison of the surviving services can see it.
+ */
+
+/**
  * Advance past every question that has only one possible answer AND describes the
  * service rather than the customer's card.
  *

@@ -42,12 +42,17 @@ interface FlowEvent {
  * option of the question it stopped at — a shown single-option question is "answered"
  * by its only option, exactly as the customer's one available tap would.
  */
-const enumerate = (): { events: FlowEvent[]; terminals: number } => {
+const enumerate = (): { events: FlowEvent[]; terminals: number; collapsed: string[] } => {
   const events: FlowEvent[] = [];
+  const collapsed: string[] = [];
   let terminals = 0;
 
   const walk = (entry: FlowEvent['entry'], list: Svc[], fromIdx: number, path: string[]) => {
-    const adv = autoAdvance(list, fromIdx, [], []);
+    const msgs: string[] = [];
+    const adv = autoAdvance(list, fromIdx, [], [], (m) => msgs.push(m));
+    msgs
+      .filter((m) => m.startsWith('Collapsed'))
+      .forEach((m) => collapsed.push(`${entry} [${path.join('→')}] ${m}`));
     const here = [...path];
     adv.trail.forEach((t, i) => {
       const value = adv.answers[i].value;
@@ -83,7 +88,7 @@ const enumerate = (): { events: FlowEvent[]; terminals: number } => {
 
   walk('pregrade', services.filter(isPregrade), 1, ['Pregrading']);
   walk('submissions', services.filter((s) => !isPregrade(s)), 0, []);
-  return { events, terminals };
+  return { events, terminals, collapsed };
 };
 
 const byIdx = (events: FlowEvent[]) =>
@@ -135,6 +140,32 @@ describe('the pinned counts — a menu change that moves these must be classifie
         'Unopened Packs→PSA* @Q3=No',
       ].sort(),
     );
+  });
+});
+
+describe('the WITHDRAWN same-outcome collapse must stay withdrawn', () => {
+  // Built and withdrawn 2026-08-10: skipping a question because every option leads to
+  // the same services is WRONG here, because Q6's answer itself ships on the handoff
+  // line the shop invoices from — "Card Grade Only" vs "Authenticate Only" are
+  // different PSA order types at the same price. See the warning comment in flow.ts.
+  const { collapsed, events } = enumerate();
+
+  it('no question is ever skipped because its options "do not matter"', () => {
+    expect(collapsed).toEqual([]);
+    expect(events.filter((e) => e.kind === 'auto').length).toBe(15);
+    expect(events.filter((e) => e.kind === 'shown').length).toBe(10);
+  });
+
+  it('THE CASE THAT KILLED IT: PSA → not autographed still asks Which variation?', () => {
+    const afterCategory = filterByAnswer(services.filter((s) => !isPregrade(s)), 0, 'Trading Cards');
+    const afterCompany = filterByAnswer(afterCategory, 1, 'PSA');
+    const afterNo = filterByAnswer(afterCompany, 2, 'No');
+    const adv = autoAdvance(afterNo, 3, [], []);
+    expect(adv.idx).toBe(5);
+    expect(getOptionsForQuestion(5, adv.services).sort()).toEqual([
+      'Authenticate Only',
+      'Card Grade Only',
+    ]);
   });
 });
 

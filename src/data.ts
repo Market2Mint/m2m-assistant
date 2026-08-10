@@ -28,7 +28,7 @@
  * `policyVersion.test.ts` hashes the acknowledged copy and fails if the text moves
  * without this moving with it (or vice versa). Do not bump it for code changes.
  */
-export const POLICY_VERSION = '2026-08-09';
+export const POLICY_VERSION = '2026-08-10';
 
 export const POLICY = [
   "Turnaround times begin upon induction at grading facilities and are not guaranteed.",

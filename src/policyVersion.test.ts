@@ -20,7 +20,7 @@ import {
 } from './data';
 
 /**
- * Everything the checkbox's "all Market 2 Mint service policies" reaches: the checkout
+ * Everything the checkbox's "all Market2Mint service policies" reaches: the checkout
  * POLICY list the customer is looking at when they tick, plus the three policy documents
  * behind the footer links. Key order is part of the canonical form — do not reorder.
  */
@@ -42,8 +42,11 @@ const acknowledgedText = () =>
  * would claim agreement to text the customer never saw.
  */
 const PINNED = {
-  version: '2026-08-09',
-  hash: 'ca2482191c13190c6c7ee219670994f8be79c64cae88490e1513d8da269c2e42',
+  // 2026-08-10: the wordmark cleanup (Market 2 Mint → Market2Mint, develop ab6eaa8)
+  // changed the acknowledged text before the feature ever shipped, so the version moves
+  // with it. No customer had acknowledged the 2026-08-09 text.
+  version: '2026-08-10',
+  hash: '1859de1bfe412cb9211165a10f1266bf6908caa838385c73864aab3aac42f19d',
 };
 
 describe('POLICY_VERSION moves when, and only when, the policy text moves', () => {

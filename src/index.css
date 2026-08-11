@@ -94,10 +94,16 @@
  * (1.44:1) never shows letterbox bars — the gradient is the whole viewport.
  *
  * FLUID SIZE VARIABLES — the compact-height pass. The design targets a 1000px-tall
- * reference; a real iPad Air landscape viewport is 820px. Every vertical size that
- * matters clamps between a compact floor and the design value on viewport height,
- * so the WHOLE attract screen fits with no scroll at 1180×820 and grows back to the
- * mockup's proportions at 1000px. Continuous, not a breakpoint — nothing "pops".
+ * reference. THE FLEET DEVICE is a 10.2" iPad: 2160×1620 device pixels = 1080×810 CSS
+ * at 2x, landscape — 810 is the height that matters, not the 820 this comment once
+ * named (an iPad Air figure; the Air is not what is bolted into the panels). Every
+ * vertical size that matters clamps between a compact floor and the design value on
+ * viewport height, interpolating continuously — nothing "pops".
+ * MEASURED at exactly 1080×810 (2026-08-10, production build): the whole attract
+ * screen fits with zero scroll and nothing clipped; --slabH computes 347px, ~47px
+ * above its 300px floor — the floors do not engage until a ~725px-tall viewport, so
+ * 810 sits comfortably inside the interpolation band, and everything from 1024×768
+ * up to 1440×1000 remains covered.
  * The fleet runs standalone (Home Screen) apps, so vh is stable — no URL-bar lies.
  *
  * --slabH is the single variable the entire hero cluster is derived from: card box,
@@ -244,8 +250,17 @@
 .hero-slab {
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  /* Centred by auto margins over the FULL box, never by left:50% + translate: an
+   * absolutely-positioned shrink-to-fit box with left:50% gets only HALF the tilt
+   * box as available width (224px box → 112px), and the preflight's max-width:100%
+   * then squashed every height-sized slab to 0.32 aspect — the real cause of the
+   * "squished and tall" look (measured 2026-08-10; the 4.5% asset error was the
+   * minor term). fit-content keeps the box shrink-wrapped to the image so the glare
+   * still hugs each slab and never overhangs a narrower card. */
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin-inline: auto;
   height: 100%;
   opacity: 0;
   transition: opacity 1.2s ease;

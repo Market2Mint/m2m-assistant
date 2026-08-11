@@ -15,8 +15,16 @@
  *
  * Images are FILES imported by Vite — cached, compressed, out of the JS bundle. Each is
  * ~900px tall; the hero renders at ≤452px. All three are cropped to near-identical
- * framing on near-black; the hero sizes them BY HEIGHT, so their differing widths
- * (aspect 0.591 / 0.641 / 0.590) read as real slab proportions.
+ * framing on near-black; the hero sizes them BY HEIGHT, so their differing widths read
+ * as real slab proportions — and the two holder types genuinely differ: a PSA holder
+ * is ~0.619 wide-to-tall, a BGS holder ~0.636. Aspects here: Messi 0.619 (PSA),
+ * Gengar 0.619 (PSA), Pikachu 0.641 (BGS).
+ *
+ * ⚠️ CORRECTED 2026-08-10: the first exports shipped Messi and Gengar at 0.591 — ~4.5%
+ * too tall — while this comment claimed they "read as real slab proportions". They did
+ * not; that was the squished-and-tall look. The fix PADDED the canvases out to true
+ * PSA aspect (photographs untouched, never stretched). If a slab ever looks narrow or
+ * tall again, measure the file's aspect against the holder type before touching CSS.
  *
  * 🔒 BUNDLE BUDGET (Cayden 2026-08-09): the curated set is capped at FOUR slabs and
  * ~450KB total. The idle-video costing already concluded video cannot ride in the

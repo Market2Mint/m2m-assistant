@@ -38,7 +38,7 @@ import {
   lineTotal,
   shippingFeeForCart,
 } from './pricing';
-import { LANDING, QR_DESTINATION, TICKER_SAMPLE } from './landingStrings';
+import { LANDING, QR_DESTINATION, SHOW_RECENT_GRADES, TICKER_SAMPLE } from './landingStrings';
 import { HERO_DWELL_MS, HERO_SLABS } from './heroSlabs';
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
@@ -121,6 +121,8 @@ interface ModalProps {
   children: React.ReactNode;
   showMainMenu?: boolean;
   onMainMenuClick?: () => void;
+  /** Override for the Main Menu caption — e.g. "Main Menu · order saved". */
+  mainMenuLabel?: string;
   /**
    * Rendered OUTSIDE the scrolling body, pinned to the modal's bottom edge. For
    * actions: nothing a customer must PRESS may require scrolling to reach (Phase 1
@@ -153,7 +155,7 @@ const toService = (r: ServiceRecord): Service => ({
 
 // --- Components ---
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMainMenu, onMainMenuClick, footer }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMainMenu, onMainMenuClick, mainMenuLabel, footer }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/90 backdrop-blur-xl">
@@ -168,8 +170,10 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMai
           <div className="flex items-center gap-6">
             {showMainMenu && (
               <div className="flex items-center gap-4">
-                <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">Main Menu</span>
-                <button 
+                <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">
+                  {mainMenuLabel ?? 'Main Menu'}
+                </span>
+                <button
                   onClick={onMainMenuClick}
                   className="p-4 bg-zinc-900 border-2 border-m2m-green rounded-2xl shadow-sm active:scale-90 transition-transform"
                 >
@@ -791,7 +795,11 @@ export default function App() {
    * can have longer, as many times as they like.
    */
   useEffect(() => {
-    if (step === 'landing') {
+    // The attract screen normally needs no idle timers — but a kept order changes that.
+    // Since goHome() preserves the cart onto the landing, an abandoned order sitting
+    // there MUST still clear before the next customer, or they inherit it. The timers
+    // therefore arm on the landing exactly when there is an order to protect.
+    if (step === 'landing' && cart.length === 0) {
       setIdleWarning(false);
       return;
     }
@@ -824,7 +832,9 @@ export default function App() {
       clearTimeout(resetId);
       events.forEach(event => document.removeEventListener(event, resetTimer));
     };
-  }, [step]);
+    // cart.length so arriving on the landing WITH a kept order arms the timers, and
+    // clearing it (or completing) disarms them.
+  }, [step, cart.length]);
 
   const handleScroll = () => {
     if (scrollRef.current && scrollRef.current.scrollTop > 20) {
@@ -1161,7 +1171,7 @@ export default function App() {
 
     // Special case for Memorabilia authenticator selection
     if (currentQuestionIdx === 1 && selectedAnswers[0]?.value.toLowerCase() === 'memorabilia') {
-      handleReset();
+      goHome();
       return;
     }
 
@@ -1201,6 +1211,36 @@ export default function App() {
     if (step === 'results') setStep('questions');
   };
 
+  /**
+   * TWO different reasons to land on the attract screen, and the difference is the whole
+   * job (ruled 2026-08-10): "leaving a screen" must not clear the order; "a new person
+   * walked up" must.
+   *
+   * goHome — NAVIGATION. Resets the question flow, keeps THE ORDER: cart lines, notes,
+   * payment choice, the policy acknowledgement (given for this order; the tick timestamp
+   * is already recorded and adding items does not invalidate it), and each line's open
+   * minimum-grade state. A customer with ten cards who taps Main menu to check a price
+   * loses nothing. The landing shows a resume bar whenever a kept order exists.
+   *
+   * handleReset — A NEW ORDER STARTS. Everything clears, cart included. Reached only by:
+   * the idle reset (a new person walked up), the handoff screen's exits and timeout (the
+   * order is complete), and the staff Reset in settings. Never wire a navigation button
+   * to it — that was the defect that wiped a ten-card cart from "Main menu".
+   */
+  const goHome = () => {
+    addLog(`Back to menu${cart.length ? ` (order kept: ${cart.length} line${cart.length === 1 ? '' : 's'})` : ''}`);
+    setStep('landing');
+    setCurrentQuestionIdx(0);
+    setSelectedAnswers([]);
+    setHistory([]);
+    setRemainingServices(allServices);
+    setActiveModal(null);
+    setQuantities({});
+    setOversizedSel({});
+    setKeypadTarget(null);
+    setKeypadState({ entry: '', pristine: true });
+  };
+
   const handleReset = () => {
     if (step === 'questions') {
       addLog(`Abandoned at Q${currentQuestionIdx + 1}`);
@@ -1208,24 +1248,22 @@ export default function App() {
       addLog('Reset Application');
     }
     setStep('landing');
-    setPolicyAccepted(false);
-    setPolicyAcknowledgedAt(null);
     setCurrentQuestionIdx(0);
     setSelectedAnswers([]);
     setHistory([]);
     setRemainingServices(allServices);
     setActiveModal(null);
-    setCart([]);
     setQuantities({});
     setOversizedSel({});
+    setKeypadTarget(null);
+    setKeypadState({ entry: '', pristine: true });
+    // The order itself — only this function may clear it.
+    setPolicyAccepted(false);
+    setPolicyAcknowledgedAt(null);
+    setCart([]);
     setOpenMinGradeLines([]);
     setCustomerNotes('');
     setPaymentMethod('card');
-    // The keypad renders above every step, so an abandoned one would sit over the
-    // NEXT customer's attract screen — and a stale Done could commit the previous
-    // customer's count into their session. Found by review 2026-08-10.
-    setKeypadTarget(null);
-    setKeypadState({ entry: '', pristine: true });
   };
 
   /**
@@ -1568,46 +1606,60 @@ export default function App() {
             TICKER'S WIDTH — its marquee simply ends ~210px earlier. */}
         <div className="mt-[clamp(6px,1.2vh,12px)] flex shrink-0 items-stretch gap-4">
           <div className="flex min-w-0 flex-1 flex-col">
-            {/* ── RECENT GRADES ── sample data today; the dashboard feed replaces
-                TICKER_SAMPLE and nothing else (see landingStrings.ts). Card, grade and
-                company only — never a customer name on the attract screen. */}
-            <div className="flex items-center gap-3.5 overflow-hidden rounded-xl border border-m2m-line bg-m2m-panel-deep px-[18px] py-[var(--live-py)]">
-              <span className="flex items-center whitespace-nowrap text-[11.5px] font-extrabold tracking-[2.6px] text-m2m-green">
-                {LANDING.tickerTag}
-              </span>
-              <div className="marq min-w-0 flex-1 overflow-hidden whitespace-nowrap">
-                {/* The list renders TWICE; the keyframe slides -50%, so the loop joins
-                    seamlessly. The second pass is aria-hidden. */}
-                <div className="marq-track">
-                  {[0, 1].map((half) => (
-                    <span key={half} aria-hidden={half === 1}>
-                      {TICKER_SAMPLE.map((entry) => (
-                        <span
-                          key={`${half}-${entry.card}`}
-                          className="pr-14 text-[13px] font-semibold text-m2m-ink2"
-                        >
-                          <span className="font-extrabold text-m2m-green">{entry.grade}</span>
-                          {'\u2002'}
-                          <b className="font-bold text-m2m-ivory">{entry.card}</b>
-                        </span>
-                      ))}
-                    </span>
-                  ))}
+            {/* ── RECENT GRADES ── HIDDEN behind SHOW_RECENT_GRADES until the dashboard
+                feed is wired (the ruling lives on the flag in landingStrings.ts):
+                TICKER_SAMPLE is sample data and must not ship as "recent" grades on a
+                public terminal. The JSX stays so re-enabling is one boolean. Card, grade
+                and company only — never a customer name on the attract screen. */}
+            {SHOW_RECENT_GRADES && (
+              <div className="flex items-center gap-3.5 overflow-hidden rounded-xl border border-m2m-line bg-m2m-panel-deep px-[18px] py-[var(--live-py)]">
+                <span className="flex items-center whitespace-nowrap text-[11.5px] font-extrabold tracking-[2.6px] text-m2m-green">
+                  {LANDING.tickerTag}
+                </span>
+                <div className="marq min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+                  {/* The list renders TWICE; the keyframe slides -50%, so the loop joins
+                      seamlessly. The second pass is aria-hidden. */}
+                  <div className="marq-track">
+                    {[0, 1].map((half) => (
+                      <span key={half} aria-hidden={half === 1}>
+                        {TICKER_SAMPLE.map((entry) => (
+                          <span
+                            key={`${half}-${entry.card}`}
+                            className="pr-14 text-[13px] font-semibold text-m2m-ink2"
+                          >
+                            <span className="font-extrabold text-m2m-green">{entry.grade}</span>
+                            {'\u2002'}
+                            <b className="font-bold text-m2m-ivory">{entry.card}</b>
+                          </span>
+                        ))}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* ── FOOTER ── policies reachable but not leading; the video invitation
                 sits centred in the empty middle, quieter than the service cards — for
                 people who want it, never a step in the flow. 44px targets throughout:
-                the person tapping may be elderly, or holding a stack of cards. */}
-            <footer className="mt-auto flex items-center gap-6 pt-[clamp(4px,1vh,10px)]">
+                the person tapping may be elderly, or holding a stack of cards.
+                While the ticker is hidden this is the left column's only row, so it
+                centres against the QR (my-auto) and each item steps up ONE size —
+                filling the space, not a redesign; the hierarchy is unchanged, and
+                flipping SHOW_RECENT_GRADES back on restores today's exact layout. */}
+            <footer
+              className={`flex items-center gap-6 pt-[clamp(4px,1vh,10px)] ${
+                SHOW_RECENT_GRADES ? 'mt-auto' : 'my-auto'
+              }`}
+            >
               <div className="-my-2 flex">
                 {LANDING.footer.links.map(({ modal, label }) => (
                   <button
                     key={modal}
                     onClick={() => setActiveModal(modal)}
-                    className="flex min-h-[44px] items-center rounded-xl px-3.5 text-[13px] font-medium text-m2m-ink3 transition-colors hover:text-m2m-green active:text-m2m-green"
+                    className={`flex items-center rounded-xl px-3.5 font-medium text-m2m-ink3 transition-colors hover:text-m2m-green active:text-m2m-green ${
+                      SHOW_RECENT_GRADES ? 'min-h-[44px] text-[13px]' : 'min-h-[48px] text-[15px]'
+                    }`}
                   >
                     {label}
                   </button>
@@ -1616,15 +1668,24 @@ export default function App() {
               <div className="flex min-w-0 flex-1 justify-center">
                 <button
                   onClick={() => setActiveModal('video')}
-                  className="flex min-h-[44px] items-center gap-2.5 rounded-xl border border-m2m-line bg-white/[0.02] px-5 text-xs font-bold tracking-[1.5px] text-m2m-ink2 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98]"
+                  className={`flex items-center gap-2.5 rounded-xl border border-m2m-line bg-white/[0.02] px-5 font-bold tracking-[1.5px] text-m2m-ink2 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98] ${
+                    SHOW_RECENT_GRADES ? 'min-h-[44px] text-xs' : 'min-h-[48px] text-[13px]'
+                  }`}
                 >
                   <Play className="h-4 w-4 fill-current" />
                   {LANDING.footer.video}
                 </button>
               </div>
-              {/* The address, not the wordmark — all lowercase, green 2 retained. */}
-              <p className="text-[15px] font-extrabold tracking-[2.5px] text-m2m-ivory">
-                market<b className="text-m2m-green">2</b>mint.com
+              {/* The address, not the wordmark — Market2Mint.com in the ruled mixed case
+                  (Brand Assets/logo/00_LOCKUP_SPEC_2026-08-09.md), green 2 retained. Only
+                  this DISPLAYED text is cased; the machine-facing QR_DESTINATION string
+                  is separate and pinned by qrDestination.test.ts. */}
+              <p
+                className={`font-extrabold tracking-[2.5px] text-m2m-ivory ${
+                  SHOW_RECENT_GRADES ? 'text-[15px]' : 'text-[17px]'
+                }`}
+              >
+                Market<b className="text-m2m-green">2</b>Mint.com
               </p>
             </footer>
           </div>
@@ -1675,11 +1736,20 @@ export default function App() {
             ))}
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">Main Menu</span>
-            <button 
-              onClick={handleReset}
-              className="p-4 bg-zinc-900 border-2 border-m2m-green rounded-2xl shadow-sm active:scale-90 transition-transform"
+            {/* Leaving keeps the order — say so at the button, or the customer assumes
+                the ten cards they added are gone and re-adds them. */}
+            <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">
+              {cart.length > 0 ? 'Main Menu · order saved' : 'Main Menu'}
+            </span>
+            <button
+              onClick={goHome}
+              className="relative p-4 bg-zinc-900 border-2 border-m2m-green rounded-2xl shadow-sm active:scale-90 transition-transform"
             >
+              {cart.length > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-7 min-w-[28px] items-center justify-center rounded-full bg-m2m-green px-1.5 text-sm font-black text-black tabular-nums">
+                  {cart.reduce((n, i) => n + i.quantity, 0)}
+                </span>
+              )}
               <Home className="w-6 h-6 text-m2m-green" />
             </button>
           </div>
@@ -1857,11 +1927,11 @@ export default function App() {
               escape hatch a customer has to find deserves the brand accent, on type
               only, quiet surface unchanged. */}
           <button
-            onClick={handleReset}
+            onClick={goHome}
             className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-3 text-base font-semibold text-m2m-green transition-colors hover:border-zinc-600 active:scale-95"
           >
             <Home className="h-5 w-5" />
-            Main menu
+            {cart.length > 0 ? 'Main menu · order saved' : 'Main menu'}
           </button>
         </div>
       </div>
@@ -1881,7 +1951,7 @@ export default function App() {
               <h3 className="text-4xl font-black text-white uppercase italic">No Matches Found</h3>
               <p className="text-zinc-500 text-xl max-w-lg mx-auto">We couldn't find a service matching your exact criteria. Try adjusting your answers or starting over.</p>
             </div>
-            <button onClick={handleReset} className="text-m2m-green font-black uppercase tracking-[0.3em] border-b-2 border-m2m-green pb-2 text-lg">Start Over</button>
+            <button onClick={goHome} className="text-m2m-green font-black uppercase tracking-[0.3em] border-b-2 border-m2m-green pb-2 text-lg">Start Over</button>
           </div>
         ) : (
           <div className="max-w-5xl mx-auto w-full space-y-12">
@@ -1913,7 +1983,7 @@ export default function App() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: idx * 0.1 } }}
                       onClick={() => scrollToTile(tier.index)}
-                      className="flex h-56 flex-col justify-between rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 p-7 text-left transition-all hover:border-zinc-600 hover:bg-zinc-900 active:scale-[0.99]"
+                      className="flex h-64 flex-col justify-between rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 p-7 text-left transition-all hover:border-zinc-600 hover:bg-zinc-900 active:scale-[0.99]"
                     >
                       {/*
                         THE NUMBERS ARE THE CONTENT. A customer at a counter is comparing
@@ -1933,7 +2003,10 @@ export default function App() {
                             {tier.label}
                           </span>
                         )}
-                        <h4 className="text-xl font-semibold leading-tight text-zinc-300">{tier.service.name}</h4>
+                        {/* One step up from text-xl (2026-08-10): the name was the
+                            weakest element on a card whose job is telling three
+                            services apart. The price still leads. */}
+                        <h4 className="text-2xl font-semibold leading-tight text-zinc-300">{tier.service.name}</h4>
                       </div>
                       <div>
                         <p className="tabular-nums text-4xl font-bold leading-none text-m2m-green">
@@ -1944,6 +2017,20 @@ export default function App() {
                         <p className="mt-2 tabular-nums text-lg text-zinc-400">
                           {formatTurnaround(tier.service.businessDays).toLowerCase()}
                         </p>
+                        {/*
+                          The third thing read (2026-08-10): what each price COVERS,
+                          visible while comparing, without opening a card. Quieter than
+                          price and turnaround by size and colour — it informs the
+                          comparison, it is not the decision. OMITTED entirely when the
+                          menu says NA (Pregrading, quick opinions, reholders, cracking,
+                          authentication-only) — printing "NA" on a price card reads as
+                          an error, not a fact.
+                        */}
+                        {tier.service.maxValue !== 'NA' && (
+                          <p className="mt-1.5 tabular-nums text-sm text-zinc-500">
+                            max declared value {tier.service.maxValue}
+                          </p>
+                        )}
                       </div>
                     </motion.button>
                   ))}
@@ -2032,7 +2119,7 @@ export default function App() {
                         <p className="tabular-nums text-lg font-semibold text-m2m-ivory">{formatTurnaround(service.businessDays).toLowerCase()}</p>
                       </div>
                       <div className="bg-zinc-950 px-6 py-3 rounded-2xl border border-zinc-800 flex-1 text-center whitespace-nowrap">
-                        <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">Max insured value (if lost or damaged)</p>
+                        <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">Max declared value</p>
                         <p className="tabular-nums text-lg font-semibold text-m2m-ivory">{service.maxValue}</p>
                       </div>
                     </div>
@@ -2442,6 +2529,33 @@ export default function App() {
               className="h-full w-full"
             >
               {renderLanding()}
+              {/*
+                THE KEPT ORDER'S WAY BACK IN. goHome() preserves the cart onto this
+                screen — without a visible way to resume, persistence would be a trap:
+                the order exists but the customer cannot see or reach it. One bar,
+                only when an order exists, money and count stated, one tap to the
+                checkout. The idle reset still clears it for the next customer.
+              */}
+              {cart.length > 0 && (
+                <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center pointer-events-none">
+                  <button
+                    onClick={() => setActiveModal('cart')}
+                    className="pointer-events-auto flex min-h-[56px] items-center gap-4 rounded-[2rem] border-2 border-m2m-green bg-zinc-950/95 px-8 py-4 shadow-2xl backdrop-blur transition-all hover:bg-zinc-900 active:scale-[0.98]"
+                  >
+                    <ShoppingBag className="h-6 w-6 text-m2m-green" />
+                    <span className="text-lg font-bold text-m2m-ivory">
+                      Your order — {cart.reduce((n, i) => n + i.quantity, 0)}{' '}
+                      {cart.reduce((n, i) => n + i.quantity, 0) === 1 ? 'card' : 'cards'} ·{' '}
+                      <span className="tabular-nums text-m2m-green">
+                        ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </span>
+                    <span className="rounded-xl bg-m2m-green px-4 py-2 text-sm font-black uppercase tracking-widest text-black">
+                      Continue
+                    </span>
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
           {step === 'questions' && (
@@ -2561,7 +2675,8 @@ export default function App() {
             title="Checkout Cart"
             onClose={() => setActiveModal(null)}
             showMainMenu
-            onMainMenuClick={handleReset}
+            onMainMenuClick={goHome}
+            mainMenuLabel={cart.length > 0 ? 'Main Menu · order saved' : undefined}
             footer={
               cart.length > 0 ? (
                 <div className="space-y-5">
@@ -2735,7 +2850,7 @@ export default function App() {
                               </span>
                             </div>
                             <span className="bg-zinc-950 px-4 py-1.5 rounded-full border border-zinc-800 text-white text-xs font-black uppercase tracking-widest">
-                              MAX INSURED VALUE: {item.service.maxValue}
+                              MAX DECLARED VALUE: {item.service.maxValue}
                             </span>
                           </div>
 

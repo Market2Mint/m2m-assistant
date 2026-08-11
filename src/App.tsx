@@ -1960,7 +1960,7 @@ export default function App() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: idx * 0.1 } }}
                       onClick={() => scrollToTile(tier.index)}
-                      className="flex h-56 flex-col justify-between rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 p-7 text-left transition-all hover:border-zinc-600 hover:bg-zinc-900 active:scale-[0.99]"
+                      className="flex h-64 flex-col justify-between rounded-3xl border-2 border-zinc-800 bg-zinc-900/60 p-7 text-left transition-all hover:border-zinc-600 hover:bg-zinc-900 active:scale-[0.99]"
                     >
                       {/*
                         THE NUMBERS ARE THE CONTENT. A customer at a counter is comparing
@@ -1980,7 +1980,10 @@ export default function App() {
                             {tier.label}
                           </span>
                         )}
-                        <h4 className="text-xl font-semibold leading-tight text-zinc-300">{tier.service.name}</h4>
+                        {/* One step up from text-xl (2026-08-10): the name was the
+                            weakest element on a card whose job is telling three
+                            services apart. The price still leads. */}
+                        <h4 className="text-2xl font-semibold leading-tight text-zinc-300">{tier.service.name}</h4>
                       </div>
                       <div>
                         <p className="tabular-nums text-4xl font-bold leading-none text-m2m-green">
@@ -1991,6 +1994,20 @@ export default function App() {
                         <p className="mt-2 tabular-nums text-lg text-zinc-400">
                           {formatTurnaround(tier.service.businessDays).toLowerCase()}
                         </p>
+                        {/*
+                          The third thing read (2026-08-10): what each price COVERS,
+                          visible while comparing, without opening a card. Quieter than
+                          price and turnaround by size and colour — it informs the
+                          comparison, it is not the decision. OMITTED entirely when the
+                          menu says NA (Pregrading, quick opinions, reholders, cracking,
+                          authentication-only) — printing "NA" on a price card reads as
+                          an error, not a fact.
+                        */}
+                        {tier.service.maxValue !== 'NA' && (
+                          <p className="mt-1.5 tabular-nums text-sm text-zinc-500">
+                            insured to {tier.service.maxValue}
+                          </p>
+                        )}
                       </div>
                     </motion.button>
                   ))}

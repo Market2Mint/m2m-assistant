@@ -84,7 +84,11 @@ const OrderTotal: React.FC<OrderTotalProps> = ({
           <span className="leading-tight">
             {/* The label and the count stack, so the money keeps its own column and
                 stays the largest thing here — it is what the customer is checking. */}
-            <span className="block text-[13px] font-bold uppercase tracking-[1.4px] text-m2m-green">
+            {/* 14px, not 13: this chip renders on the results screen, and the same
+                change set raised every other sub-14px label there to the 14px floor.
+                A shared component that undercuts the floor it ships beside would make
+                its own label the smallest customer-facing type on that screen. */}
+            <span className="block text-[14px] font-bold uppercase tracking-[1.4px] text-m2m-green">
               {isMinimum ? 'Total so far' : 'Order total'}
             </span>
             <span className="block text-[14px] font-semibold text-m2m-ink2">

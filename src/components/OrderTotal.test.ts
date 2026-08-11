@@ -46,6 +46,28 @@ describe('OrderTotal', () => {
     expect(render({ cardCount: 0, total: 0 }).match(/<button/g)).toHaveLength(1);
   });
 
+  /**
+   * The bag and the chevron were required by the brief and pinned by nothing — an
+   * adversarial verifier deleted both and all the other tests stayed green. The bag is
+   * what makes the chip read as an order at a glance; the chevron is what says it goes
+   * somewhere. Asserted on BOTH states, since each renders its own branch.
+   */
+  it('keeps the bag and the forward chevron in both states', () => {
+    for (const props of [{}, { cardCount: 0, total: 0 }]) {
+      const svg = render(props);
+      // lucide renders its name onto the element, which is what makes this assertable.
+      expect(svg, 'bag icon missing').toContain('lucide-shopping-bag');
+      expect(svg, 'forward chevron missing').toContain('lucide-chevron-right');
+    }
+  });
+
+  it('sets its own label at the 14px legibility floor', () => {
+    // It renders on the results screen beside labels raised to 14px; undercutting that
+    // floor inside the shared component is the inconsistency this pins.
+    expect(render()).toContain('text-[14px]');
+    expect(render()).not.toContain('text-[13px]');
+  });
+
   it('never calls a shipping-inclusive figure a subtotal', () => {
     for (const props of [{}, { isMinimum: true }, { cardCount: 0, total: 0 }]) {
       expect(visibleText(render(props)).toLowerCase()).not.toContain('subtotal');

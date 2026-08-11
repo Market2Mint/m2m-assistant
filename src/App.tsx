@@ -121,6 +121,8 @@ interface ModalProps {
   children: React.ReactNode;
   showMainMenu?: boolean;
   onMainMenuClick?: () => void;
+  /** Override for the Main Menu caption — e.g. "Main Menu · order saved". */
+  mainMenuLabel?: string;
   /**
    * Rendered OUTSIDE the scrolling body, pinned to the modal's bottom edge. For
    * actions: nothing a customer must PRESS may require scrolling to reach (Phase 1
@@ -153,7 +155,7 @@ const toService = (r: ServiceRecord): Service => ({
 
 // --- Components ---
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMainMenu, onMainMenuClick, footer }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMainMenu, onMainMenuClick, mainMenuLabel, footer }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/90 backdrop-blur-xl">
@@ -168,8 +170,10 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMai
           <div className="flex items-center gap-6">
             {showMainMenu && (
               <div className="flex items-center gap-4">
-                <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">Main Menu</span>
-                <button 
+                <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">
+                  {mainMenuLabel ?? 'Main Menu'}
+                </span>
+                <button
                   onClick={onMainMenuClick}
                   className="p-4 bg-zinc-900 border-2 border-m2m-green rounded-2xl shadow-sm active:scale-90 transition-transform"
                 >
@@ -791,7 +795,11 @@ export default function App() {
    * can have longer, as many times as they like.
    */
   useEffect(() => {
-    if (step === 'landing') {
+    // The attract screen normally needs no idle timers — but a kept order changes that.
+    // Since goHome() preserves the cart onto the landing, an abandoned order sitting
+    // there MUST still clear before the next customer, or they inherit it. The timers
+    // therefore arm on the landing exactly when there is an order to protect.
+    if (step === 'landing' && cart.length === 0) {
       setIdleWarning(false);
       return;
     }
@@ -824,7 +832,9 @@ export default function App() {
       clearTimeout(resetId);
       events.forEach(event => document.removeEventListener(event, resetTimer));
     };
-  }, [step]);
+    // cart.length so arriving on the landing WITH a kept order arms the timers, and
+    // clearing it (or completing) disarms them.
+  }, [step, cart.length]);
 
   const handleScroll = () => {
     if (scrollRef.current && scrollRef.current.scrollTop > 20) {
@@ -1161,7 +1171,7 @@ export default function App() {
 
     // Special case for Memorabilia authenticator selection
     if (currentQuestionIdx === 1 && selectedAnswers[0]?.value.toLowerCase() === 'memorabilia') {
-      handleReset();
+      goHome();
       return;
     }
 
@@ -1201,6 +1211,36 @@ export default function App() {
     if (step === 'results') setStep('questions');
   };
 
+  /**
+   * TWO different reasons to land on the attract screen, and the difference is the whole
+   * job (ruled 2026-08-10): "leaving a screen" must not clear the order; "a new person
+   * walked up" must.
+   *
+   * goHome — NAVIGATION. Resets the question flow, keeps THE ORDER: cart lines, notes,
+   * payment choice, the policy acknowledgement (given for this order; the tick timestamp
+   * is already recorded and adding items does not invalidate it), and each line's open
+   * minimum-grade state. A customer with ten cards who taps Main menu to check a price
+   * loses nothing. The landing shows a resume bar whenever a kept order exists.
+   *
+   * handleReset — A NEW ORDER STARTS. Everything clears, cart included. Reached only by:
+   * the idle reset (a new person walked up), the handoff screen's exits and timeout (the
+   * order is complete), and the staff Reset in settings. Never wire a navigation button
+   * to it — that was the defect that wiped a ten-card cart from "Main menu".
+   */
+  const goHome = () => {
+    addLog(`Back to menu${cart.length ? ` (order kept: ${cart.length} line${cart.length === 1 ? '' : 's'})` : ''}`);
+    setStep('landing');
+    setCurrentQuestionIdx(0);
+    setSelectedAnswers([]);
+    setHistory([]);
+    setRemainingServices(allServices);
+    setActiveModal(null);
+    setQuantities({});
+    setOversizedSel({});
+    setKeypadTarget(null);
+    setKeypadState({ entry: '', pristine: true });
+  };
+
   const handleReset = () => {
     if (step === 'questions') {
       addLog(`Abandoned at Q${currentQuestionIdx + 1}`);
@@ -1208,24 +1248,22 @@ export default function App() {
       addLog('Reset Application');
     }
     setStep('landing');
-    setPolicyAccepted(false);
-    setPolicyAcknowledgedAt(null);
     setCurrentQuestionIdx(0);
     setSelectedAnswers([]);
     setHistory([]);
     setRemainingServices(allServices);
     setActiveModal(null);
-    setCart([]);
     setQuantities({});
     setOversizedSel({});
+    setKeypadTarget(null);
+    setKeypadState({ entry: '', pristine: true });
+    // The order itself — only this function may clear it.
+    setPolicyAccepted(false);
+    setPolicyAcknowledgedAt(null);
+    setCart([]);
     setOpenMinGradeLines([]);
     setCustomerNotes('');
     setPaymentMethod('card');
-    // The keypad renders above every step, so an abandoned one would sit over the
-    // NEXT customer's attract screen — and a stale Done could commit the previous
-    // customer's count into their session. Found by review 2026-08-10.
-    setKeypadTarget(null);
-    setKeypadState({ entry: '', pristine: true });
   };
 
   /**
@@ -1675,11 +1713,20 @@ export default function App() {
             ))}
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">Main Menu</span>
-            <button 
-              onClick={handleReset}
-              className="p-4 bg-zinc-900 border-2 border-m2m-green rounded-2xl shadow-sm active:scale-90 transition-transform"
+            {/* Leaving keeps the order — say so at the button, or the customer assumes
+                the ten cards they added are gone and re-adds them. */}
+            <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">
+              {cart.length > 0 ? 'Main Menu · order saved' : 'Main Menu'}
+            </span>
+            <button
+              onClick={goHome}
+              className="relative p-4 bg-zinc-900 border-2 border-m2m-green rounded-2xl shadow-sm active:scale-90 transition-transform"
             >
+              {cart.length > 0 && (
+                <span className="absolute -right-2 -top-2 flex h-7 min-w-[28px] items-center justify-center rounded-full bg-m2m-green px-1.5 text-sm font-black text-black tabular-nums">
+                  {cart.reduce((n, i) => n + i.quantity, 0)}
+                </span>
+              )}
               <Home className="w-6 h-6 text-m2m-green" />
             </button>
           </div>
@@ -1857,11 +1904,11 @@ export default function App() {
               escape hatch a customer has to find deserves the brand accent, on type
               only, quiet surface unchanged. */}
           <button
-            onClick={handleReset}
+            onClick={goHome}
             className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-3 text-base font-semibold text-m2m-green transition-colors hover:border-zinc-600 active:scale-95"
           >
             <Home className="h-5 w-5" />
-            Main menu
+            {cart.length > 0 ? 'Main menu · order saved' : 'Main menu'}
           </button>
         </div>
       </div>
@@ -1881,7 +1928,7 @@ export default function App() {
               <h3 className="text-4xl font-black text-white uppercase italic">No Matches Found</h3>
               <p className="text-zinc-500 text-xl max-w-lg mx-auto">We couldn't find a service matching your exact criteria. Try adjusting your answers or starting over.</p>
             </div>
-            <button onClick={handleReset} className="text-m2m-green font-black uppercase tracking-[0.3em] border-b-2 border-m2m-green pb-2 text-lg">Start Over</button>
+            <button onClick={goHome} className="text-m2m-green font-black uppercase tracking-[0.3em] border-b-2 border-m2m-green pb-2 text-lg">Start Over</button>
           </div>
         ) : (
           <div className="max-w-5xl mx-auto w-full space-y-12">
@@ -2442,6 +2489,33 @@ export default function App() {
               className="h-full w-full"
             >
               {renderLanding()}
+              {/*
+                THE KEPT ORDER'S WAY BACK IN. goHome() preserves the cart onto this
+                screen — without a visible way to resume, persistence would be a trap:
+                the order exists but the customer cannot see or reach it. One bar,
+                only when an order exists, money and count stated, one tap to the
+                checkout. The idle reset still clears it for the next customer.
+              */}
+              {cart.length > 0 && (
+                <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center pointer-events-none">
+                  <button
+                    onClick={() => setActiveModal('cart')}
+                    className="pointer-events-auto flex min-h-[56px] items-center gap-4 rounded-[2rem] border-2 border-m2m-green bg-zinc-950/95 px-8 py-4 shadow-2xl backdrop-blur transition-all hover:bg-zinc-900 active:scale-[0.98]"
+                  >
+                    <ShoppingBag className="h-6 w-6 text-m2m-green" />
+                    <span className="text-lg font-bold text-m2m-ivory">
+                      Your order — {cart.reduce((n, i) => n + i.quantity, 0)}{' '}
+                      {cart.reduce((n, i) => n + i.quantity, 0) === 1 ? 'card' : 'cards'} ·{' '}
+                      <span className="tabular-nums text-m2m-green">
+                        ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </span>
+                    <span className="rounded-xl bg-m2m-green px-4 py-2 text-sm font-black uppercase tracking-widest text-black">
+                      Continue
+                    </span>
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
           {step === 'questions' && (
@@ -2561,7 +2635,8 @@ export default function App() {
             title="Checkout Cart"
             onClose={() => setActiveModal(null)}
             showMainMenu
-            onMainMenuClick={handleReset}
+            onMainMenuClick={goHome}
+            mainMenuLabel={cart.length > 0 ? 'Main Menu · order saved' : undefined}
             footer={
               cart.length > 0 ? (
                 <div className="space-y-5">

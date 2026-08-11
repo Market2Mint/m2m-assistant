@@ -40,9 +40,11 @@ import {
 } from './pricing';
 import { LANDING, QR_DESTINATION, SHOW_RECENT_GRADES, TICKER_SAMPLE } from './landingStrings';
 import { HERO_DWELL_MS, HERO_SLABS } from './heroSlabs';
+import OrderTotal from './components/OrderTotal';
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
 import { hardReload } from './utils/hardReload';
+import { hasDeclaredValueCap } from './declaredValue';
 import { summariseTiers } from './tiers';
 import { buildPayload, sendTelemetry } from './telemetry';
 import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl, variationHandoffFragment } from './handoff';
@@ -121,8 +123,6 @@ interface ModalProps {
   children: React.ReactNode;
   showMainMenu?: boolean;
   onMainMenuClick?: () => void;
-  /** Override for the Main Menu caption — e.g. "Main Menu · order saved". */
-  mainMenuLabel?: string;
   /**
    * Rendered OUTSIDE the scrolling body, pinned to the modal's bottom edge. For
    * actions: nothing a customer must PRESS may require scrolling to reach (Phase 1
@@ -155,7 +155,7 @@ const toService = (r: ServiceRecord): Service => ({
 
 // --- Components ---
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMainMenu, onMainMenuClick, mainMenuLabel, footer }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMainMenu, onMainMenuClick, footer }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/90 backdrop-blur-xl">
@@ -171,7 +171,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showMai
             {showMainMenu && (
               <div className="flex items-center gap-4">
                 <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">
-                  {mainMenuLabel ?? 'Main Menu'}
+                  Main menu
                 </span>
                 <button
                   onClick={onMainMenuClick}
@@ -895,6 +895,16 @@ export default function App() {
 
   const total = subtotal + shippingFee - showDiscount;
 
+  /**
+   * CARDS IN THE ORDER — the sum of every line's quantity, derived ONCE.
+   *
+   * It was recomputed inline at four call sites, which is how two screens end up
+   * disagreeing about one order. `OrderTotal` takes this and `total` as props for the
+   * same reason. Note what does NOT use it: the shipping fee counts cart LINES (any
+   * non-empty order is $24.00 flat), and that lives in pricing.ts.
+   */
+  const cardCount = useMemo(() => cart.reduce((n, i) => n + i.quantity, 0), [cart]);
+
   const addBusinessDays = (startDate: Date, days: number) => {
     // ⚠️ MAINTENANCE REQUIRED ANNUALLY.
     // These are US federal holidays (observed). When the calendar runs out, estimated
@@ -1310,9 +1320,10 @@ export default function App() {
    *    grading companies in plain body text is fine and is what tells a stranger what
    *    this is.
    *
-   * Sized for the actual device: an iPad in landscape (~1180×820), panel-mounted at
-   * counter height. The whole screen fits without scrolling there; `overflow-y-auto` is
-   * only a safety net so a shorter viewport scrolls instead of clipping.
+   * Sized for the actual device: a 10.2" iPad in landscape, 1080×810 CSS px (2160×1620
+   * at 2x), panel-mounted at counter height. The whole screen fits without scrolling
+   * there — measured, not assumed, and index.css carries the measurement; `overflow-y-auto`
+   * is only a safety net so a shorter viewport scrolls instead of clipping.
    */
   const landingPregradePrice = cardShowMode ? showPregradingPrice : PREGRADE_PRICE_KIOSK;
 
@@ -1372,6 +1383,30 @@ export default function App() {
               {LANDING.tagline}
             </p>
           </div>
+
+          {/*
+            THE KEPT ORDER'S WAY BACK IN. goHome() preserves the cart onto this screen,
+            and persistence with no visible way back is a trap — the order exists and
+            the customer cannot see or reach it. This replaces a bar pinned across the
+            bottom of the viewport, which solved that but OVERLAPPED THE FOOTER: with an
+            order in the cart it painted over the address and "Market2Mint.com" rendered
+            as "et2Mint.com".
+
+            It sits in the header's empty right-hand band, beside the tagline. Only when
+            an order exists — the attract screen's job in its first fifteen seconds is
+            explaining the business to a stranger, and an empty order chip is noise
+            against that. mr-14 clears the settings cog, which is fixed at right-8 and
+            44px wide, so the two never collide.
+          */}
+          {cardCount > 0 && (
+            <OrderTotal
+              cardCount={cardCount}
+              total={total}
+              isMinimum={cartHasMinimumPricedItem}
+              onOpen={() => setActiveModal('cart')}
+              className="ml-auto mr-14 shrink-0"
+            />
+          )}
         </header>
 
         {/* flex-1 lets the row absorb spare height on a tall screen; no min-h-0 —
@@ -1551,14 +1586,14 @@ export default function App() {
               <span className="p-spill" />
             </div>
             <div className="z-[2] mt-[clamp(8px,1.8vh,18px)] text-center">
-              <p className="text-[11.5px] font-bold tracking-[3.2px] text-m2m-ink3">
+              <p className="text-[14px] font-bold tracking-[3.2px] text-m2m-ink3">
                 {LANDING.proof.label}
               </p>
               {/* Type, never logos — rights uncleared. nowrap makes a seventh name fail
                   loudly by overflowing instead of quietly wrapping the band. The hero
                   column floors at 370px (330px below 1120px viewports) — narrower than
                   the band at full size, so the band steps down instead of clipping. */}
-              <p className="mt-1.5 whitespace-nowrap text-[15.5px] font-bold tracking-[2.8px] text-m2m-ivory max-[1240px]:text-[13.5px] max-[1240px]:tracking-[2px] max-[1120px]:text-[12px] max-[1120px]:tracking-[1.5px]">
+              <p className="mt-1.5 whitespace-nowrap text-[15.5px] font-bold tracking-[2.8px] text-m2m-ivory max-[1240px]:text-[14px] max-[1240px]:tracking-[2px] max-[1120px]:text-[14px] max-[1120px]:tracking-[1.5px]">
                 {LANDING.proof.partners.map((partner, i) => (
                   <React.Fragment key={partner}>
                     {i > 0 && <span className="px-1.5 font-medium text-m2m-ink3">·</span>}
@@ -1582,7 +1617,7 @@ export default function App() {
             <React.Fragment key={step.title}>
               {i > 0 && <span className="px-2 text-xl font-extrabold text-m2m-green opacity-80">›</span>}
               <div className="flex flex-1 items-center gap-3">
-                <span className="flex h-[var(--stepn)] w-[var(--stepn)] shrink-0 items-center justify-center rounded-full bg-m2m-green text-[13px] font-extrabold text-m2m-jet [box-shadow:0_0_14px_rgba(0,200,5,0.38)]">
+                <span className="flex h-[var(--stepn)] w-[var(--stepn)] shrink-0 items-center justify-center rounded-full bg-m2m-green text-[14px] font-extrabold text-m2m-jet [box-shadow:0_0_14px_rgba(0,200,5,0.38)]">
                   {i + 1}
                 </span>
                 <span>
@@ -1613,7 +1648,7 @@ export default function App() {
                 and company only — never a customer name on the attract screen. */}
             {SHOW_RECENT_GRADES && (
               <div className="flex items-center gap-3.5 overflow-hidden rounded-xl border border-m2m-line bg-m2m-panel-deep px-[18px] py-[var(--live-py)]">
-                <span className="flex items-center whitespace-nowrap text-[11.5px] font-extrabold tracking-[2.6px] text-m2m-green">
+                <span className="flex items-center whitespace-nowrap text-[14px] font-extrabold tracking-[2.6px] text-m2m-green">
                   {LANDING.tickerTag}
                 </span>
                 <div className="marq min-w-0 flex-1 overflow-hidden whitespace-nowrap">
@@ -1625,7 +1660,7 @@ export default function App() {
                         {TICKER_SAMPLE.map((entry) => (
                           <span
                             key={`${half}-${entry.card}`}
-                            className="pr-14 text-[13px] font-semibold text-m2m-ink2"
+                            className="pr-14 text-[14px] font-semibold text-m2m-ink2"
                           >
                             <span className="font-extrabold text-m2m-green">{entry.grade}</span>
                             {'\u2002'}
@@ -1658,7 +1693,7 @@ export default function App() {
                     key={modal}
                     onClick={() => setActiveModal(modal)}
                     className={`flex items-center rounded-xl px-3.5 font-medium text-m2m-ink3 transition-colors hover:text-m2m-green active:text-m2m-green ${
-                      SHOW_RECENT_GRADES ? 'min-h-[44px] text-[13px]' : 'min-h-[48px] text-[15px]'
+                      SHOW_RECENT_GRADES ? 'min-h-[44px] text-[14px]' : 'min-h-[48px] text-[15px]'
                     }`}
                   >
                     {label}
@@ -1669,7 +1704,7 @@ export default function App() {
                 <button
                   onClick={() => setActiveModal('video')}
                   className={`flex items-center gap-2.5 rounded-xl border border-m2m-line bg-white/[0.02] px-5 font-bold tracking-[1.5px] text-m2m-ink2 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98] ${
-                    SHOW_RECENT_GRADES ? 'min-h-[44px] text-xs' : 'min-h-[48px] text-[13px]'
+                    SHOW_RECENT_GRADES ? 'min-h-[44px] text-[14px]' : 'min-h-[48px] text-[14px]'
                   }`}
                 >
                   <Play className="h-4 w-4 fill-current" />
@@ -1736,20 +1771,22 @@ export default function App() {
             ))}
           </div>
           <div className="flex items-center gap-4">
-            {/* Leaving keeps the order — say so at the button, or the customer assumes
-                the ten cards they added are gone and re-adds them. */}
+            {/* Same component as the results screen and the landing. It replaces a bare
+                count badge pinned to the home button — a third drawing of "here is your
+                order", and the only one that never showed the money. */}
+            <OrderTotal
+              cardCount={cardCount}
+              total={total}
+              isMinimum={cartHasMinimumPricedItem}
+              onOpen={() => setActiveModal('cart')}
+            />
             <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">
-              {cart.length > 0 ? 'Main Menu · order saved' : 'Main Menu'}
+              Main menu
             </span>
             <button
               onClick={goHome}
-              className="relative p-4 bg-zinc-900 border-2 border-m2m-green rounded-2xl shadow-sm active:scale-90 transition-transform"
+              className="p-4 bg-zinc-900 border-2 border-m2m-green rounded-2xl shadow-sm active:scale-90 transition-transform"
             >
-              {cart.length > 0 && (
-                <span className="absolute -right-2 -top-2 flex h-7 min-w-[28px] items-center justify-center rounded-full bg-m2m-green px-1.5 text-sm font-black text-black tabular-nums">
-                  {cart.reduce((n, i) => n + i.quantity, 0)}
-                </span>
-              )}
               <Home className="w-6 h-6 text-m2m-green" />
             </button>
           </div>
@@ -1907,21 +1944,17 @@ export default function App() {
         </div>
         
         <div className="flex items-center gap-6">
-          {cart.length > 0 && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl px-6 py-3 flex items-center gap-6 shadow-xl">
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Estimated Total</span>
-                <span className="text-2xl font-black text-m2m-green">${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <button 
-                onClick={() => setActiveModal('cart')}
-                className="bg-m2m-green text-black font-black uppercase tracking-widest px-6 py-3 rounded-xl hover:bg-m2m-green-ink hover:text-m2m-ivory transition-all active:scale-95 flex items-center gap-3"
-              >
-                <ShoppingBag className="w-5 h-5" />
-                Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)})
-              </button>
-            </div>
-          )}
+          {/* The order, in the one shape it takes everywhere. It replaces a dark
+              "ESTIMATED TOTAL" box sitting beside a separate green CART button —
+              two halves of one idea, only one of them pressable. Rendered even when
+              the order is empty (quiet, outlined) so the header does not jump the
+              moment a first card is added. */}
+          <OrderTotal
+            cardCount={cardCount}
+            total={total}
+            isMinimum={cartHasMinimumPricedItem}
+            onOpen={() => setActiveModal('cart')}
+          />
           {/* Secondary action. The old green BORDER stays gone — it out-shouted the
               primary action beside it — but the green LABEL returned 2026-08-10: an
               escape hatch a customer has to find deserves the brand accent, on type
@@ -1931,7 +1964,7 @@ export default function App() {
             className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 px-5 py-3 text-base font-semibold text-m2m-green transition-colors hover:border-zinc-600 active:scale-95"
           >
             <Home className="h-5 w-5" />
-            {cart.length > 0 ? 'Main menu · order saved' : 'Main menu'}
+            Main menu
           </button>
         </div>
       </div>
@@ -1999,7 +2032,7 @@ export default function App() {
                             eyebrow plus the price are green; name, turnaround and the
                             border stay quiet — all three green would mean nothing. */}
                         {tier.label && (
-                          <span className="mb-3 block text-xs font-bold uppercase tracking-[0.2em] text-m2m-green">
+                          <span className="mb-3 block text-[14px] font-bold uppercase tracking-[0.2em] text-m2m-green">
                             {tier.label}
                           </span>
                         )}
@@ -2026,7 +2059,7 @@ export default function App() {
                           authentication-only) — printing "NA" on a price card reads as
                           an error, not a fact.
                         */}
-                        {tier.service.maxValue !== 'NA' && (
+                        {hasDeclaredValueCap(tier.service.maxValue) && (
                           <p className="mt-1.5 tabular-nums text-sm text-zinc-500">
                             max declared value {tier.service.maxValue}
                           </p>
@@ -2091,7 +2124,7 @@ export default function App() {
                             : service.cost}
                         </div>
                         {service.priceIsMinimum && (
-                          <p className="mt-1 text-xs font-bold uppercase tracking-widest text-m2m-green">Minimum</p>
+                          <p className="mt-1 text-[14px] font-bold uppercase tracking-widest text-m2m-green">Minimum</p>
                         )}
                       </div>
                     </div>
@@ -2115,13 +2148,18 @@ export default function App() {
                     
                     <div className="flex gap-4 w-full">
                       <div className="bg-zinc-950 px-6 py-3 rounded-2xl border border-zinc-800 flex-1 text-center whitespace-nowrap">
-                        <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">Estimated turnaround</p>
+                        <p className="mb-1 text-[14px] font-bold uppercase tracking-widest text-zinc-500">Estimated turnaround</p>
                         <p className="tabular-nums text-lg font-semibold text-m2m-ivory">{formatTurnaround(service.businessDays).toLowerCase()}</p>
                       </div>
-                      <div className="bg-zinc-950 px-6 py-3 rounded-2xl border border-zinc-800 flex-1 text-center whitespace-nowrap">
-                        <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">Max declared value</p>
-                        <p className="tabular-nums text-lg font-semibold text-m2m-ivory">{service.maxValue}</p>
-                      </div>
+                      {/* Same rule as the tier cards: where the menu says NA there is no
+                          cap to state, so the whole field goes. "NA" printed at a
+                          customer reads as an error, not as a fact. */}
+                      {hasDeclaredValueCap(service.maxValue) && (
+                        <div className="bg-zinc-950 px-6 py-3 rounded-2xl border border-zinc-800 flex-1 text-center whitespace-nowrap">
+                          <p className="mb-1 text-[14px] font-bold uppercase tracking-widest text-zinc-500">Max declared value</p>
+                          <p className="tabular-nums text-lg font-semibold text-m2m-ivory">{service.maxValue}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -2135,7 +2173,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className="space-y-2 flex flex-col overflow-hidden">
-                      <h4 className="text-xs font-black uppercase tracking-[0.3em] text-m2m-green border-l-4 border-m2m-green pl-4 shrink-0 italic">ESTIMATED COMPLETION DATE</h4>
+                      <h4 className="text-[14px] font-black uppercase tracking-[0.3em] text-m2m-green border-l-4 border-m2m-green pl-4 shrink-0 italic">ESTIMATED COMPLETION DATE</h4>
                       <div className="bg-zinc-950 px-4 py-2.5 rounded-2xl border border-zinc-800 flex items-center justify-between shrink-0">
                         <div>
                           <p className="text-xl font-black text-white">{getEstimatedDate(service.turnaround)}</p>
@@ -2145,7 +2183,7 @@ export default function App() {
                       
                       {service.details && (
                         <div className="p-4 bg-zinc-950/50 rounded-3xl border border-dashed border-zinc-800 flex-1 overflow-y-auto custom-scrollbar">
-                          <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-m2m-green mb-2 italic">Additional Details</h4>
+                          <h4 className="text-[14px] font-black uppercase tracking-[0.3em] text-m2m-green mb-2 italic">Additional Details</h4>
                           <p className="text-base text-white leading-relaxed italic">{service.details}</p>
                         </div>
                       )}
@@ -2365,7 +2403,9 @@ export default function App() {
   const renderHandoff = () => {
     const { url: jotformUrl, droppedDates, savedStoreCode, orderText } = handoff;
     const countdownColor = handoffCountdown <= 10 ? 'text-red-500' : 'text-zinc-500';
-    const itemCount = cart.reduce((n, i) => n + i.quantity, 0);
+    // The same `cardCount` every other screen shows. It was a fourth inline re-count of
+    // the cart, which is how two screens end up disagreeing about one order.
+    const itemCount = cardCount;
 
     return (
       <div className="landscape-container bg-zinc-900 flex flex-col p-8 lg:p-12 overflow-y-auto relative">
@@ -2393,7 +2433,7 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-4">
-            <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">Main Menu</span>
+            <span className="text-sm font-black text-m2m-green uppercase italic tracking-widest">Main menu</span>
             <button 
               onClick={handleReset}
               className="p-4 bg-zinc-900 border-2 border-m2m-green rounded-2xl shadow-sm active:scale-90 transition-transform"
@@ -2453,7 +2493,7 @@ export default function App() {
               level={QR_ERROR_CORRECTION_LEVEL}
               includeMargin={false}
             />
-            <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-m2m-green text-black px-6 py-1.5 rounded-full font-black text-xs uppercase tracking-widest shadow-xl">
+            <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 bg-m2m-green text-black px-6 py-1.5 rounded-full font-black text-[14px] uppercase tracking-widest shadow-xl">
               Secure Link
             </div>
           </div>
@@ -2528,34 +2568,10 @@ export default function App() {
               exit={{ opacity: 0 }}
               className="h-full w-full"
             >
+              {/* The kept order's way back in now lives INSIDE renderLanding's header,
+                  top right. It was a bar fixed across the bottom of the viewport, which
+                  painted over the footer — see the comment at that component. */}
               {renderLanding()}
-              {/*
-                THE KEPT ORDER'S WAY BACK IN. goHome() preserves the cart onto this
-                screen — without a visible way to resume, persistence would be a trap:
-                the order exists but the customer cannot see or reach it. One bar,
-                only when an order exists, money and count stated, one tap to the
-                checkout. The idle reset still clears it for the next customer.
-              */}
-              {cart.length > 0 && (
-                <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center pointer-events-none">
-                  <button
-                    onClick={() => setActiveModal('cart')}
-                    className="pointer-events-auto flex min-h-[56px] items-center gap-4 rounded-[2rem] border-2 border-m2m-green bg-zinc-950/95 px-8 py-4 shadow-2xl backdrop-blur transition-all hover:bg-zinc-900 active:scale-[0.98]"
-                  >
-                    <ShoppingBag className="h-6 w-6 text-m2m-green" />
-                    <span className="text-lg font-bold text-m2m-ivory">
-                      Your order — {cart.reduce((n, i) => n + i.quantity, 0)}{' '}
-                      {cart.reduce((n, i) => n + i.quantity, 0) === 1 ? 'card' : 'cards'} ·{' '}
-                      <span className="tabular-nums text-m2m-green">
-                        ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </span>
-                    <span className="rounded-xl bg-m2m-green px-4 py-2 text-sm font-black uppercase tracking-widest text-black">
-                      Continue
-                    </span>
-                  </button>
-                </div>
-              )}
             </motion.div>
           )}
           {step === 'questions' && (
@@ -2676,7 +2692,6 @@ export default function App() {
             onClose={() => setActiveModal(null)}
             showMainMenu
             onMainMenuClick={goHome}
-            mainMenuLabel={cart.length > 0 ? 'Main Menu · order saved' : undefined}
             footer={
               cart.length > 0 ? (
                 <div className="space-y-5">
@@ -2844,14 +2859,18 @@ export default function App() {
                           </div>
                           <div className="flex gap-4">
                             <div className="flex items-center gap-2 bg-zinc-950 px-4 py-1.5 rounded-full border border-zinc-800 shrink-0">
-                              <span className="text-zinc-400 text-xs font-black uppercase tracking-widest">Est.</span>
-                              <span className="text-white text-xs font-black uppercase tracking-widest">
+                              <span className="text-zinc-400 text-[14px] font-black uppercase tracking-widest">Est.</span>
+                              <span className="text-white text-[14px] font-black uppercase tracking-widest">
                                 {getEstimatedDate(item.service.turnaround)}
                               </span>
                             </div>
-                            <span className="bg-zinc-950 px-4 py-1.5 rounded-full border border-zinc-800 text-white text-xs font-black uppercase tracking-widest">
-                              MAX DECLARED VALUE: {item.service.maxValue}
-                            </span>
+                            {/* Omitted entirely where the menu says NA — see the tier
+                                card and the results tile, which follow the same rule. */}
+                            {hasDeclaredValueCap(item.service.maxValue) && (
+                              <span className="bg-zinc-950 px-4 py-1.5 rounded-full border border-zinc-800 text-white text-[14px] font-black uppercase tracking-widest">
+                                MAX DECLARED VALUE: {item.service.maxValue}
+                              </span>
+                            )}
                           </div>
 
                           {/*
@@ -3074,7 +3093,7 @@ export default function App() {
                         <div className="flex justify-between items-center">
                           <div className="space-y-1">
                             <span className="text-m2m-green font-black uppercase tracking-widest text-lg">Shipping &amp; Insurance</span>
-                            <p className="text-xs text-white leading-tight uppercase font-black tracking-widest">{SHIPPING_DISCLOSURE}</p>
+                            <p className="text-[14px] text-white leading-tight uppercase font-black tracking-widest">{SHIPPING_DISCLOSURE}</p>
                           </div>
                           <span className="text-2xl font-black text-white">
                             ${shippingFee.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -3106,7 +3125,7 @@ export default function App() {
                       <div className="space-y-4 pt-6 border-t border-zinc-800">
                         <div className="space-y-1">
                           <label className="text-m2m-green font-black uppercase tracking-widest text-lg">Additional Instructions</label>
-                          <p className="text-xs text-white leading-tight uppercase font-black tracking-widest">
+                          <p className="text-[14px] text-white leading-tight uppercase font-black tracking-widest">
                             Provide any additional details to help us accurately process your order (e.g., which cards belong to which services).
                           </p>
                         </div>

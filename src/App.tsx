@@ -38,7 +38,7 @@ import {
   lineTotal,
   shippingFeeForCart,
 } from './pricing';
-import { LANDING, QR_DESTINATION, TICKER_SAMPLE } from './landingStrings';
+import { LANDING, QR_DESTINATION, SHOW_RECENT_GRADES, TICKER_SAMPLE } from './landingStrings';
 import { HERO_DWELL_MS, HERO_SLABS } from './heroSlabs';
 import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
@@ -1606,46 +1606,60 @@ export default function App() {
             TICKER'S WIDTH — its marquee simply ends ~210px earlier. */}
         <div className="mt-[clamp(6px,1.2vh,12px)] flex shrink-0 items-stretch gap-4">
           <div className="flex min-w-0 flex-1 flex-col">
-            {/* ── RECENT GRADES ── sample data today; the dashboard feed replaces
-                TICKER_SAMPLE and nothing else (see landingStrings.ts). Card, grade and
-                company only — never a customer name on the attract screen. */}
-            <div className="flex items-center gap-3.5 overflow-hidden rounded-xl border border-m2m-line bg-m2m-panel-deep px-[18px] py-[var(--live-py)]">
-              <span className="flex items-center whitespace-nowrap text-[11.5px] font-extrabold tracking-[2.6px] text-m2m-green">
-                {LANDING.tickerTag}
-              </span>
-              <div className="marq min-w-0 flex-1 overflow-hidden whitespace-nowrap">
-                {/* The list renders TWICE; the keyframe slides -50%, so the loop joins
-                    seamlessly. The second pass is aria-hidden. */}
-                <div className="marq-track">
-                  {[0, 1].map((half) => (
-                    <span key={half} aria-hidden={half === 1}>
-                      {TICKER_SAMPLE.map((entry) => (
-                        <span
-                          key={`${half}-${entry.card}`}
-                          className="pr-14 text-[13px] font-semibold text-m2m-ink2"
-                        >
-                          <span className="font-extrabold text-m2m-green">{entry.grade}</span>
-                          {'\u2002'}
-                          <b className="font-bold text-m2m-ivory">{entry.card}</b>
-                        </span>
-                      ))}
-                    </span>
-                  ))}
+            {/* ── RECENT GRADES ── HIDDEN behind SHOW_RECENT_GRADES until the dashboard
+                feed is wired (the ruling lives on the flag in landingStrings.ts):
+                TICKER_SAMPLE is sample data and must not ship as "recent" grades on a
+                public terminal. The JSX stays so re-enabling is one boolean. Card, grade
+                and company only — never a customer name on the attract screen. */}
+            {SHOW_RECENT_GRADES && (
+              <div className="flex items-center gap-3.5 overflow-hidden rounded-xl border border-m2m-line bg-m2m-panel-deep px-[18px] py-[var(--live-py)]">
+                <span className="flex items-center whitespace-nowrap text-[11.5px] font-extrabold tracking-[2.6px] text-m2m-green">
+                  {LANDING.tickerTag}
+                </span>
+                <div className="marq min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+                  {/* The list renders TWICE; the keyframe slides -50%, so the loop joins
+                      seamlessly. The second pass is aria-hidden. */}
+                  <div className="marq-track">
+                    {[0, 1].map((half) => (
+                      <span key={half} aria-hidden={half === 1}>
+                        {TICKER_SAMPLE.map((entry) => (
+                          <span
+                            key={`${half}-${entry.card}`}
+                            className="pr-14 text-[13px] font-semibold text-m2m-ink2"
+                          >
+                            <span className="font-extrabold text-m2m-green">{entry.grade}</span>
+                            {'\u2002'}
+                            <b className="font-bold text-m2m-ivory">{entry.card}</b>
+                          </span>
+                        ))}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* ── FOOTER ── policies reachable but not leading; the video invitation
                 sits centred in the empty middle, quieter than the service cards — for
                 people who want it, never a step in the flow. 44px targets throughout:
-                the person tapping may be elderly, or holding a stack of cards. */}
-            <footer className="mt-auto flex items-center gap-6 pt-[clamp(4px,1vh,10px)]">
+                the person tapping may be elderly, or holding a stack of cards.
+                While the ticker is hidden this is the left column's only row, so it
+                centres against the QR (my-auto) and each item steps up ONE size —
+                filling the space, not a redesign; the hierarchy is unchanged, and
+                flipping SHOW_RECENT_GRADES back on restores today's exact layout. */}
+            <footer
+              className={`flex items-center gap-6 pt-[clamp(4px,1vh,10px)] ${
+                SHOW_RECENT_GRADES ? 'mt-auto' : 'my-auto'
+              }`}
+            >
               <div className="-my-2 flex">
                 {LANDING.footer.links.map(({ modal, label }) => (
                   <button
                     key={modal}
                     onClick={() => setActiveModal(modal)}
-                    className="flex min-h-[44px] items-center rounded-xl px-3.5 text-[13px] font-medium text-m2m-ink3 transition-colors hover:text-m2m-green active:text-m2m-green"
+                    className={`flex items-center rounded-xl px-3.5 font-medium text-m2m-ink3 transition-colors hover:text-m2m-green active:text-m2m-green ${
+                      SHOW_RECENT_GRADES ? 'min-h-[44px] text-[13px]' : 'min-h-[48px] text-[15px]'
+                    }`}
                   >
                     {label}
                   </button>
@@ -1654,15 +1668,24 @@ export default function App() {
               <div className="flex min-w-0 flex-1 justify-center">
                 <button
                   onClick={() => setActiveModal('video')}
-                  className="flex min-h-[44px] items-center gap-2.5 rounded-xl border border-m2m-line bg-white/[0.02] px-5 text-xs font-bold tracking-[1.5px] text-m2m-ink2 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98]"
+                  className={`flex items-center gap-2.5 rounded-xl border border-m2m-line bg-white/[0.02] px-5 font-bold tracking-[1.5px] text-m2m-ink2 transition-all hover:border-zinc-600 hover:text-m2m-ivory active:scale-[0.98] ${
+                    SHOW_RECENT_GRADES ? 'min-h-[44px] text-xs' : 'min-h-[48px] text-[13px]'
+                  }`}
                 >
                   <Play className="h-4 w-4 fill-current" />
                   {LANDING.footer.video}
                 </button>
               </div>
-              {/* The address, not the wordmark — all lowercase, green 2 retained. */}
-              <p className="text-[15px] font-extrabold tracking-[2.5px] text-m2m-ivory">
-                market<b className="text-m2m-green">2</b>mint.com
+              {/* The address, not the wordmark — Market2Mint.com in the ruled mixed case
+                  (Brand Assets/logo/00_LOCKUP_SPEC_2026-08-09.md), green 2 retained. Only
+                  this DISPLAYED text is cased; the machine-facing QR_DESTINATION string
+                  is separate and pinned by qrDestination.test.ts. */}
+              <p
+                className={`font-extrabold tracking-[2.5px] text-m2m-ivory ${
+                  SHOW_RECENT_GRADES ? 'text-[15px]' : 'text-[17px]'
+                }`}
+              >
+                Market<b className="text-m2m-green">2</b>Mint.com
               </p>
             </footer>
           </div>
@@ -2005,7 +2028,7 @@ export default function App() {
                         */}
                         {tier.service.maxValue !== 'NA' && (
                           <p className="mt-1.5 tabular-nums text-sm text-zinc-500">
-                            insured to {tier.service.maxValue}
+                            max declared value {tier.service.maxValue}
                           </p>
                         )}
                       </div>
@@ -2096,7 +2119,7 @@ export default function App() {
                         <p className="tabular-nums text-lg font-semibold text-m2m-ivory">{formatTurnaround(service.businessDays).toLowerCase()}</p>
                       </div>
                       <div className="bg-zinc-950 px-6 py-3 rounded-2xl border border-zinc-800 flex-1 text-center whitespace-nowrap">
-                        <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">Max insured value (if lost or damaged)</p>
+                        <p className="mb-1 text-[12px] font-bold uppercase tracking-widest text-zinc-500">Max declared value</p>
                         <p className="tabular-nums text-lg font-semibold text-m2m-ivory">{service.maxValue}</p>
                       </div>
                     </div>
@@ -2827,7 +2850,7 @@ export default function App() {
                               </span>
                             </div>
                             <span className="bg-zinc-950 px-4 py-1.5 rounded-full border border-zinc-800 text-white text-xs font-black uppercase tracking-widest">
-                              MAX INSURED VALUE: {item.service.maxValue}
+                              MAX DECLARED VALUE: {item.service.maxValue}
                             </span>
                           </div>
 

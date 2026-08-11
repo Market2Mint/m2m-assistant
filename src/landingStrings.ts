@@ -95,6 +95,18 @@ export const LANDING = {
 } as const;
 
 /**
+ * ── RECENT GRADES ticker visibility ──
+ *
+ * FALSE until the market2mint.net dashboard feed is wired. The 2026-08-08 ruling is
+ * that the ticker goes DATA-DRIVEN — it must not invent plausible grades on a public
+ * terminal — and TICKER_SAMPLE below is hard-coded sample data, so until the feed
+ * exists the ticker stays off screen. TICKER_SAMPLE and its tests remain (it is the
+ * feed's seed/fallback), and the landing JSX stays in place behind this one boolean:
+ * when the feed lands, turning the ticker back on is exactly one flip to `true`.
+ */
+export const SHOW_RECENT_GRADES = false;
+
+/**
  * ── TICKER — SAMPLE DATA, and the wiring point for the dashboard feed. ──
  *
  * Ruling (Cayden 2026-08-08): the RECENT GRADES ticker goes DATA-DRIVEN from the

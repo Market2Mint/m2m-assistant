@@ -94,10 +94,8 @@ const KNOWN_DRIFT = new Set([
   'CGC Movies & Videos @ 55',           // alias fans out to three CGC Standard Video tiers
   'CGC Movies & Videos @ 65',
   'CGC Movies & Videos @ 95',
-  'CGC Vintage Comic w/Auto @ 79.99',
-  'CGC High Value Comic w/Auto @ 139.99',
-  'CGC Vintage Magazine w/Auto @ 79.99',
-  'CGC High Value Magazine w/Auto @ 139.99',
+  // CGC Vintage/High Value Comic & Magazine w/Auto @ 79.99/139.99: resolved 2026-08-20 —
+  // the +$10 CGC price change synced the CSV (price and the stale w/Auto days). Shrinks.
 ]);
 
 describe.skipIf(!existsSync(CSV_PATH))('routing CSV fallback columns vs the fees sheet', () => {

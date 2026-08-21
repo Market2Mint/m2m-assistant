@@ -102,30 +102,40 @@ describe('the pinned counts — a menu change that moves these must be classifie
   const auto = events.filter((e) => e.kind === 'auto');
   const shown = events.filter((e) => e.kind === 'shown');
 
-  it('25 single-option question events exist across every reachable path', () => {
-    expect(events.length).toBe(25);
-    expect(terminals).toBe(48);
+  // Re-pinned 2026-08-20 for the crossover build-out (17 new services): +6 shown events
+  // (the same two autograph taps every card path shows, now on the BGS/CGC/SGC crossover
+  // paths) and +3 Q6 auto-answers, while Crossover Q2 stopped being single-option (PSA
+  // was auto-answered there; it is now a real four-grader question). Later the same day
+  // the PSA duals moved from Either-routing onto the Yes branch (Cayden's ruling: Yes
+  // holds the Dual services, No the non-dual), so PSA's lone-"No" Q3 became a real
+  // Yes/No question and its shown event disappeared too.
+  it('32 single-option question events exist across every reachable path', () => {
+    expect(events.length).toBe(32);
+    // 66 since the PSA crossover matrix (2026-08-20, third pass): the Yes branch fans
+    // out through Pack-pulled/Aftermarket and the eras, mirroring the Trading Cards
+    // PSA rows, without creating any new single-option event.
+    expect(terminals).toBe(66);
   });
 
-  it('15 are service facts and still auto-answer: 3 on Q2, 12 on Q6', () => {
-    expect(auto.length).toBe(15);
-    expect(byIdx(auto)).toEqual({ 1: 3, 5: 12 });
+  it('17 are service facts and still auto-answer: 2 on Q2, 15 on Q6', () => {
+    expect(auto.length).toBe(17);
+    expect(byIdx(auto)).toEqual({ 1: 2, 5: 15 });
   });
 
-  it('10 are claims about the card and are shown: 2 on Q3, 4 on Q4, 4 on Q5', () => {
-    expect(shown.length).toBe(10);
-    expect(byIdx(shown)).toEqual({ 2: 2, 3: 4, 4: 4 });
+  it('15 are claims about the card and are shown: 1 on Q3, 7 on Q4, 7 on Q5', () => {
+    expect(shown.length).toBe(15);
+    expect(byIdx(shown)).toEqual({ 2: 1, 3: 7, 4: 7 });
   });
 
   it('no auto-answer ever lands on a card-fact question', () => {
     expect(auto.filter((e) => isCardFactQuestion(e.questionIdx))).toEqual([]);
   });
 
-  it('the harmful class is exactly these ten events — new ones fail here', () => {
+  it('the harmful class is exactly these fifteen events — new ones fail here', () => {
     const keys = shown.map((e) => `${e.path} @Q${e.questionIdx + 1}=${e.value}`).sort();
     expect(keys).toEqual(
       [
-        // The four autograph paths: +2 taps each, and both taps are the point.
+        // The four card autograph paths: +2 taps each, and both taps are the point.
         'Trading Cards→BGS→Yes @Q4=Pack-pulled',
         'Trading Cards→BGS→Yes→Pack-pulled @Q5=1999 - Newer',
         'Trading Cards→CGC→Yes @Q4=Pack-pulled',
@@ -134,9 +144,18 @@ describe('the pinned counts — a menu change that moves these must be classifie
         'Trading Cards→MBA→Yes→Pack-pulled @Q5=1999 - Newer',
         'Trading Cards→SGC→Yes @Q4=Pack-pulled',
         'Trading Cards→SGC→Yes→Pack-pulled @Q5=1999 - Newer',
+        // The three crossover autograph paths (2026-08-20 build-out): the identical
+        // two-tap shape, deliberately — the Yes path asserts the same two card facts.
+        'Crossover→BGS→Yes @Q4=Pack-pulled',
+        'Crossover→BGS→Yes→Pack-pulled @Q5=1999 - Newer',
+        'Crossover→CGC→Yes @Q4=Pack-pulled',
+        'Crossover→CGC→Yes→Pack-pulled @Q5=1999 - Newer',
+        'Crossover→SGC→Yes @Q4=Pack-pulled',
+        'Crossover→SGC→Yes→Pack-pulled @Q5=1999 - Newer',
         // No carve-out (ruled 2026-08-10): "Is the item autographed?" with only "No"
         // is still a claim about the customer's card, even when PSA is the only grader.
-        'Crossover→PSA* @Q3=No',
+        // (Crossover→PSA left this list 2026-08-20: the PSA duals moved onto the Yes
+        // branch, so its Q3 is a real Yes/No question now, not a single-option event.)
         'Unopened Packs→PSA* @Q3=No',
       ].sort(),
     );
@@ -152,8 +171,8 @@ describe('the WITHDRAWN same-outcome collapse must stay withdrawn', () => {
 
   it('no question is ever skipped because its options "do not matter"', () => {
     expect(collapsed).toEqual([]);
-    expect(events.filter((e) => e.kind === 'auto').length).toBe(15);
-    expect(events.filter((e) => e.kind === 'shown').length).toBe(10);
+    expect(events.filter((e) => e.kind === 'auto').length).toBe(17);
+    expect(events.filter((e) => e.kind === 'shown').length).toBe(15);
   });
 
   it('THE CASE THAT KILLED IT: PSA → not autographed still asks Which variation?', () => {
@@ -217,12 +236,47 @@ describe('the benign class still auto-answers', () => {
     expect(adv.answers).toEqual([{ value: 'Ticket Grade', auto: true }]);
   });
 
-  it('Crossover: Q2 "PSA" is auto-answered, then the flow STOPS at Q3', () => {
+  it('Crossover: Q2 is a real four-grader question since 2026-08-20, then Q3 offers Yes/No', () => {
+    // PSA used to be the only active crossover grader, so Q2 was auto-answered and the
+    // flow stopped at Q3 with a lone "No". The 2026-08-20 build-out made Q2 a genuine
+    // choice, and ALL FOUR graders split on the autograph question — Cayden's spec.
+    // For PSA, Yes holds the Dual services and No the non-dual (ruled later the same
+    // day; the duals had been riding Q3 as "Either" and surfacing through Q6 instead).
     const afterCategory = filterByAnswer(services.filter((s) => !isPregrade(s)), 0, 'Crossover');
     const adv = autoAdvance(afterCategory, 1, [], []);
-    expect(adv.answers).toEqual([{ value: 'PSA', auto: true }]);
-    expect(adv.idx).toBe(2);
-    expect(getOptionsForQuestion(2, adv.services)).toEqual(['No']);
+    expect(adv.answers).toEqual([]);
+    expect(adv.idx).toBe(1);
+    expect(getOptionsForQuestion(1, adv.services).sort()).toEqual(['BGS', 'CGC', 'PSA', 'SGC']);
+    for (const grader of ['BGS', 'CGC', 'PSA', 'SGC']) {
+      const afterGrader = filterByAnswer(afterCategory, 1, grader);
+      expect(getOptionsForQuestion(2, afterGrader).sort(), `${grader} must offer Yes and No`)
+        .toEqual(['No', 'Yes']);
+    }
+    // PSA's Yes branch mirrors the Trading Cards matrix (Cayden's rule, 2026-08-20):
+    // a pack-pulled 1999-or-newer auto choosing Card Grade Only or Authenticate Card
+    // Only does NOT need the Dual — PSA never has to verify the autograph — while
+    // 1998-or-older pack-pulled and all aftermarket autos reach Duals only.
+    const psa = filterByAnswer(afterCategory, 1, 'PSA');
+    const names = (svcs: typeof psa) => [...new Set(svcs.map((s) => s.name))].sort();
+    expect(names(filterByAnswer(psa, 2, 'No'))).toEqual(
+      ['PSA Crossover Express', 'PSA Crossover Super Express']);
+
+    const yes = filterByAnswer(psa, 2, 'Yes');
+    const packModern = filterByAnswer(filterByAnswer(yes, 3, 'Pack-pulled'), 4, '1999 - Newer');
+    // Base services reachable at the base price, but ONLY behind the two no-verification
+    // products; every other product on this path is a Dual.
+    for (const q6 of ['Card Grade Only', 'Authenticate Card Only']) {
+      expect(names(filterByAnswer(packModern, 5, q6)), `${q6} must be the non-dual tier`)
+        .toEqual(['PSA Crossover Express', 'PSA Crossover Super Express']);
+    }
+    expect(names(packModern)).toEqual([
+      'PSA Crossover Express', 'PSA Crossover Express Dual',
+      'PSA Crossover Super Express', 'PSA Crossover Super Express Dual',
+    ]);
+    expect(names(filterByAnswer(filterByAnswer(yes, 3, 'Pack-pulled'), 4, '1998 - Older')))
+      .toEqual(['PSA Crossover Express Dual', 'PSA Crossover Super Express Dual']);
+    expect(names(filterByAnswer(yes, 3, 'Aftermarket')))
+      .toEqual(['PSA Crossover Express Dual', 'PSA Crossover Super Express Dual']);
   });
 });
 

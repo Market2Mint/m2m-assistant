@@ -20,8 +20,11 @@ const priceOf = (name: string) => {
 };
 
 describe('SGC is two tiers, each with a pack-pulled autograph variant', () => {
-  it('offers exactly the four SGC services', () => {
-    expect(uniqueActive((s) => s.name.startsWith('SGC'))).toEqual([
+  it('offers exactly the four SGC card services', () => {
+    // Scoped to Trading Cards 2026-08-20: SGC gained four Crossover services that day,
+    // and they live under the Crossover category with their own pins (the speed ladders
+    // and the crossover routing walk) — this test pins the CARD ladder.
+    expect(uniqueActive((s) => s.category === 'Trading Cards' && s.name.startsWith('SGC'))).toEqual([
       'SGC Expedited', 'SGC Expedited w/Auto', 'SGC Standard', 'SGC Standard w/Auto',
     ]);
   });

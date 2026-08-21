@@ -267,3 +267,17 @@ describe('services whose price is only a floor', () => {
     }
   });
 });
+
+describe('every active service has a description', () => {
+  // 25 services accumulated with blank descriptions (measured 2026-08-21) because each
+  // newly added tier arrived without copy and nothing failed. Two traps this guard is
+  // built around: (1) iterate ACTIVE_SERVICES and look each up — 14 of the 25 had NO
+  // SERVICE_COPY key at all, so iterating the map reports zero problems while services
+  // render nothing; (2) copy flows donor -> variant only, via the generator's base-name
+  // fallback — see build_service_menu.py for the direction rule and its history.
+  it('renders no active service with an empty or missing description', () => {
+    for (const s of ACTIVE_SERVICES) {
+      expect(copyFor(s.name).description, `${s.name} renders with no description`).not.toBe('');
+    }
+  });
+});

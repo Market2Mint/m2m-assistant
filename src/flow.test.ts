@@ -105,11 +105,13 @@ describe('the pinned counts — a menu change that moves these must be classifie
   // Re-pinned 2026-08-20 for the crossover build-out (17 new services): +6 shown events
   // (the same two autograph taps every card path shows, now on the BGS/CGC/SGC crossover
   // paths) and +3 Q6 auto-answers, while Crossover Q2 stopped being single-option (PSA
-  // was auto-answered there; it is now a real four-grader question, so its auto event
-  // and the '*' in the PSA Q3 path key are gone).
-  it('33 single-option question events exist across every reachable path', () => {
-    expect(events.length).toBe(33);
-    expect(terminals).toBe(59);
+  // was auto-answered there; it is now a real four-grader question). Later the same day
+  // the PSA duals moved from Either-routing onto the Yes branch (Cayden's ruling: Yes
+  // holds the Dual services, No the non-dual), so PSA's lone-"No" Q3 became a real
+  // Yes/No question and its shown event disappeared too.
+  it('32 single-option question events exist across every reachable path', () => {
+    expect(events.length).toBe(32);
+    expect(terminals).toBe(60);
   });
 
   it('17 are service facts and still auto-answer: 2 on Q2, 15 on Q6', () => {
@@ -117,16 +119,16 @@ describe('the pinned counts — a menu change that moves these must be classifie
     expect(byIdx(auto)).toEqual({ 1: 2, 5: 15 });
   });
 
-  it('16 are claims about the card and are shown: 2 on Q3, 7 on Q4, 7 on Q5', () => {
-    expect(shown.length).toBe(16);
-    expect(byIdx(shown)).toEqual({ 2: 2, 3: 7, 4: 7 });
+  it('15 are claims about the card and are shown: 1 on Q3, 7 on Q4, 7 on Q5', () => {
+    expect(shown.length).toBe(15);
+    expect(byIdx(shown)).toEqual({ 2: 1, 3: 7, 4: 7 });
   });
 
   it('no auto-answer ever lands on a card-fact question', () => {
     expect(auto.filter((e) => isCardFactQuestion(e.questionIdx))).toEqual([]);
   });
 
-  it('the harmful class is exactly these sixteen events — new ones fail here', () => {
+  it('the harmful class is exactly these fifteen events — new ones fail here', () => {
     const keys = shown.map((e) => `${e.path} @Q${e.questionIdx + 1}=${e.value}`).sort();
     expect(keys).toEqual(
       [
@@ -149,9 +151,8 @@ describe('the pinned counts — a menu change that moves these must be classifie
         'Crossover→SGC→Yes→Pack-pulled @Q5=1999 - Newer',
         // No carve-out (ruled 2026-08-10): "Is the item autographed?" with only "No"
         // is still a claim about the customer's card, even when PSA is the only grader.
-        // (PSA lost its '*' 2026-08-20: Crossover Q2 now offers four graders, so PSA is
-        // a real answer there rather than an auto-answer.)
-        'Crossover→PSA @Q3=No',
+        // (Crossover→PSA left this list 2026-08-20: the PSA duals moved onto the Yes
+        // branch, so its Q3 is a real Yes/No question now, not a single-option event.)
         'Unopened Packs→PSA* @Q3=No',
       ].sort(),
     );
@@ -168,7 +169,7 @@ describe('the WITHDRAWN same-outcome collapse must stay withdrawn', () => {
   it('no question is ever skipped because its options "do not matter"', () => {
     expect(collapsed).toEqual([]);
     expect(events.filter((e) => e.kind === 'auto').length).toBe(17);
-    expect(events.filter((e) => e.kind === 'shown').length).toBe(16);
+    expect(events.filter((e) => e.kind === 'shown').length).toBe(15);
   });
 
   it('THE CASE THAT KILLED IT: PSA → not autographed still asks Which variation?', () => {
@@ -235,19 +236,25 @@ describe('the benign class still auto-answers', () => {
   it('Crossover: Q2 is a real four-grader question since 2026-08-20, then Q3 offers Yes/No', () => {
     // PSA used to be the only active crossover grader, so Q2 was auto-answered and the
     // flow stopped at Q3 with a lone "No". The 2026-08-20 build-out made Q2 a genuine
-    // choice, and BGS/CGC/SGC each split on the autograph question — Cayden's spec.
+    // choice, and ALL FOUR graders split on the autograph question — Cayden's spec.
+    // For PSA, Yes holds the Dual services and No the non-dual (ruled later the same
+    // day; the duals had been riding Q3 as "Either" and surfacing through Q6 instead).
     const afterCategory = filterByAnswer(services.filter((s) => !isPregrade(s)), 0, 'Crossover');
     const adv = autoAdvance(afterCategory, 1, [], []);
     expect(adv.answers).toEqual([]);
     expect(adv.idx).toBe(1);
     expect(getOptionsForQuestion(1, adv.services).sort()).toEqual(['BGS', 'CGC', 'PSA', 'SGC']);
-    for (const grader of ['BGS', 'CGC', 'SGC']) {
+    for (const grader of ['BGS', 'CGC', 'PSA', 'SGC']) {
       const afterGrader = filterByAnswer(afterCategory, 1, grader);
       expect(getOptionsForQuestion(2, afterGrader).sort(), `${grader} must offer Yes and No`)
         .toEqual(['No', 'Yes']);
     }
-    // PSA keeps its pre-existing shape: Duals ride on Q6, so Q3 is the lone "No".
-    expect(getOptionsForQuestion(2, filterByAnswer(afterCategory, 1, 'PSA'))).toEqual(['No']);
+    // PSA → Yes reaches exactly the Dual services; No reaches exactly the non-dual.
+    const psa = filterByAnswer(afterCategory, 1, 'PSA');
+    const namesOn = (answer: string) =>
+      [...new Set(filterByAnswer(psa, 2, answer).map((s) => s.name))].sort();
+    expect(namesOn('Yes')).toEqual(['PSA Crossover Express Dual', 'PSA Crossover Super Express Dual']);
+    expect(namesOn('No')).toEqual(['PSA Crossover Express', 'PSA Crossover Super Express']);
   });
 });
 

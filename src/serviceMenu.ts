@@ -1066,7 +1066,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Plus Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Card Grade Only"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Card Grade Only"],
     price: { customer: 69.99, employee: null, owner: null },
     cost: null,
     businessDays: 50,
@@ -1079,7 +1079,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Plus Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Card & Autograph Grade"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Card & Autograph Grade"],
     price: { customer: 69.99, employee: null, owner: null },
     cost: null,
     businessDays: 50,
@@ -1092,7 +1092,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Plus Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Autograph Grade Only"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Autograph Grade Only"],
     price: { customer: 69.99, employee: null, owner: null },
     cost: null,
     businessDays: 50,
@@ -1105,7 +1105,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Plus Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Authenticate Card & Auto"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Authenticate Card & Auto"],
     price: { customer: 69.99, employee: null, owner: null },
     cost: null,
     businessDays: 50,
@@ -1144,7 +1144,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Express Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Card Grade Only"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Card Grade Only"],
     price: { customer: 204.0, employee: null, owner: null },
     cost: null,
     businessDays: 25,
@@ -1157,7 +1157,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Express Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Card & Autograph Grade"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Card & Autograph Grade"],
     price: { customer: 204.0, employee: null, owner: null },
     cost: null,
     businessDays: 25,
@@ -1170,7 +1170,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Express Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Autograph Grade Only"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Autograph Grade Only"],
     price: { customer: 204.0, employee: null, owner: null },
     cost: null,
     businessDays: 25,
@@ -1183,7 +1183,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Express Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Authenticate Card & Auto"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Authenticate Card & Auto"],
     price: { customer: 204.0, employee: null, owner: null },
     cost: null,
     businessDays: 25,
@@ -1898,7 +1898,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Super Express Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Card Grade Only"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Card Grade Only"],
     price: { customer: 475.0, employee: null, owner: null },
     cost: null,
     businessDays: 20,
@@ -1911,7 +1911,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Super Express Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Card & Autograph Grade"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Card & Autograph Grade"],
     price: { customer: 475.0, employee: null, owner: null },
     cost: null,
     businessDays: 20,
@@ -1924,7 +1924,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Super Express Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Autograph Grade Only"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Autograph Grade Only"],
     price: { customer: 475.0, employee: null, owner: null },
     cost: null,
     businessDays: 20,
@@ -1937,7 +1937,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "PSA Crossover Super Express Dual",
-    questions: ["Crossover", "PSA", "Either", "Either", "Either", "Authenticate Card & Auto"],
+    questions: ["Crossover", "PSA", "Yes", "Either", "Either", "Authenticate Card & Auto"],
     price: { customer: 475.0, employee: null, owner: null },
     cost: null,
     businessDays: 20,

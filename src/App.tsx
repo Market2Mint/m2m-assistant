@@ -45,7 +45,7 @@ import StoreSettings from './components/StoreSettings';
 import { addLog } from './utils/logger';
 import { hardReload } from './utils/hardReload';
 import { hasDeclaredValueCap } from './declaredValue';
-import { summariseTiers } from './tiers';
+import { byPriceAscending, summariseTiers } from './tiers';
 import { buildPayload, sendTelemetry } from './telemetry';
 import { CUSTOMER_NOTES_MAX_LENGTH, QR_ERROR_CORRECTION_LEVEL, fitHandoffUrl, variationHandoffFragment } from './handoff';
 import { EMPTY_HEALTH, UPDATE_WINDOWS, shouldApplyUpdate, type UpdateHealth } from './updatePolicy';
@@ -93,6 +93,8 @@ interface Service {
   /** Carried through from the menu so `supportsMinimumGrade` can read it off a cart line. */
   category: string;
   cost: string;
+  /** The same figure as `cost`, unformatted. The results screen sorts on it. */
+  customerPrice: number;
   turnaround: string;
   /** The same figure as `turnaround`, unparsed. Use this for anything but display. */
   businessDays: number;
@@ -145,6 +147,7 @@ const toService = (r: ServiceRecord): Service => ({
   name: r.name,
   category: r.category,
   cost: formatUSD(r.price.customer),
+  customerPrice: r.price.customer,
   turnaround: String(r.businessDays),
   businessDays: r.businessDays,
   maxValue: r.maxInsuredValue,
@@ -1881,12 +1884,28 @@ export default function App() {
    * the slowest. If the customer can see every option, naming them adds nothing and can
    * only mislead.
    *
-   * At five or more, fall back to summarising by turnaround, which is what the sort has
-   * always actually been. No path currently reaches five.
+   * At five or more, fall back to summarising: representatives picked by turnaround,
+   * displayed cheapest-first like everything else. No path currently reaches five.
    */
   // Summary logic lives in src/tiers.ts, pure and tested. It was inline here when it
   // silently dropped one of four services — see the regression test.
   const speedTiers = useMemo(() => summariseTiers(remainingServices), [remainingServices]);
+
+  /**
+   * The tile list below the cards, in the SAME order the cards read — cheapest first,
+   * via the same comparator. It used to render in menu (routing CSV) order while the
+   * cards sorted themselves, so tapping a card jumped to a seemingly random position.
+   * The ORIGINAL index travels with each service because the anchor ids
+   * (`service-tile-${index}`) are what scrollToTile targets and what TierCard.index
+   * points at — the display sort must never leak into them.
+   */
+  const orderedServices = useMemo(
+    () =>
+      remainingServices
+        .map((service, index) => ({ service, index }))
+        .sort((a, b) => byPriceAscending(a.service, b.service)),
+    [remainingServices],
+  );
 
   const scrollToTile = (index: number) => {
     const element = document.getElementById(`service-tile-${index}`);
@@ -2101,12 +2120,12 @@ export default function App() {
               </div>
             )}
 
-            {remainingServices.map((service, i) => (
-              <motion.div 
-                key={service.name + i}
-                id={`service-tile-${i}`}
+            {orderedServices.map(({ service, index }, renderIdx) => (
+              <motion.div
+                key={service.name + index}
+                id={`service-tile-${index}`}
                 initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0, transition: { delay: i * 0.1 } }}
+                animate={{ opacity: 1, y: 0, transition: { delay: renderIdx * 0.1 } }}
                 className="bg-zinc-900 rounded-[3rem] shadow-2xl overflow-hidden border border-zinc-800 group hover:border-zinc-600 transition-all snap-start h-[68vh] flex flex-col"
               >
                 <div className="p-8 space-y-6 flex-1 overflow-hidden flex flex-col">

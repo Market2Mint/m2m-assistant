@@ -1250,7 +1250,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
     businessDays: 45,
     maxInsuredValue: "NA",
     active: true,
-    status: "Available",
+    status: "NEW / CHANGED",
     priceIsMinimum: false,
     oversizedSurcharge: null,
   },

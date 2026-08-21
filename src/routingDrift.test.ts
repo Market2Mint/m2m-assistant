@@ -85,7 +85,8 @@ const KNOWN_DRIFT = new Set([
   'BGS Base @ 25',
   'BGS Base w/Auto @ 30',
   'SGC Standard @ 25',
-  'JSA Memorabilia Certification @ 25',
+  // JSA Memorabilia Certification @ 25: resolved 2026-08-21 — the sheet moved JSA
+  // Authentication to 60d and the CSV was synced 55 -> 60. The ratchet shrinks.
   'PSA Crossover Plus @ 54.99',
   'PSA Crossover Plus @ 69.99',
   // PSA Crossover Express @ 154 / @ 204: resolved 2026-08-10 — the sheet moved Express

@@ -111,7 +111,10 @@ describe('the pinned counts — a menu change that moves these must be classifie
   // Yes/No question and its shown event disappeared too.
   it('32 single-option question events exist across every reachable path', () => {
     expect(events.length).toBe(32);
-    expect(terminals).toBe(60);
+    // 66 since the PSA crossover matrix (2026-08-20, third pass): the Yes branch fans
+    // out through Pack-pulled/Aftermarket and the eras, mirroring the Trading Cards
+    // PSA rows, without creating any new single-option event.
+    expect(terminals).toBe(66);
   });
 
   it('17 are service facts and still auto-answer: 2 on Q2, 15 on Q6', () => {
@@ -249,12 +252,31 @@ describe('the benign class still auto-answers', () => {
       expect(getOptionsForQuestion(2, afterGrader).sort(), `${grader} must offer Yes and No`)
         .toEqual(['No', 'Yes']);
     }
-    // PSA → Yes reaches exactly the Dual services; No reaches exactly the non-dual.
+    // PSA's Yes branch mirrors the Trading Cards matrix (Cayden's rule, 2026-08-20):
+    // a pack-pulled 1999-or-newer auto choosing Card Grade Only or Authenticate Card
+    // Only does NOT need the Dual — PSA never has to verify the autograph — while
+    // 1998-or-older pack-pulled and all aftermarket autos reach Duals only.
     const psa = filterByAnswer(afterCategory, 1, 'PSA');
-    const namesOn = (answer: string) =>
-      [...new Set(filterByAnswer(psa, 2, answer).map((s) => s.name))].sort();
-    expect(namesOn('Yes')).toEqual(['PSA Crossover Express Dual', 'PSA Crossover Super Express Dual']);
-    expect(namesOn('No')).toEqual(['PSA Crossover Express', 'PSA Crossover Super Express']);
+    const names = (svcs: typeof psa) => [...new Set(svcs.map((s) => s.name))].sort();
+    expect(names(filterByAnswer(psa, 2, 'No'))).toEqual(
+      ['PSA Crossover Express', 'PSA Crossover Super Express']);
+
+    const yes = filterByAnswer(psa, 2, 'Yes');
+    const packModern = filterByAnswer(filterByAnswer(yes, 3, 'Pack-pulled'), 4, '1999 - Newer');
+    // Base services reachable at the base price, but ONLY behind the two no-verification
+    // products; every other product on this path is a Dual.
+    for (const q6 of ['Card Grade Only', 'Authenticate Card Only']) {
+      expect(names(filterByAnswer(packModern, 5, q6)), `${q6} must be the non-dual tier`)
+        .toEqual(['PSA Crossover Express', 'PSA Crossover Super Express']);
+    }
+    expect(names(packModern)).toEqual([
+      'PSA Crossover Express', 'PSA Crossover Express Dual',
+      'PSA Crossover Super Express', 'PSA Crossover Super Express Dual',
+    ]);
+    expect(names(filterByAnswer(filterByAnswer(yes, 3, 'Pack-pulled'), 4, '1998 - Older')))
+      .toEqual(['PSA Crossover Express Dual', 'PSA Crossover Super Express Dual']);
+    expect(names(filterByAnswer(yes, 3, 'Aftermarket')))
+      .toEqual(['PSA Crossover Express Dual', 'PSA Crossover Super Express Dual']);
   });
 });
 

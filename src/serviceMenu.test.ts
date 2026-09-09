@@ -29,8 +29,10 @@ describe('SGC is two tiers, each with a pack-pulled autograph variant', () => {
     ]);
   });
 
-  it('prices the base tiers at $25.00 / ~75 days and $175.00 / ~15 days', () => {
-    expect(priceOf('SGC Standard').price.customer).toBe(25.0);
+  it('prices the base tiers at $60.00 / ~75 days and $175.00 / ~15 days', () => {
+    // SGC Standard repriced $25.00 -> $60.00 on 2026-09-09 (SGC's cost moved 15 -> 50;
+    // Cayden's margin rule, customer = cost + 10). Expedited unchanged.
+    expect(priceOf('SGC Standard').price.customer).toBe(60.0);
     expect(priceOf('SGC Standard').businessDays).toBe(75);
     expect(priceOf('SGC Expedited').price.customer).toBe(175.0);
     expect(priceOf('SGC Expedited').businessDays).toBe(15);
@@ -39,7 +41,7 @@ describe('SGC is two tiers, each with a pack-pulled autograph variant', () => {
   it('charges nothing extra and adds no time for the autograph', () => {
     // Genuinely identical to the base service. Without the disclosure below, these read
     // as duplicate rows and someone will "fix" one of them.
-    expect(priceOf('SGC Standard w/Auto').price.customer).toBe(25.0);
+    expect(priceOf('SGC Standard w/Auto').price.customer).toBe(60.0);
     expect(priceOf('SGC Standard w/Auto').businessDays).toBe(75);
     expect(priceOf('SGC Expedited w/Auto').price.customer).toBe(175.0);
     expect(priceOf('SGC Expedited w/Auto').businessDays).toBe(15);

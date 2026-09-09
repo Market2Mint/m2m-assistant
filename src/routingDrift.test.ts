@@ -84,7 +84,8 @@ const KNOWN_DRIFT = new Set([
   'PSA Super Express @ 474',            // alias join key, sheet corrected Dual to 475.00
   'BGS Base @ 25',
   'BGS Base w/Auto @ 30',
-  'SGC Standard @ 25',
+  // SGC Standard @ 25: resolved 2026-09-09 — the SGC reprice ($25 -> $60, cost $50)
+  // synced the CSV days 50 -> 75 along with the price. The ratchet shrinks.
   // JSA Memorabilia Certification @ 25: resolved 2026-08-21 — the sheet moved JSA
   // Authentication to 60d and the CSV was synced 55 -> 60. The ratchet shrinks.
   'PSA Crossover Plus @ 54.99',

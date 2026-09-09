@@ -21,12 +21,13 @@ export const PREGRADE_PRICE_KIOSK = 7.0;
  * screen cannot outlive the menu behind it.
  *
  * `BGS Base` was here until 2026-08-06 and was removed because BGS retired it. That test
- * failing is what caught it. `CGC Economy` and `SGC Standard` are both still $25.00, so
+ * failing is what caught it. `SGC Standard` was here until 2026-09-09 and was removed
+ * when SGC's cost moved to $50.00 and the price to $60.00 — the same test failing is
+ * what caught it. `CGC Economy` is still $25.00 (and MBA Base sits at $25.00 too), so
  * "FROM $25.00" survives on measured data rather than on habit.
  */
 export const SUBMISSION_BASE_TIERS = {
   'CGC Economy': 25.0,
-  'SGC Standard': 25.0,
 } as const;
 
 export const SUBMISSION_FROM_PRICE = Math.min(...Object.values(SUBMISSION_BASE_TIERS));

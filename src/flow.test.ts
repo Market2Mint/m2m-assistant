@@ -109,35 +109,42 @@ describe('the pinned counts — a menu change that moves these must be classifie
   // the PSA duals moved from Either-routing onto the Yes branch (Cayden's ruling: Yes
   // holds the Dual services, No the non-dual), so PSA's lone-"No" Q3 became a real
   // Yes/No question and its shown event disappeared too.
+  // Re-pinned 2026-09-10 for BAS (Beckett Authentication Services). Trading Cards→BGS→Yes
+  // gained an Aftermarket answer on Q4 and a 1998 - Older answer on Q5 (both route to
+  // BAS Card Autograph Authentication), so its two single-button disclosures became real
+  // two-option questions: −2 shown events. Each of the three new BGS→Yes leaves ends on
+  // a single-option Q6 that auto-answers: +2 auto events net (the old leaf already had
+  // one). Total stays 32; terminals 66 → 69 (+2 BGS leaves, +1 Memorabilia→BAS).
   it('32 single-option question events exist across every reachable path', () => {
     expect(events.length).toBe(32);
     // 66 since the PSA crossover matrix (2026-08-20, third pass): the Yes branch fans
     // out through Pack-pulled/Aftermarket and the eras, mirroring the Trading Cards
-    // PSA rows, without creating any new single-option event.
-    expect(terminals).toBe(66);
+    // PSA rows, without creating any new single-option event. 69 since BAS (2026-09-10).
+    expect(terminals).toBe(69);
   });
 
-  it('17 are service facts and still auto-answer: 2 on Q2, 15 on Q6', () => {
-    expect(auto.length).toBe(17);
-    expect(byIdx(auto)).toEqual({ 1: 2, 5: 15 });
+  it('19 are service facts and still auto-answer: 2 on Q2, 17 on Q6', () => {
+    expect(auto.length).toBe(19);
+    expect(byIdx(auto)).toEqual({ 1: 2, 5: 17 });
   });
 
-  it('15 are claims about the card and are shown: 1 on Q3, 7 on Q4, 7 on Q5', () => {
-    expect(shown.length).toBe(15);
-    expect(byIdx(shown)).toEqual({ 2: 1, 3: 7, 4: 7 });
+  it('13 are claims about the card and are shown: 1 on Q3, 6 on Q4, 6 on Q5', () => {
+    expect(shown.length).toBe(13);
+    expect(byIdx(shown)).toEqual({ 2: 1, 3: 6, 4: 6 });
   });
 
   it('no auto-answer ever lands on a card-fact question', () => {
     expect(auto.filter((e) => isCardFactQuestion(e.questionIdx))).toEqual([]);
   });
 
-  it('the harmful class is exactly these fifteen events — new ones fail here', () => {
+  it('the harmful class is exactly these thirteen events — new ones fail here', () => {
     const keys = shown.map((e) => `${e.path} @Q${e.questionIdx + 1}=${e.value}`).sort();
     expect(keys).toEqual(
       [
-        // The four card autograph paths: +2 taps each, and both taps are the point.
-        'Trading Cards→BGS→Yes @Q4=Pack-pulled',
-        'Trading Cards→BGS→Yes→Pack-pulled @Q5=1999 - Newer',
+        // The card autograph paths: +2 taps each, and both taps are the point.
+        // Trading Cards→BGS→Yes left this list 2026-09-10: BAS gave its Q4 a second
+        // answer (Aftermarket) and its Q5 a second era (1998 - Older), so neither is a
+        // single-option screen any more — see 'BGS → Yes routes to BAS' below.
         'Trading Cards→CGC→Yes @Q4=Pack-pulled',
         'Trading Cards→CGC→Yes→Pack-pulled @Q5=1999 - Newer',
         'Trading Cards→MBA→Yes @Q4=Pack-pulled',
@@ -171,8 +178,8 @@ describe('the WITHDRAWN same-outcome collapse must stay withdrawn', () => {
 
   it('no question is ever skipped because its options "do not matter"', () => {
     expect(collapsed).toEqual([]);
-    expect(events.filter((e) => e.kind === 'auto').length).toBe(17);
-    expect(events.filter((e) => e.kind === 'shown').length).toBe(15);
+    expect(events.filter((e) => e.kind === 'auto').length).toBe(19);
+    expect(events.filter((e) => e.kind === 'shown').length).toBe(13);
   });
 
   it('THE CASE THAT KILLED IT: PSA → not autographed still asks Which variation?', () => {
@@ -280,8 +287,9 @@ describe('the benign class still auto-answers', () => {
   });
 });
 
-describe('the four autograph paths stop at every card-fact question — the +2 taps', () => {
-  it.each(['BGS', 'CGC', 'SGC', 'MBA'])('%s → Yes shows Q4, then Q5, then auto-Q6', (company) => {
+describe('the three single-route autograph paths stop at every card-fact question — the +2 taps', () => {
+  // BGS left this list 2026-09-10: its Q4 and Q5 are real choices now (BAS). Pinned below.
+  it.each(['CGC', 'SGC', 'MBA'])('%s → Yes shows Q4, then Q5, then auto-Q6', (company) => {
     const afterCategory = filterByAnswer(services.filter((s) => !isPregrade(s)), 0, 'Trading Cards');
     const afterCompany = filterByAnswer(afterCategory, 1, company);
     const afterYes = filterByAnswer(afterCompany, 2, 'Yes');
@@ -307,5 +315,78 @@ describe('the four autograph paths stop at every card-fact question — the +2 t
     expect(done.idx).toBe(6);
     expect(done.answers.length).toBe(1);
     expect(done.answers[0].auto).toBe(true);
+  });
+});
+
+describe('BGS → Yes routes to BAS (Beckett Authentication Services), added 2026-09-10', () => {
+  // Beckett grades pack-pulled autographs from 1999 or newer only. Everything else that is
+  // signed — aftermarket, or pack-pulled from 1998 or older — used to dead-end ("No Matches
+  // Found" before the era filter, then simply no way forward). It now routes to BAS Card
+  // Autograph Authentication: the signature is authenticated, the card is not graded, and
+  // the $25.00 is a minimum. The 1999-or-newer path is unchanged and must never reach BAS.
+  const names = (list: Svc[]) => [...new Set(list.map((s) => s.name))].sort();
+  const submissions = services.filter((s) => !isPregrade(s));
+  const afterYes = filterByAnswer(filterByAnswer(filterByAnswer(submissions, 0, 'Trading Cards'), 1, 'BGS'), 2, 'Yes');
+
+  it('Q4 is a real choice: Pack-pulled or Aftermarket', () => {
+    const atQ4 = autoAdvance(afterYes, 3, [], []);
+    expect(atQ4.idx).toBe(3);
+    expect(atQ4.answers).toEqual([]);
+    expect(getOptionsForQuestion(3, atQ4.services)).toEqual(['Pack-pulled', 'Aftermarket']);
+  });
+
+  it('Aftermarket → BAS card service alone, Q5 skipped (no era applies), Q6 auto-answered', () => {
+    const afterMarket = filterByAnswer(afterYes, 3, 'Aftermarket');
+    expect(names(afterMarket)).toEqual(['BAS Card Autograph Authentication']);
+    // No surviving service restricts the release year, so the era question is not asked.
+    expect(getOptionsForQuestion(4, afterMarket)).toEqual([]);
+    const done = autoAdvance(afterMarket, 4, [], []);
+    expect(done.idx).toBe(6);
+    expect(done.answers).toEqual([{ value: 'Autograph Authentication Only', auto: true }]);
+    expect(names(done.services)).toEqual(['BAS Card Autograph Authentication']);
+  });
+
+  it('Pack-pulled → Q5 offers both eras, and it is shown', () => {
+    const packPulled = filterByAnswer(afterYes, 3, 'Pack-pulled');
+    const atQ5 = autoAdvance(packPulled, 4, [], []);
+    expect(atQ5.idx).toBe(4);
+    expect(atQ5.answers).toEqual([]);
+    expect(getOptionsForQuestion(4, atQ5.services)).toEqual(['1999 - Newer', '1998 - Older']);
+  });
+
+  it('Pack-pulled → 1998 - Older → BAS card service alone, Q6 auto-answered', () => {
+    const older = filterByAnswer(filterByAnswer(afterYes, 3, 'Pack-pulled'), 4, '1998 - Older');
+    expect(names(older)).toEqual(['BAS Card Autograph Authentication']);
+    const done = autoAdvance(older, 5, [], []);
+    expect(done.idx).toBe(6);
+    expect(done.answers).toEqual([{ value: 'Autograph Authentication Only', auto: true }]);
+  });
+
+  it('Pack-pulled → 1999 - Newer → the BGS w/Auto tiers only, never BAS', () => {
+    const newer = filterByAnswer(filterByAnswer(afterYes, 3, 'Pack-pulled'), 4, '1999 - Newer');
+    expect(names(newer)).toEqual(['BGS Express w/Auto', 'BGS Priority w/Auto']);
+    expect(newer.some((s) => s.name.startsWith('BAS'))).toBe(false);
+    const done = autoAdvance(newer, 5, [], []);
+    expect(done.idx).toBe(6);
+    expect(done.answers).toEqual([{ value: 'Card & Auto Grade', auto: true }]);
+  });
+
+  it('the details copy under BAS states the price is a minimum and the card is not graded', () => {
+    const afterMarket = filterByAnswer(afterYes, 3, 'Aftermarket');
+    const details = afterMarket.map((s) => s.details);
+    expect(details.length).toBe(1);
+    expect(details[0]).toMatch(/does not grade the card/i);
+  });
+
+  it('Memorabilia → CHOOSE AN AUTHENTICATOR offers JSA, PSA and BAS, in that order', () => {
+    const memorabilia = filterByAnswer(submissions, 0, 'Memorabilia');
+    const adv = autoAdvance(memorabilia, 1, [], []);
+    expect(adv.idx).toBe(1);
+    expect(adv.answers).toEqual([]);
+    expect(getOptionsForQuestion(1, adv.services)).toEqual(['JSA', 'PSA', 'BAS']);
+    const bas = filterByAnswer(memorabilia, 1, 'BAS');
+    expect(names(bas)).toEqual(['BAS Autograph Authentication']);
+    // Q3–Q6 are all Skip Question: straight to results.
+    expect(autoAdvance(bas, 2, [], []).idx).toBe(6);
   });
 });

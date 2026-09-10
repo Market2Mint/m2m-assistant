@@ -253,17 +253,26 @@ describe('oversized is a modifier, not four extra services', () => {
 });
 
 describe('services whose price is only a floor', () => {
-  // JSA and PSA/DNA memorabilia are assessed per item AFTER the order, so $25.00 is a
-  // deposit, not a price. The flag is what drives every disclosure — results screen, cart
-  // line, order total and the shop's copy of the order. If a menu regeneration ever drops
-  // it, all four go silent at once and the customer's first hint is a second invoice.
-  it('flags JSA and PSA/DNA, and nothing else', () => {
+  // JSA, PSA/DNA and (since 2026-09-10) the two BAS services are assessed per item AFTER
+  // the order, so $25.00 is a deposit, not a price. The flag is what drives every
+  // disclosure — results screen, cart line, order total and the shop's copy of the order.
+  // If a menu regeneration ever drops it, all four go silent at once and the customer's
+  // first hint is a second invoice. The flag comes from the word "minimum" in the sheet's
+  // NOTES, so a NOTES edit that loses the word fails here rather than on a kiosk.
+  const MINIMUM_PRICED = [
+    'BAS Autograph Authentication',
+    'BAS Card Autograph Authentication',
+    'JSA Authentication',
+    'PSA/DNA Memorabilia Certification',
+  ];
+
+  it('flags JSA, PSA/DNA and both BAS services, and nothing else', () => {
     const minimums = uniqueActive((s) => s.priceIsMinimum);
-    expect(minimums).toEqual(['JSA Authentication', 'PSA/DNA Memorabilia Certification']);
+    expect(minimums).toEqual(MINIMUM_PRICED);
   });
 
-  it('prices both at the $25.00 minimum', () => {
-    for (const name of ['JSA Authentication', 'PSA/DNA Memorabilia Certification']) {
+  it('prices all four at the $25.00 minimum', () => {
+    for (const name of MINIMUM_PRICED) {
       const svc = ACTIVE_SERVICES.find((s) => s.name === name)!;
       expect(svc.price.customer, name).toBe(25.0);
     }

@@ -254,7 +254,13 @@ describe('BGS Base and Standard are back (Cayden 2026-09-12), at their original 
 
   it('max declared value and status come from the sheet', () => {
     expect(priceOf('BGS Base').maxInsuredValue).toBe('$500.00');
-    expect(priceOf('BGS Standard').maxInsuredValue).toBe('$2,000.00');
+    // $500.00 on every BGS grading service (Cayden 2026-09-12): insured value is $500.00
+    // unless the customer asks and pays for more. Was $2,000.00 on Standard, NA on Crossover.
+    expect(priceOf('BGS Standard').maxInsuredValue).toBe('$500.00');
+    expect(priceOf('BGS Crossover').maxInsuredValue).toBe('$500.00');
+    for (const s of ACTIVE_SERVICES.filter((s) => s.name.startsWith('BGS') && (s.category === 'Trading Cards' || s.category === 'Crossover'))) {
+      expect(s.maxInsuredValue, s.name).toBe('$500.00');
+    }
     for (const n of ['BGS Base', 'BGS Base w/Auto', 'BGS Standard', 'BGS Standard w/Auto', 'BGS Crossover', 'BGS Crossover w/Auto']) {
       expect(priceOf(n).status).toBe('NEW / CHANGED');
     }

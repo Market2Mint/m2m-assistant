@@ -1317,7 +1317,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   {
     category: "Crossover",
     name: "BGS Crossover w/Auto",
-    questions: ["Crossover", "BGS", "Yes", "Pack-pulled", "1999 - Newer", "Card Grade Only"],
+    questions: ["Crossover", "BGS", "Yes", "Pack-pulled", "1999 - Newer Only", "Card & Auto Grade"],
     price: { customer: 45.0, employee: null, owner: null },
     cost: null,
     businessDays: 50,

@@ -292,3 +292,47 @@ describe('every active service has a description', () => {
     }
   });
 });
+
+describe('PSA Standard went live 2026-09-12 (Cayden GO), card only', () => {
+  // PSA's new Standard tier: list $59.99 -> M2M cost 47.99 (the 20% dealer discount on
+  // new service levels, J. Searls 2026-09-10) -> customer $64.99, ~100 business days,
+  // $1,000 max declared value. Held in the sheet from 2026-09-10 and activated by
+  // Kiosk v3/staged/psa_standard/activate.py, which inserts exactly the two Trading
+  // Cards / PSA / No rows (Card Grade Only, Authenticate Only). No Dual, no Crossover
+  // until PSA confirms them — if either appears here, someone added it without a ruling.
+  const rows = activeNamed('PSA Standard');
+
+  it('is priced and timed off the sheet on both No-autograph paths', () => {
+    expect(rows.length).toBe(2);
+    expect(rows.map((r) => r.questions?.[5]).sort()).toEqual(['Authenticate Only', 'Card Grade Only']);
+    for (const r of rows) {
+      expect(r.category).toBe('Trading Cards');
+      expect(r.questions?.slice(0, 3)).toEqual(['Trading Cards', 'PSA', 'No']);
+      expect(r.price.customer).toBe(64.99);
+      expect(r.businessDays).toBe(100);
+      expect(r.maxInsuredValue).toBe('$1,000.00');
+      expect(r.status).toBe('NEW / CHANGED');
+      expect(r.priceIsMinimum).toBe(false);
+    }
+  });
+
+  it('never shows on an autographed path and has no Dual or Crossover variant', () => {
+    expect(byName('PSA Standard Dual')).toEqual([]);
+    expect(byName('PSA Crossover Standard')).toEqual([]);
+    expect(SERVICE_MENU.filter((s) => s.name === 'PSA Standard' && s.questions?.[2] !== 'No')).toEqual([]);
+  });
+
+  it('is the cheapest and slowest rung of the PSA card ladder, below an unchanged Regular', () => {
+    const noAuto = ACTIVE_SERVICES.filter(
+      (s) => s.category === 'Trading Cards' && s.name.startsWith('PSA') &&
+        s.questions?.[2] === 'No' && s.questions?.[5] === 'Card Grade Only',
+    );
+    const cheapest = [...noAuto].sort((a, b) => a.price.customer - b.price.customer)[0];
+    expect(cheapest.name).toBe('PSA Standard');
+    const slowest = [...noAuto].sort((a, b) => b.businessDays - a.businessDays)[0];
+    expect(slowest.name).toBe('PSA Standard');
+    expect(priceOf('PSA Regular').price.customer).toBe(84.99);
+    expect(priceOf('PSA Regular').businessDays).toBe(80);
+    expect(copyFor('PSA Standard').description).toContain('100 business days');
+  });
+});

@@ -293,21 +293,24 @@ describe('every active service has a description', () => {
   });
 });
 
-describe('PSA Standard went live 2026-09-12 (Cayden GO), card only', () => {
+describe('PSA Standard went live 2026-09-12 (Cayden GO), card only, on every single-card PSA path', () => {
   // PSA's new Standard tier: list $59.99 -> M2M cost 47.99 (the 20% dealer discount on
   // new service levels, J. Searls 2026-09-10) -> customer $64.99, ~100 business days,
   // $1,000 max declared value. Held in the sheet from 2026-09-10 and activated by
-  // Kiosk v3/staged/psa_standard/activate.py, which inserts exactly the two Trading
-  // Cards / PSA / No rows (Card Grade Only, Authenticate Only). No Dual, no Crossover
-  // until PSA confirms them — if either appears here, someone added it without a ruling.
+  // Kiosk v3/staged/psa_standard/activate.py (the two "No" rows), then widened the same
+  // day on Cayden's ruling: "the option for the PSA Standard should pop up with all of
+  // the non dual submissions" — so it also rides the Pack-pulled / 1999 - Newer paths,
+  // exactly where PSA Regular's single-card rows are. It never appears where the Dual
+  // ladder shows (Aftermarket, and any "Either" path). No Dual, no Crossover until PSA
+  // confirms them — if either appears here, someone added it without a ruling.
   const rows = activeNamed('PSA Standard');
+  const regularSinglePaths = activeNamed('PSA Regular').map((r) => r.questions?.join(' > ')).sort();
 
-  it('is priced and timed off the sheet on both No-autograph paths', () => {
-    expect(rows.length).toBe(2);
-    expect(rows.map((r) => r.questions?.[5]).sort()).toEqual(['Authenticate Only', 'Card Grade Only']);
+  it('is priced and timed off the sheet on every path it appears on', () => {
+    expect(rows.length).toBe(4);
     for (const r of rows) {
       expect(r.category).toBe('Trading Cards');
-      expect(r.questions?.slice(0, 3)).toEqual(['Trading Cards', 'PSA', 'No']);
+      expect(r.questions?.slice(0, 2)).toEqual(['Trading Cards', 'PSA']);
       expect(r.price.customer).toBe(64.99);
       expect(r.businessDays).toBe(100);
       expect(r.maxInsuredValue).toBe('$1,000.00');
@@ -316,21 +319,35 @@ describe('PSA Standard went live 2026-09-12 (Cayden GO), card only', () => {
     }
   });
 
-  it('never shows on an autographed path and has no Dual or Crossover variant', () => {
+  it('rides exactly the same question paths as the single-card PSA Regular', () => {
+    // Regular is the reference rung: wherever a customer sees PSA Regular (not Regular
+    // Dual), they must also see Standard. This pins Cayden's rule rather than a list.
+    expect(rows.map((r) => r.questions?.join(' > ')).sort()).toEqual(regularSinglePaths);
+    expect(regularSinglePaths).toEqual([
+      'Trading Cards > PSA > No > Skip Question > Skip Question > Authenticate Only',
+      'Trading Cards > PSA > No > Skip Question > Skip Question > Card Grade Only',
+      'Trading Cards > PSA > Yes > Pack-pulled > 1999 - Newer > Authenticate Card Only',
+      'Trading Cards > PSA > Yes > Pack-pulled > 1999 - Newer > Card Grade Only',
+    ]);
+  });
+
+  it('never shows where the Dual ladder shows, and has no Dual or Crossover variant', () => {
     expect(byName('PSA Standard Dual')).toEqual([]);
     expect(byName('PSA Crossover Standard')).toEqual([]);
-    expect(SERVICE_MENU.filter((s) => s.name === 'PSA Standard' && s.questions?.[2] !== 'No')).toEqual([]);
+    const dualPaths = new Set(activeNamed('PSA Regular Dual').map((r) => r.questions?.join(' > ')));
+    expect(dualPaths.size).toBeGreaterThan(0);
+    for (const r of rows) expect(dualPaths.has(r.questions?.join(' > ') ?? '')).toBe(false);
+    for (const r of rows) expect(r.questions?.[3]).not.toBe('Aftermarket');
   });
 
   it('is the cheapest and slowest rung of the PSA card ladder, below an unchanged Regular', () => {
-    const noAuto = ACTIVE_SERVICES.filter(
-      (s) => s.category === 'Trading Cards' && s.name.startsWith('PSA') &&
-        s.questions?.[2] === 'No' && s.questions?.[5] === 'Card Grade Only',
-    );
-    const cheapest = [...noAuto].sort((a, b) => a.price.customer - b.price.customer)[0];
-    expect(cheapest.name).toBe('PSA Standard');
-    const slowest = [...noAuto].sort((a, b) => b.businessDays - a.businessDays)[0];
-    expect(slowest.name).toBe('PSA Standard');
+    for (const path of regularSinglePaths) {
+      const rung = ACTIVE_SERVICES.filter(
+        (s) => s.category === 'Trading Cards' && s.name.startsWith('PSA') && s.questions?.join(' > ') === path,
+      );
+      expect([...rung].sort((a, b) => a.price.customer - b.price.customer)[0].name).toBe('PSA Standard');
+      expect([...rung].sort((a, b) => b.businessDays - a.businessDays)[0].name).toBe('PSA Standard');
+    }
     expect(priceOf('PSA Regular').price.customer).toBe(84.99);
     expect(priceOf('PSA Regular').businessDays).toBe(80);
     expect(copyFor('PSA Standard').description).toContain('100 business days');

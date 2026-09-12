@@ -82,8 +82,8 @@ const readRoutingRows = (): CsvRow[] =>
  */
 const KNOWN_DRIFT = new Set([
   'PSA Super Express @ 474',            // alias join key, sheet corrected Dual to 475.00
-  'BGS Base @ 25',
-  'BGS Base w/Auto @ 30',
+  // BGS Base @ 25 / BGS Base w/Auto @ 30: resolved 2026-09-12 — the BGS revive synced the
+  // CSV days (85 -> 95, 90 -> 100) to the sheet. The ratchet shrinks.
   // SGC Standard @ 25: resolved 2026-09-09 — the SGC reprice ($25 -> $60, cost $50)
   // synced the CSV days 50 -> 75 along with the price. The ratchet shrinks.
   // JSA Memorabilia Certification @ 25: resolved 2026-08-21 — the sheet moved JSA

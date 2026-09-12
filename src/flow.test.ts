@@ -364,7 +364,9 @@ describe('BGS → Yes routes to BAS (Beckett Authentication Services), added 202
 
   it('Pack-pulled → 1999 - Newer → the BGS w/Auto tiers only, never BAS', () => {
     const newer = filterByAnswer(filterByAnswer(afterYes, 3, 'Pack-pulled'), 4, '1999 - Newer');
-    expect(names(newer)).toEqual(['BGS Express w/Auto', 'BGS Priority w/Auto']);
+    // Was ['BGS Express w/Auto', 'BGS Priority w/Auto'] until Base and Standard returned
+    // (Cayden 2026-09-12); the BAS exclusion is the point of this test and is unchanged.
+    expect(names(newer)).toEqual(['BGS Base w/Auto', 'BGS Express w/Auto', 'BGS Priority w/Auto', 'BGS Standard w/Auto']);
     expect(newer.some((s) => s.name.startsWith('BAS'))).toBe(false);
     const done = autoAdvance(newer, 5, [], []);
     expect(done.idx).toBe(6);

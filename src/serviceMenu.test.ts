@@ -111,11 +111,11 @@ describe('CGC and SGC accept pack-pulled autographs', () => {
 });
 
 describe('retired services are kept as history, not deleted', () => {
-  // BGS retired Base and Standard; PSA suspended the Value tiers. The rows stay so the
-  // menu still explains what a customer was quoted last month.
+  // PSA suspended the Value tiers. The rows stay so the menu still explains what a
+  // customer was quoted last month. BGS Base, Standard and Crossover (+ w/Auto) left this
+  // list 2026-09-12: BGS is offering them again and Cayden un-retired all six at their
+  // original prices, costs and turnarounds — see 'BGS Base and Standard are back' below.
   const retired = [
-    'BGS Base', 'BGS Base w/Auto', 'BGS Standard', 'BGS Standard w/Auto',
-    'BGS Crossover', 'BGS Crossover w/Auto',
     'PSA Value Bulk', 'PSA Vintage & Value', 'PSA Value & Vintage Dual',
     'PSA Value Plus', 'PSA Value Plus Dual', 'PSA Value Max', 'PSA Max Dual',
     'PSA Crossover Plus Card Only', 'PSA Crossover Plus Dual',
@@ -127,7 +127,7 @@ describe('retired services are kept as history, not deleted', () => {
     for (const r of rows) expect(r.active, `${name} is still active`).toBe(false);
   });
 
-  it('retires exactly the 15 the sheet greys out', () => {
+  it('retires exactly the 9 the sheet greys out', () => {
     expect(uniqueActive(() => true).length).toBeGreaterThan(0);
     const inactive = [...new Set(SERVICE_MENU.filter((s) => !s.active).map((s) => s.name))];
     expect(inactive.sort()).toEqual([...retired].sort());
@@ -206,9 +206,58 @@ describe('BGS Priority is live', () => {
     expect(priceOf('BGS Priority w/Auto').businessDays).toBe(25);
   });
 
-  it('is what BGS still offers now Base and Standard are gone', () => {
+  it('sits at the top of the full four-rung BGS card ladder again', () => {
+    // Was ['BGS Express', 'BGS Express w/Auto', 'BGS Priority', 'BGS Priority w/Auto']
+    // while Base and Standard were retired (2026-08 .. 2026-09-12).
     expect(uniqueActive((s) => s.category === 'Trading Cards' && s.name.startsWith('BGS')))
-      .toEqual(['BGS Express', 'BGS Express w/Auto', 'BGS Priority', 'BGS Priority w/Auto']);
+      .toEqual(['BGS Base', 'BGS Base w/Auto', 'BGS Express', 'BGS Express w/Auto',
+                'BGS Priority', 'BGS Priority w/Auto', 'BGS Standard', 'BGS Standard w/Auto']);
+  });
+});
+
+describe('BGS Base and Standard are back (Cayden 2026-09-12), at their original figures', () => {
+  // BGS un-retired the tiers. The sheet rows lost their "TEMPORARILY UNAVAILABLE" suffix
+  // and status; no price, cost or turnaround moved. Cost is still BGS list x 0.85.
+  const ladder = (path: string[]) =>
+    ACTIVE_SERVICES
+      .filter((s) => s.name.startsWith('BGS') && s.questions?.slice(0, path.length).join('>') === path.join('>'))
+      .sort((a, b) => a.price.customer - b.price.customer)
+      .map((s) => [s.name, s.price.customer, s.businessDays] as const);
+
+  it('Trading Cards -> BGS -> No offers four tiers, cheapest first: 25 / 40 / 85 / 150', () => {
+    expect(ladder(['Trading Cards', 'BGS', 'No'])).toEqual([
+      ['BGS Base', 25.0, 95], ['BGS Standard', 40.0, 45], ['BGS Express', 85.0, 30], ['BGS Priority', 150.0, 20],
+    ]);
+  });
+
+  it('the pack-pulled 1999-Newer autograph path offers four: 30 / 45 / 90 / 155', () => {
+    expect(ladder(['Trading Cards', 'BGS', 'Yes', 'Pack-pulled', '1999 - Newer Only'])).toEqual([
+      ['BGS Base w/Auto', 30.0, 100], ['BGS Standard w/Auto', 45.0, 50],
+      ['BGS Express w/Auto', 90.0, 35], ['BGS Priority w/Auto', 155.0, 25],
+    ]);
+  });
+
+  it('Crossover -> BGS offers three on both No variations: 40 / 85 / 150', () => {
+    for (const variation of ['Card Grade Only', 'Authenticate Only']) {
+      const rows = ACTIVE_SERVICES
+        .filter((s) => s.category === 'Crossover' && s.questions?.[1] === 'BGS' && s.questions?.[2] === 'No' && s.questions?.[5] === variation)
+        .sort((a, b) => a.price.customer - b.price.customer)
+        .map((s) => [s.name, s.price.customer, s.businessDays] as const);
+      expect(rows, variation).toEqual([
+        ['BGS Crossover', 40.0, 45], ['BGS Crossover Express', 85.0, 30], ['BGS Crossover Priority', 150.0, 20],
+      ]);
+    }
+    expect(ladder(['Crossover', 'BGS', 'Yes'])).toEqual([
+      ['BGS Crossover w/Auto', 45.0, 50], ['BGS Crossover Express w/Auto', 90.0, 35], ['BGS Crossover Priority w/Auto', 155.0, 25],
+    ]);
+  });
+
+  it('max declared value and status come from the sheet', () => {
+    expect(priceOf('BGS Base').maxInsuredValue).toBe('$500.00');
+    expect(priceOf('BGS Standard').maxInsuredValue).toBe('$2,000.00');
+    for (const n of ['BGS Base', 'BGS Base w/Auto', 'BGS Standard', 'BGS Standard w/Auto', 'BGS Crossover', 'BGS Crossover w/Auto']) {
+      expect(priceOf(n).status).toBe('NEW / CHANGED');
+    }
   });
 });
 

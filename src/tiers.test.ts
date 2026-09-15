@@ -10,7 +10,7 @@ const svc = (name: string, businessDays: number, customerPrice: number) => ({
 
 describe('nothing is ever silently dropped', () => {
   // The whole point of this file. A service a customer cannot see is a service they
-  // cannot buy — PSA Regular Ticket was unreachable from the summary for exactly this
+  // cannot buy — PSA Priority Ticket was unreachable from the summary for exactly this
   // reason, on a four-service result set.
 
   it.each([2, 3, 4])('shows every service when there are %i', (n) => {
@@ -29,7 +29,7 @@ describe('nothing is ever silently dropped', () => {
     expect(tickets.length).toBe(4);
 
     const shown = summariseTiers(tickets).map((c) => c.service.name);
-    expect(shown).toContain('PSA Regular Ticket');
+    expect(shown).toContain('PSA Priority Ticket');
     expect(shown.length).toBe(4);
   });
 

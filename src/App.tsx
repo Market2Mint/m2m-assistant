@@ -1876,7 +1876,7 @@ export default function App() {
    *
    * Up to four services, EVERY service gets a card. It used to render exactly three no
    * matter what, picked as slowest / middle / fastest — so the four PSA ticket tiers
-   * showed three and silently dropped PSA Regular Ticket ($84.99) from the chooser.
+   * showed three and silently dropped PSA Priority Ticket, then named PSA Regular Ticket ($84.99), from the chooser.
    *
    * No labels when everything is shown. VALUE / STANDARD / PRIORITY was assigned by
    * turnaround, which is only meaningful when the tiers ARE a speed ladder. On the comic

@@ -85,8 +85,8 @@ const worstOrder = (
 
 /** A line a customer actually produces: a common service, no oversized, no variation. */
 const typicalLine = {
-  full: '• PSA Regular - $84.99 (x1) — EST: Mon, Sep 14, 2026',
-  compact: '• PSA Regular - $84.99 (x1)',
+  full: '• PSA Priority - $84.99 (x1) — EST: Mon, Sep 14, 2026',
+  compact: '• PSA Priority - $84.99 (x1)',
 };
 
 const typicalOrder = (lineCount: number) =>
@@ -146,12 +146,24 @@ describe('a realistic worst-case order still scans', () => {
   // For contrast, at the level H this shipped with: a plain worst-case order failed at
   // SEVEN lines and a minimum-grade one at FOUR, with no guard and no error boundary.
 
-  it('carries twenty typical lines — the shape a customer actually builds', () => {
-    // "PSA Regular ×1", twenty times over. Comfortably past any real order.
-    const { url, droppedDates } = typicalOrder(20);
+  it('carries nineteen typical lines with dates intact — the shape a customer actually builds', () => {
+    // "PSA Priority ×1", nineteen times over. Comfortably past any real order.
+    //
+    // Was twenty until the 2026-09-14 rename: "PSA Priority" is one byte longer per line
+    // than "PSA Regular", and the twenty-line order had fit with 4 bytes to spare (measured:
+    // 2,327 of 2,331). Nothing an order could carry was lost — the twentieth line now ships
+    // with its EST dates dropped, the field designed to be lost first, asserted just below.
+    const { url, droppedDates } = typicalOrder(19);
     expect(url).not.toBeNull();
     expect(encode(url!)).not.toBeNull();
     expect(droppedDates).toBe(false);
+  });
+
+  it('carries twenty typical lines by dropping only the estimated dates', () => {
+    const { url, droppedDates } = typicalOrder(20);
+    expect(url).not.toBeNull();
+    expect(encode(url!)).not.toBeNull();
+    expect(droppedDates).toBe(true);
   });
 
   it('carries ten pathological plain lines with dates intact', () => {
@@ -261,12 +273,12 @@ describe('the Q6 variation is the PRODUCT and must reach the shop, by value', ()
     expect(variationHandoffFragment(undefined)).toBe('');
   });
 
-  it('THE PATH THAT MATTERS: a live PSA Regular Authenticate Only record reaches the URL intact', () => {
+  it('THE PATH THAT MATTERS: a live PSA Priority Authenticate Only record reaches the URL intact', () => {
     // From the real menu, not a fixture: the record a customer lands on by answering
     // Trading Cards → PSA → not autographed → Authenticate Only. If routing renames or
     // drops this variation, the find() fails and a human looks.
     const rec = ACTIVE_SERVICES.find(
-      (r) => r.name === 'PSA Regular' && r.questions?.[5] === 'Authenticate Only',
+      (r) => r.name === 'PSA Priority' && r.questions?.[5] === 'Authenticate Only',
     );
     expect(rec).toBeDefined();
 
@@ -284,7 +296,7 @@ describe('the Q6 variation is the PRODUCT and must reach the shop, by value', ()
     // Assert the VALUE inside the servicesOrdered parameter — not mere presence of a
     // parenthesis. This is what the shop reads to know which product was bought.
     const sent = new URL(url).searchParams.get('servicesOrdered');
-    expect(sent).toContain('PSA Regular (Authenticate Only)');
+    expect(sent).toContain('PSA Priority (Authenticate Only)');
     // And the two same-price products remain distinguishable end to end.
     expect(sent).not.toContain('(Card Grade Only)');
   });
@@ -293,7 +305,7 @@ describe('the Q6 variation is the PRODUCT and must reach the shop, by value', ()
 describe('the policy acknowledgement travels with the order', () => {
   const withPolicy = (policy: { acknowledgedAt: string; version: string } | null) =>
     buildHandoffUrl({
-      servicesPlainString: '• PSA Regular - $84.99 (x1)',
+      servicesPlainString: '• PSA Priority - $84.99 (x1)',
       total: '108.99',
       storeCode: 'HH',
       customerNotes: '',
@@ -358,7 +370,7 @@ describe('buildHandoffUrl', () => {
     // totalAmount, paymentAmount and totalAmountBridge are three separate JotForm fields
     // that all take the total. That is the form's design; dropping one breaks payment.
     const url = buildHandoffUrl({
-      servicesPlainString: '• PSA Regular - $84.99 (x1)',
+      servicesPlainString: '• PSA Priority - $84.99 (x1)',
       total: '108.99',
       storeCode: 'HH',
       customerNotes: '',

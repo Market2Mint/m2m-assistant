@@ -137,10 +137,10 @@ describe('retired services are kept as history, not deleted', () => {
 describe('event tickets are a speed ladder, not an autograph ladder', () => {
   it('offers four PSA tickets at the sheet prices', () => {
     expect(uniqueActive((s) => s.name.startsWith('PSA') && s.name.includes('Ticket'))).toEqual([
-      'PSA Express Ticket', 'PSA Regular Ticket', 'PSA Super Express Ticket', 'PSA Value Ticket',
+      'PSA Express Ticket', 'PSA Priority Ticket', 'PSA Super Express Ticket', 'PSA Value Ticket',
     ]);
     expect(priceOf('PSA Value Ticket').price.customer).toBe(49.99);
-    expect(priceOf('PSA Regular Ticket').price.customer).toBe(84.99);
+    expect(priceOf('PSA Priority Ticket').price.customer).toBe(84.99);
     expect(priceOf('PSA Express Ticket').price.customer).toBe(159.0);
     expect(priceOf('PSA Super Express Ticket').price.customer).toBe(310.0);
   });
@@ -355,11 +355,11 @@ describe('PSA Standard went live 2026-09-12 (Cayden GO), card only, on every sin
   // Kiosk v3/staged/psa_standard/activate.py (the two "No" rows), then widened the same
   // day on Cayden's ruling: "the option for the PSA Standard should pop up with all of
   // the non dual submissions" — so it also rides the Pack-pulled / 1999 - Newer paths,
-  // exactly where PSA Regular's single-card rows are. It never appears where the Dual
+  // exactly where PSA Priority's single-card rows are. It never appears where the Dual
   // ladder shows (Aftermarket, and any "Either" path). No Dual, no Crossover until PSA
   // confirms them — if either appears here, someone added it without a ruling.
   const rows = activeNamed('PSA Standard');
-  const regularSinglePaths = activeNamed('PSA Regular').map((r) => r.questions?.join(' > ')).sort();
+  const regularSinglePaths = activeNamed('PSA Priority').map((r) => r.questions?.join(' > ')).sort();
 
   it('is priced and timed off the sheet on every path it appears on', () => {
     expect(rows.length).toBe(4);
@@ -374,8 +374,8 @@ describe('PSA Standard went live 2026-09-12 (Cayden GO), card only, on every sin
     }
   });
 
-  it('rides exactly the same question paths as the single-card PSA Regular', () => {
-    // Regular is the reference rung: wherever a customer sees PSA Regular (not Regular
+  it('rides exactly the same question paths as the single-card PSA Priority', () => {
+    // Priority is the reference rung: wherever a customer sees PSA Priority (not Priority
     // Dual), they must also see Standard. This pins Cayden's rule rather than a list.
     expect(rows.map((r) => r.questions?.join(' > ')).sort()).toEqual(regularSinglePaths);
     expect(regularSinglePaths).toEqual([
@@ -389,13 +389,13 @@ describe('PSA Standard went live 2026-09-12 (Cayden GO), card only, on every sin
   it('never shows where the Dual ladder shows, and has no Dual or Crossover variant', () => {
     expect(byName('PSA Standard Dual')).toEqual([]);
     expect(byName('PSA Crossover Standard')).toEqual([]);
-    const dualPaths = new Set(activeNamed('PSA Regular Dual').map((r) => r.questions?.join(' > ')));
+    const dualPaths = new Set(activeNamed('PSA Priority Dual').map((r) => r.questions?.join(' > ')));
     expect(dualPaths.size).toBeGreaterThan(0);
     for (const r of rows) expect(dualPaths.has(r.questions?.join(' > ') ?? '')).toBe(false);
     for (const r of rows) expect(r.questions?.[3]).not.toBe('Aftermarket');
   });
 
-  it('is the cheapest and slowest rung of the PSA card ladder, below an unchanged Regular', () => {
+  it('is the cheapest and slowest rung of the PSA card ladder, below an unchanged Priority', () => {
     for (const path of regularSinglePaths) {
       const rung = ACTIVE_SERVICES.filter(
         (s) => s.category === 'Trading Cards' && s.name.startsWith('PSA') && s.questions?.join(' > ') === path,
@@ -403,8 +403,8 @@ describe('PSA Standard went live 2026-09-12 (Cayden GO), card only, on every sin
       expect([...rung].sort((a, b) => a.price.customer - b.price.customer)[0].name).toBe('PSA Standard');
       expect([...rung].sort((a, b) => b.businessDays - a.businessDays)[0].name).toBe('PSA Standard');
     }
-    expect(priceOf('PSA Regular').price.customer).toBe(84.99);
-    expect(priceOf('PSA Regular').businessDays).toBe(80);
+    expect(priceOf('PSA Priority').price.customer).toBe(84.99);
+    expect(priceOf('PSA Priority').businessDays).toBe(80);
     expect(copyFor('PSA Standard').description).toContain('100 business days');
   });
 });

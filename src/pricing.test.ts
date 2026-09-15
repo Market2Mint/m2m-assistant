@@ -53,7 +53,7 @@ describe('shippingFeeForCart', () => {
     // depends on the cart's contents at all, so there is nothing left to disagree.
     const carts = [
       ['CGC Economy', 'SGC <1500'],
-      ['CGC Economy', 'SGC <1500', 'PSA Regular'],
+      ['CGC Economy', 'SGC <1500', 'PSA Priority'],
       ['PSA Express', 'BGS Base'],
       ['Pregrading'],
     ];

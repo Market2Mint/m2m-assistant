@@ -181,7 +181,7 @@ describe('sanitizeCardReference', () => {
     // The handoff joins one line per cart line with "\n". A pasted or dictated newline
     // inside this field would appear to the shop as a service the customer never ordered.
     expect(sanitizeCardReference('Jordan rookie\nKobe base')).toBe('Jordan rookie Kobe base');
-    expect(sanitizeCardReference('a\r\n• PSA Regular - $84.99')).toBe('a • PSA Regular - $84.99');
+    expect(sanitizeCardReference('a\r\n• PSA Priority - $84.99')).toBe('a • PSA Priority - $84.99');
     expect(sanitizeCardReference('a\tb   c')).toBe('a b c');
   });
 
@@ -232,14 +232,14 @@ describe('what the shop reads on the handoff', () => {
   });
 
   it('produces the line shape the brief specifies', () => {
-    // • PSA Regular — MIN GRADE 9 — "Jordan rookie, Kobe base" - $254.97 (x3) — EST: …
+    // • PSA Priority — MIN GRADE 9 — "Jordan rookie, Kobe base" - $254.97 (x3) — EST: …
     const fragment = minimumGradeHandoffFragment({
       minimumGrade: 9,
       cardReference: 'Jordan rookie, Kobe base',
     });
-    const line = `• PSA Regular${fragment} - $254.97 (x3) — EST: Mon, Sep 14, 2026`;
+    const line = `• PSA Priority${fragment} - $254.97 (x3) — EST: Mon, Sep 14, 2026`;
     expect(line).toBe(
-      '• PSA Regular — MIN GRADE 9 — "Jordan rookie, Kobe base" - $254.97 (x3) — EST: Mon, Sep 14, 2026',
+      '• PSA Priority — MIN GRADE 9 — "Jordan rookie, Kobe base" - $254.97 (x3) — EST: Mon, Sep 14, 2026',
     );
   });
 

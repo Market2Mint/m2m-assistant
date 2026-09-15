@@ -6,7 +6,7 @@
  *
  * ⚠️ THE RULE THAT MATTERS: **summarising is only allowed when something is left to
  * summarise.** An earlier version always reduced the list to LONGEST / MIDDLE / FASTEST,
- * which on a four-service result set silently dropped one — PSA Regular Ticket was
+ * which on a four-service result set silently dropped one — PSA Priority Ticket (then named PSA Regular Ticket) was
  * unreachable from the summary for exactly that reason. A service a customer cannot see
  * is a service they cannot buy, so this is lost revenue, not a cosmetic defect.
  *

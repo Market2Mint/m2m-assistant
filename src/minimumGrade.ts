@@ -101,7 +101,7 @@ export const minimumGradeConsequence = (grade: number): string =>
 /**
  * The optional free-text reference (§5.2b item 2).
  *
- * Why it earns its place: a customer with three PSA Regulars who wants minimum 9 on two and
+ * Why it earns its place: a customer with three PSA Priority cards who wants minimum 9 on two and
  * minimum 8 on one produces two cart lines, but staff receive three physical cards and
  * cannot tell which is which. Unnecessary whenever every card in a line shares a threshold,
  * which is the common case — so it is optional and never blocks completion.
@@ -129,7 +129,7 @@ export const sanitizeCardReference = (raw: string): string =>
 /**
  * What the shop reads. Appended to the service name on the `servicesOrdered` line built in
  * `renderHandoff` — e.g.
- *   `• PSA Regular — MIN GRADE 9 — "Jordan rookie, Kobe base" - $254.97 (x3) — EST: …`
+ *   `• PSA Priority — MIN GRADE 9 — "Jordan rookie, Kobe base" - $254.97 (x3) — EST: …`
  *
  * It goes THERE and not in `customerNotes`: that field is free text with its own purpose,
  * and mixing a term the customer is financially exposed to into a notes blob makes both

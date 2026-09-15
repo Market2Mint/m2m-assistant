@@ -82,8 +82,8 @@ export const SERVICE_COPY: Record<string, { description: string; details: string
   "PSA Value Max": { description: "PSA's Value Max option offers a solid balance between cost and turnaround time. All cards submitted through Market2Mint receive a wipe-down and are handled with care from start to finish.", details: "" },
   "PSA Max Dual": { description: "PSA's Value Max Dual option offers a solid balance between cost and turnaround time for pack-pulled and aftermarket autographs. All cards submitted through Market2Mint receive a wipe-down and are handled with care from start to finish.", details: "" },
   "PSA Standard": { description: "NOT OPEN YET - PSA BEGINS ACCEPTING THIS SERVICE ON SEPTEMBER 14, 2026. You can place your order today; it is held and submitted once the service opens. PSA's Standard service is a lower-cost way to get your cards graded when speed isn't the priority. Plan on roughly 100 business days, with a maximum declared value of $1,000 per card — a good fit for modern cards and everyday collection pieces. All cards submitted through Market2Mint receive a full wipe-down and secure handling throughout the process.", details: "" },
-  "PSA Regular": { description: "PSA's Regular service is ideal for grading mid-to-high value cards. Whether you're grading for resale or personal collection, this service delivers trusted results with efficiency. All cards submitted through Market2Mint receive a full wipe-down and secure handling throughout the process.", details: "" },
-  "PSA Regular Dual": { description: "PSA's Regular Dual service is ideal for grading mid-to-high value cards. Whether you're grading for resale or personal collection, this service delivers trusted results with efficiency. All cards submitted through Market2Mint receive a full wipe-down and secure handling throughout the process.", details: "" },
+  "PSA Priority": { description: "PSA's Priority service is ideal for grading mid-to-high value cards. Whether you're grading for resale or personal collection, this service delivers trusted results with efficiency. All cards submitted through Market2Mint receive a full wipe-down and secure handling throughout the process.", details: "" },
+  "PSA Priority Dual": { description: "PSA's Priority Dual service is ideal for grading mid-to-high value cards. Whether you're grading for resale or personal collection, this service delivers trusted results with efficiency. All cards submitted through Market2Mint receive a full wipe-down and secure handling throughout the process.", details: "" },
   "PSA Express": { description: "PSA's Express service offers priority turnaround. Perfect for collectors or sellers who need quick results without sacrificing PSA's trusted grading standards. All submissions through Market2Mint include card prep, wipe-down, and secure handling from start to finish.", details: "" },
   "PSA Express Dual": { description: "PSA's Express Dual service offers priority turnaround. Perfect for collectors or sellers who need quick results without sacrificing PSA's trusted grading standards. All submissions through Market2Mint include card prep, wipe-down, and secure handling from start to finish.", details: "" },
   "PSA Super Express": { description: "Need fast grading for your high-value cards? PSA's Super Express service is built for speed and security, offering fast turnaround. This service ensures your premium items are prioritized and handled with top-tier care. All submissions through Market2Mint include a professional wipe-down and secure processing from start to finish.", details: "" },
@@ -123,7 +123,7 @@ export const SERVICE_COPY: Record<string, { description: string; details: string
   "CGC Standard Video w/Basic Cleaning": { description: "CGC's Video/Movie Grading service is perfect for sealed VHS tapes, DVDs, and other home video formats valued up to $2,500. This service provides expert authentication, grading, and encapsulation with CGC's trusted accuracy and presentation. All submissions through Market2Mint are carefully inspected, prepped, and securely handled from start to finish.", details: "" },
   "CGC Standard Video w/Heavy Cleaning": { description: "CGC's Video/Movie Grading service is perfect for sealed VHS tapes, DVDs, and other home video formats valued up to $2,500. This service provides expert authentication, grading, and encapsulation with CGC's trusted accuracy and presentation. All submissions through Market2Mint are carefully inspected, prepped, and securely handled from start to finish.", details: "" },
   "PSA Value Ticket": { description: "Holding on to a ticket stub from that unforgettable concert? What about the last time your team went all the way to the World Series? Whether it's a milestone or a memory, your ticket can be preserved and graded by PSA's team of experts.", details: "" },
-  "PSA Regular Ticket": { description: "Holding on to a ticket stub from that unforgettable concert? What about the last time your team went all the way to the World Series? Whether it's a milestone or a memory, your ticket can be preserved and graded by PSA's team of experts.", details: "" },
+  "PSA Priority Ticket": { description: "Holding on to a ticket stub from that unforgettable concert? What about the last time your team went all the way to the World Series? Whether it's a milestone or a memory, your ticket can be preserved and graded by PSA's team of experts.", details: "" },
   "PSA Express Ticket": { description: "Holding on to a ticket stub from that unforgettable concert? What about the last time your team went all the way to the World Series? Whether it's a milestone or a memory, your ticket can be preserved and graded by PSA's team of experts.", details: "" },
   "PSA Super Express Ticket": { description: "Holding on to a ticket stub from that unforgettable concert? What about the last time your team went all the way to the World Series? Whether it's a milestone or a memory, your ticket can be preserved and graded by PSA's team of experts.", details: "" },
   "BGS Base Ticket": { description: "Preserve a ticket stub in a Beckett holder, graded and sealed. Every ticket submitted through Market2Mint is inspected, prepped and handled securely from drop-off to return.", details: "" },
@@ -588,7 +588,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   },
   {
     category: "Trading Cards",
-    name: "PSA Regular",
+    name: "PSA Priority",
     questions: ["Trading Cards", "PSA", "No", "Skip Question", "Skip Question", "Card Grade Only"],
     price: { customer: 84.99, employee: null, owner: null },
     cost: null,
@@ -601,7 +601,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   },
   {
     category: "Trading Cards",
-    name: "PSA Regular",
+    name: "PSA Priority",
     questions: ["Trading Cards", "PSA", "No", "Skip Question", "Skip Question", "Authenticate Only"],
     price: { customer: 84.99, employee: null, owner: null },
     cost: null,
@@ -614,7 +614,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   },
   {
     category: "Trading Cards",
-    name: "PSA Regular",
+    name: "PSA Priority",
     questions: ["Trading Cards", "PSA", "Yes", "Pack-pulled", "1999 - Newer", "Card Grade Only"],
     price: { customer: 84.99, employee: null, owner: null },
     cost: null,
@@ -627,7 +627,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   },
   {
     category: "Trading Cards",
-    name: "PSA Regular",
+    name: "PSA Priority",
     questions: ["Trading Cards", "PSA", "Yes", "Pack-pulled", "1999 - Newer", "Authenticate Card Only"],
     price: { customer: 84.99, employee: null, owner: null },
     cost: null,
@@ -640,7 +640,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   },
   {
     category: "Trading Cards",
-    name: "PSA Regular Dual",
+    name: "PSA Priority Dual",
     questions: ["Trading Cards", "PSA", "Yes", "Aftermarket", "Either", "Card Grade Only"],
     price: { customer: 109.99, employee: null, owner: null },
     cost: null,
@@ -653,7 +653,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   },
   {
     category: "Trading Cards",
-    name: "PSA Regular Dual",
+    name: "PSA Priority Dual",
     questions: ["Trading Cards", "PSA", "Yes", "Aftermarket", "Either", "Auth Card & Auto Only"],
     price: { customer: 109.99, employee: null, owner: null },
     cost: null,
@@ -666,7 +666,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   },
   {
     category: "Trading Cards",
-    name: "PSA Regular Dual",
+    name: "PSA Priority Dual",
     questions: ["Trading Cards", "PSA", "Yes", "Either", "Either", "Card & Autograph Grade"],
     price: { customer: 109.99, employee: null, owner: null },
     cost: null,
@@ -679,7 +679,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   },
   {
     category: "Trading Cards",
-    name: "PSA Regular Dual",
+    name: "PSA Priority Dual",
     questions: ["Trading Cards", "PSA", "Yes", "Either", "Either", "Autograph Grade Only"],
     price: { customer: 109.99, employee: null, owner: null },
     cost: null,
@@ -1485,7 +1485,7 @@ export const SERVICE_MENU: ServiceRecord[] = [
   },
   {
     category: "Event Tickets",
-    name: "PSA Regular Ticket",
+    name: "PSA Priority Ticket",
     questions: ["Event Tickets", "PSA", "Skip Question", "Skip Question", "Skip Question", "Ticket Grade"],
     price: { customer: 84.99, employee: null, owner: null },
     cost: null,

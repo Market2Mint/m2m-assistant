@@ -83,8 +83,11 @@ describe('lineTotal', () => {
     // ever disagree, one of them is wrong and it will be this.
     expect(lineTotal(85, 1, 10)).toBe(95);    // BGS Express — Oversized
     expect(lineTotal(90, 1, 10)).toBe(100);   // BGS Express w/Auto — Oversized
-    expect(lineTotal(150, 1, 10)).toBe(160);  // BGS Priority — Oversized
-    expect(lineTotal(155, 1, 10)).toBe(165);  // BGS Priority w/Auto — Oversized
+    // Arithmetic kept as a record: a $150.00 / $155.00 card plus the same +$10.00 that
+    // BGS Express — Oversized (85 -> 95) carries. The tier that sold at 150/155 (Priority)
+    // was retired by BGS 2026-09-15; the surcharge rule did not move.
+    expect(lineTotal(150, 1, 10)).toBe(160);
+    expect(lineTotal(155, 1, 10)).toBe(165);
   });
 });
 

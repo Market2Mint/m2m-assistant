@@ -115,10 +115,13 @@ describe('retired services are kept as history, not deleted', () => {
   // customer was quoted last month. BGS Base, Standard and Crossover (+ w/Auto) left this
   // list 2026-09-12: BGS is offering them again and Cayden un-retired all six at their
   // original prices, costs and turnarounds — see 'BGS Base and Standard are back' below.
+  // BGS Priority (+ w/Auto, + both Crossover forms) JOINED it 2026-09-15: BGS retired the
+  // tier. Suspended, not deleted — open Priority orders are still priced from those rows.
   const retired = [
     'PSA Value Bulk', 'PSA Vintage & Value', 'PSA Value & Vintage Dual',
     'PSA Value Plus', 'PSA Value Plus Dual', 'PSA Value Max', 'PSA Max Dual',
     'PSA Crossover Plus Card Only', 'PSA Crossover Plus Dual',
+    'BGS Priority', 'BGS Priority w/Auto', 'BGS Crossover Priority', 'BGS Crossover Priority w/Auto',
   ];
 
   it.each(retired)('%s is present but inactive', (name) => {
@@ -127,7 +130,7 @@ describe('retired services are kept as history, not deleted', () => {
     for (const r of rows) expect(r.active, `${name} is still active`).toBe(false);
   });
 
-  it('retires exactly the 9 the sheet greys out', () => {
+  it('retires exactly the 13 the sheet greys out', () => {
     expect(uniqueActive(() => true).length).toBeGreaterThan(0);
     const inactive = [...new Set(SERVICE_MENU.filter((s) => !s.active).map((s) => s.name))];
     expect(inactive.sort()).toEqual([...retired].sort());
@@ -198,20 +201,46 @@ describe('comics and magazines are split, and priced per format', () => {
   });
 });
 
-describe('BGS Priority is live', () => {
-  it('offers both variants at the sheet prices and turnarounds', () => {
-    expect(priceOf('BGS Priority').price.customer).toBe(150.0);
-    expect(priceOf('BGS Priority').businessDays).toBe(20);
-    expect(priceOf('BGS Priority w/Auto').price.customer).toBe(155.0);
-    expect(priceOf('BGS Priority w/Auto').businessDays).toBe(25);
+describe('BGS Priority is RETIRED (BGS retired the tier; Cayden 2026-09-15)', () => {
+  // Suspended in the sheet the way Base and Standard were before their return — NOT
+  // deleted, because open Priority orders are still priced from those rows and the close
+  // still matches Square line names against them. The records stay in the menu with
+  // active: false; the figures below are what the tier carried when it was retired.
+  const retiredRecords: Array<[string, number, number, string[]]> = [
+    ['BGS Priority', 150.0, 20, ['Trading Cards', 'BGS', 'No']],
+    ['BGS Priority w/Auto', 155.0, 25, ['Trading Cards', 'BGS', 'Yes', 'Pack-pulled', '1999 - Newer Only']],
+    ['BGS Crossover Priority', 150.0, 20, ['Crossover', 'BGS', 'No']],
+    ['BGS Crossover Priority w/Auto', 155.0, 25, ['Crossover', 'BGS', 'Yes', 'Pack-pulled', '1999 - Newer Only']],
+  ];
+
+  it.each(retiredRecords)('%s is present, inactive, and still carries $%s / ~%sd', (name, price, days, path) => {
+    const rows = byName(name);
+    expect(rows.length, `${name} was deleted — it must stay as history`).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.active, `${name} is still active`).toBe(false);
+      expect(r.status).toBe('TEMPORARILY UNAVAILABLE');
+      expect(r.price.customer).toBe(price);
+      expect(r.businessDays).toBe(days);
+      expect(r.questions?.slice(0, path.length)).toEqual(path);
+    }
+    expect(activeNamed(name)).toEqual([]);
   });
 
-  it('sits at the top of the full four-rung BGS card ladder again', () => {
-    // Was ['BGS Express', 'BGS Express w/Auto', 'BGS Priority', 'BGS Priority w/Auto']
-    // while Base and Standard were retired (2026-08 .. 2026-09-12).
+  it('keeps both Crossover Priority "No" variations as history (Card Grade Only + Authenticate Only)', () => {
+    expect(byName('BGS Crossover Priority').map((s) => s.questions?.[5]).sort())
+      .toEqual(['Authenticate Only', 'Card Grade Only']);
+  });
+
+  it('is gone from the BGS card ladder, which is three rungs again', () => {
+    // Was the eight-name list ending in 'BGS Priority', 'BGS Priority w/Auto' from
+    // 2026-09-12 (revive) to 2026-09-15 (Priority retired).
     expect(uniqueActive((s) => s.category === 'Trading Cards' && s.name.startsWith('BGS')))
       .toEqual(['BGS Base', 'BGS Base w/Auto', 'BGS Express', 'BGS Express w/Auto',
-                'BGS Priority', 'BGS Priority w/Auto', 'BGS Standard', 'BGS Standard w/Auto']);
+                'BGS Standard', 'BGS Standard w/Auto']);
+  });
+
+  it('leaves no active service anywhere named Priority under BGS', () => {
+    expect(ACTIVE_SERVICES.filter((s) => s.name.startsWith('BGS') && s.name.includes('Priority'))).toEqual([]);
   });
 });
 
@@ -224,31 +253,34 @@ describe('BGS Base and Standard are back (Cayden 2026-09-12), at their original 
       .sort((a, b) => a.price.customer - b.price.customer)
       .map((s) => [s.name, s.price.customer, s.businessDays] as const);
 
-  it('Trading Cards -> BGS -> No offers four tiers, cheapest first: 25 / 40 / 85 / 150', () => {
+  it('Trading Cards -> BGS -> No offers three tiers, cheapest first: 25 / 40 / 85', () => {
+    // Was four, ending ['BGS Priority', 150.0, 20], until BGS retired Priority 2026-09-15.
     expect(ladder(['Trading Cards', 'BGS', 'No'])).toEqual([
-      ['BGS Base', 25.0, 95], ['BGS Standard', 40.0, 45], ['BGS Express', 85.0, 30], ['BGS Priority', 150.0, 20],
+      ['BGS Base', 25.0, 95], ['BGS Standard', 40.0, 45], ['BGS Express', 85.0, 30],
     ]);
   });
 
-  it('the pack-pulled 1999-Newer autograph path offers four: 30 / 45 / 90 / 155', () => {
+  it('the pack-pulled 1999-Newer autograph path offers three: 30 / 45 / 90', () => {
+    // Was four, ending ['BGS Priority w/Auto', 155.0, 25], until 2026-09-15.
     expect(ladder(['Trading Cards', 'BGS', 'Yes', 'Pack-pulled', '1999 - Newer Only'])).toEqual([
       ['BGS Base w/Auto', 30.0, 100], ['BGS Standard w/Auto', 45.0, 50],
-      ['BGS Express w/Auto', 90.0, 35], ['BGS Priority w/Auto', 155.0, 25],
+      ['BGS Express w/Auto', 90.0, 35],
     ]);
   });
 
-  it('Crossover -> BGS offers three on both No variations: 40 / 85 / 150', () => {
+  it('Crossover -> BGS offers two on both No variations: 40 / 85', () => {
+    // Was three, ending ['BGS Crossover Priority', 150.0, 20] (and w/Auto 155.0, 25), until 2026-09-15.
     for (const variation of ['Card Grade Only', 'Authenticate Only']) {
       const rows = ACTIVE_SERVICES
         .filter((s) => s.category === 'Crossover' && s.questions?.[1] === 'BGS' && s.questions?.[2] === 'No' && s.questions?.[5] === variation)
         .sort((a, b) => a.price.customer - b.price.customer)
         .map((s) => [s.name, s.price.customer, s.businessDays] as const);
       expect(rows, variation).toEqual([
-        ['BGS Crossover', 40.0, 45], ['BGS Crossover Express', 85.0, 30], ['BGS Crossover Priority', 150.0, 20],
+        ['BGS Crossover', 40.0, 45], ['BGS Crossover Express', 85.0, 30],
       ]);
     }
     expect(ladder(['Crossover', 'BGS', 'Yes'])).toEqual([
-      ['BGS Crossover w/Auto', 45.0, 50], ['BGS Crossover Express w/Auto', 90.0, 35], ['BGS Crossover Priority w/Auto', 155.0, 25],
+      ['BGS Crossover w/Auto', 45.0, 50], ['BGS Crossover Express w/Auto', 90.0, 35],
     ]);
   });
 

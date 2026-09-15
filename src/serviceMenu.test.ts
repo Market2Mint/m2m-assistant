@@ -361,7 +361,7 @@ describe('PSA Standard went live 2026-09-12 (Cayden GO), card only, on every sin
   // 2026-09-14 (Cayden): PSA added a Dual to the Standard tier — PSA Standard Dual,
   // $84.99, ~110 business days, $1,000 max declared value, cost 63.99. It rides EXACTLY
   // the paths PSA Priority Dual rides (autographed only) and nowhere else. Still no
-  // Crossover variant — if one appears here, someone added it without a ruling.
+  // Crossover variant on the CARD paths — the Crossover category has its own Standard since 2026-09-15.
   // ⚠ $84.99 on a $63.99 cost is IDENTICAL to PSA Priority: every assertion below keys
   // on the NAME, never on the figure.
   const rows = activeNamed('PSA Standard');
@@ -392,8 +392,14 @@ describe('PSA Standard went live 2026-09-12 (Cayden GO), card only, on every sin
     ]);
   });
 
-  it('never shows where the Dual ladder shows, and has no Crossover variant', () => {
-    expect(byName('PSA Crossover Standard')).toEqual([]);
+  it('never shows where the Dual ladder shows; its Crossover variant lives ONLY under Crossover', () => {
+    // 2026-09-15 (Cayden): PSA opened the Standard tier to crossovers, so PSA Crossover
+    // Standard now EXISTS — under the Crossover category, mirroring the card figures, never
+    // on a Trading Cards path. The card-side rule below is unchanged.
+    const xover = byName('PSA Crossover Standard');
+    expect(xover.length).toBe(4);
+    for (const r of xover) expect(r.category).toBe('Crossover');
+    expect(ACTIVE_SERVICES.filter((s) => s.category === 'Trading Cards' && s.name.includes('Crossover'))).toEqual([]);
     const dualPaths = new Set(activeNamed('PSA Priority Dual').map((r) => r.questions?.join(' > ')));
     expect(dualPaths.size).toBeGreaterThan(0);
     for (const r of rows) expect(dualPaths.has(r.questions?.join(' > ') ?? '')).toBe(false);

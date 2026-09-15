@@ -265,8 +265,10 @@ describe('the benign class still auto-answers', () => {
     // 1998-or-older pack-pulled and all aftermarket autos reach Duals only.
     const psa = filterByAnswer(afterCategory, 1, 'PSA');
     const names = (svcs: typeof psa) => [...new Set(svcs.map((s) => s.name))].sort();
+    // PSA Crossover Standard joined every rung 2026-09-15 (Cayden): the card Standard tier
+    // opened to crossovers, mirroring PSA Standard's figures.
     expect(names(filterByAnswer(psa, 2, 'No'))).toEqual(
-      ['PSA Crossover Express', 'PSA Crossover Super Express']);
+      ['PSA Crossover Express', 'PSA Crossover Standard', 'PSA Crossover Super Express']);
 
     const yes = filterByAnswer(psa, 2, 'Yes');
     const packModern = filterByAnswer(filterByAnswer(yes, 3, 'Pack-pulled'), 4, '1999 - Newer');
@@ -274,16 +276,17 @@ describe('the benign class still auto-answers', () => {
     // products; every other product on this path is a Dual.
     for (const q6 of ['Card Grade Only', 'Authenticate Card Only']) {
       expect(names(filterByAnswer(packModern, 5, q6)), `${q6} must be the non-dual tier`)
-        .toEqual(['PSA Crossover Express', 'PSA Crossover Super Express']);
+        .toEqual(['PSA Crossover Express', 'PSA Crossover Standard', 'PSA Crossover Super Express']);
     }
     expect(names(packModern)).toEqual([
       'PSA Crossover Express', 'PSA Crossover Express Dual',
+      'PSA Crossover Standard', 'PSA Crossover Standard Dual',
       'PSA Crossover Super Express', 'PSA Crossover Super Express Dual',
     ]);
     expect(names(filterByAnswer(filterByAnswer(yes, 3, 'Pack-pulled'), 4, '1998 - Older')))
-      .toEqual(['PSA Crossover Express Dual', 'PSA Crossover Super Express Dual']);
+      .toEqual(['PSA Crossover Express Dual', 'PSA Crossover Standard Dual', 'PSA Crossover Super Express Dual']);
     expect(names(filterByAnswer(yes, 3, 'Aftermarket')))
-      .toEqual(['PSA Crossover Express Dual', 'PSA Crossover Super Express Dual']);
+      .toEqual(['PSA Crossover Express Dual', 'PSA Crossover Standard Dual', 'PSA Crossover Super Express Dual']);
   });
 });
 

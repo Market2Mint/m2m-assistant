@@ -356,8 +356,14 @@ describe('PSA Standard went live 2026-09-12 (Cayden GO), card only, on every sin
   // day on Cayden's ruling: "the option for the PSA Standard should pop up with all of
   // the non dual submissions" — so it also rides the Pack-pulled / 1999 - Newer paths,
   // exactly where PSA Priority's single-card rows are. It never appears where the Dual
-  // ladder shows (Aftermarket, and any "Either" path). No Dual, no Crossover until PSA
-  // confirms them — if either appears here, someone added it without a ruling.
+  // ladder shows (Aftermarket, and any "Either" path).
+  //
+  // 2026-09-14 (Cayden): PSA added a Dual to the Standard tier — PSA Standard Dual,
+  // $84.99, ~110 business days, $1,000 max declared value, cost 63.99. It rides EXACTLY
+  // the paths PSA Priority Dual rides (autographed only) and nowhere else. Still no
+  // Crossover variant — if one appears here, someone added it without a ruling.
+  // ⚠ $84.99 on a $63.99 cost is IDENTICAL to PSA Priority: every assertion below keys
+  // on the NAME, never on the figure.
   const rows = activeNamed('PSA Standard');
   const regularSinglePaths = activeNamed('PSA Priority').map((r) => r.questions?.join(' > ')).sort();
 
@@ -386,13 +392,45 @@ describe('PSA Standard went live 2026-09-12 (Cayden GO), card only, on every sin
     ]);
   });
 
-  it('never shows where the Dual ladder shows, and has no Dual or Crossover variant', () => {
-    expect(byName('PSA Standard Dual')).toEqual([]);
+  it('never shows where the Dual ladder shows, and has no Crossover variant', () => {
     expect(byName('PSA Crossover Standard')).toEqual([]);
     const dualPaths = new Set(activeNamed('PSA Priority Dual').map((r) => r.questions?.join(' > ')));
     expect(dualPaths.size).toBeGreaterThan(0);
     for (const r of rows) expect(dualPaths.has(r.questions?.join(' > ') ?? '')).toBe(false);
     for (const r of rows) expect(r.questions?.[3]).not.toBe('Aftermarket');
+  });
+
+  it('has a Dual that rides exactly the PSA Priority Dual paths, priced and timed off the sheet', () => {
+    // Added 2026-09-14. Autographed paths only: the same four rows Priority Dual sits on,
+    // no single-card path, no Crossover. Cheapest and slowest rung of the Dual ladder.
+    const dual = activeNamed('PSA Standard Dual');
+    expect(dual.length).toBe(4);
+    for (const r of dual) {
+      expect(r.category).toBe('Trading Cards');
+      expect(r.price.customer).toBe(84.99);
+      expect(r.businessDays).toBe(110);
+      expect(r.maxInsuredValue).toBe('$1,000.00');
+      expect(r.status).toBe('NEW / CHANGED');
+      expect(r.questions?.[2]).toBe('Yes');
+    }
+    const priorityDualPaths = activeNamed('PSA Priority Dual').map((r) => r.questions?.join(' > ')).sort();
+    expect(dual.map((r) => r.questions?.join(' > ')).sort()).toEqual(priorityDualPaths);
+    expect(priorityDualPaths).toEqual([
+      'Trading Cards > PSA > Yes > Aftermarket > Either > Auth Card & Auto Only',
+      'Trading Cards > PSA > Yes > Aftermarket > Either > Card Grade Only',
+      'Trading Cards > PSA > Yes > Either > Either > Autograph Grade Only',
+      'Trading Cards > PSA > Yes > Either > Either > Card & Autograph Grade',
+    ]);
+    for (const path of priorityDualPaths) {
+      const rung = ACTIVE_SERVICES.filter(
+        (s) => s.category === 'Trading Cards' && s.name.startsWith('PSA') && s.questions?.join(' > ') === path,
+      );
+      expect([...rung].sort((a, b) => a.price.customer - b.price.customer)[0].name).toBe('PSA Standard Dual');
+      expect([...rung].sort((a, b) => b.businessDays - a.businessDays)[0].name).toBe('PSA Standard Dual');
+    }
+    expect(priceOf('PSA Priority Dual').price.customer).toBe(109.99);
+    expect(copyFor('PSA Standard Dual').description).toContain('110 business days');
+    expect(copyFor('PSA Standard Dual').description).toContain('$1,000');
   });
 
   it('is the cheapest and slowest rung of the PSA card ladder, below an unchanged Priority', () => {

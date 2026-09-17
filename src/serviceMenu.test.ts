@@ -438,6 +438,34 @@ describe('PSA Standard went live 2026-09-12 (Cayden GO), card only, on every sin
     for (const r of rows) expect(r.questions?.[3]).not.toBe('Aftermarket');
   });
 
+  it('PSA Crossover Priority mirrors PSA Priority on every figure and rides exactly the Standard crossover paths', () => {
+    // Added 2026-09-17 (Cayden): PSA opened the Priority tier to crossovers. Same price,
+    // turnaround and $1,500 cap as PSA Priority / Priority Dual, per the standing crossover
+    // rule; 84.99 is the CARD-ONLY row under this name (it is the Dual under Crossover
+    // Standard) - a shared figure, not a defect. Do not "resolve" it.
+    const card = activeNamed('PSA Crossover Priority');
+    const dual = activeNamed('PSA Crossover Priority Dual');
+    expect(card.length).toBe(4);
+    expect(dual.length).toBe(4);
+    for (const r of [...card, ...dual]) {
+      expect(r.category).toBe('Crossover');
+      expect(r.maxInsuredValue).toBe('$1,500.00');
+      expect(r.status).toBe('NEW / CHANGED');
+    }
+    for (const r of card) { expect(r.price.customer).toBe(84.99); expect(r.businessDays).toBe(80); }
+    for (const r of dual) { expect(r.price.customer).toBe(109.99); expect(r.businessDays).toBe(90); }
+    expect(priceOf('PSA Priority').price.customer).toBe(84.99);
+    expect(priceOf('PSA Priority').businessDays).toBe(80);
+    expect(priceOf('PSA Priority Dual').price.customer).toBe(109.99);
+    expect(priceOf('PSA Priority Dual').businessDays).toBe(90);
+    const paths = (rows: typeof card) => rows.map((r) => r.questions?.join(' > ')).sort();
+    expect(paths(card)).toEqual(paths(activeNamed('PSA Crossover Standard')));
+    expect(paths(dual)).toEqual(paths(activeNamed('PSA Crossover Standard Dual')));
+    expect(copyFor('PSA Crossover Priority').description).toContain('80 business days');
+    expect(copyFor('PSA Crossover Priority').description).toContain('$1,500');
+    expect(copyFor('PSA Crossover Priority').description).toMatch(/minimum acceptable grade/i);
+  });
+
   it('has a Dual that rides exactly the PSA Priority Dual paths, priced and timed off the sheet', () => {
     // Added 2026-09-14. Autographed paths only: the same four rows Priority Dual sits on,
     // no single-card path, no Crossover. Cheapest and slowest rung of the Dual ladder.

@@ -284,15 +284,29 @@ describe('BGS Base and Standard are back (Cayden 2026-09-12), at their original 
     ]);
   });
 
-  it('max declared value and status come from the sheet', () => {
+  it('max declared value is tiered and status comes from the sheet', () => {
+    // Insured value is TIERED by speed (Cayden 2026-09-18), superseding the flat $500.00 of
+    // 2026-09-12: Base 500 · Standard 1,000 · Express 1,500 · Priority 2,500. A crossover
+    // matches its card sibling; w/Auto takes its parent. Extra insurance above the tier is
+    // still only if the customer asks and pays for it.
+    const tier = (name: string) =>
+      /Priority/.test(name) ? '$2,500.00'
+      : /Express/.test(name) ? '$1,500.00'
+      : /Base/.test(name) ? '$500.00'
+      : '$1,000.00'; // Standard, and plain "BGS Crossover" (the Standard crossover)
     expect(priceOf('BGS Base').maxInsuredValue).toBe('$500.00');
-    // $500.00 on every BGS grading service (Cayden 2026-09-12): insured value is $500.00
-    // unless the customer asks and pays for more. Was $2,000.00 on Standard, NA on Crossover.
-    expect(priceOf('BGS Standard').maxInsuredValue).toBe('$500.00');
-    expect(priceOf('BGS Crossover').maxInsuredValue).toBe('$500.00');
-    for (const s of ACTIVE_SERVICES.filter((s) => s.name.startsWith('BGS') && (s.category === 'Trading Cards' || s.category === 'Crossover'))) {
-      expect(s.maxInsuredValue, s.name).toBe('$500.00');
-    }
+    expect(priceOf('BGS Standard').maxInsuredValue).toBe('$1,000.00');
+    expect(priceOf('BGS Express').maxInsuredValue).toBe('$1,500.00');
+    expect(priceOf('BGS Crossover').maxInsuredValue).toBe('$1,000.00');
+    expect(priceOf('BGS Crossover Express').maxInsuredValue).toBe('$1,500.00');
+    // Every BGS grading record, retired Priority rows included (value moved, status did not).
+    const graded = SERVICE_MENU.filter((s) => s.name.startsWith('BGS') && (s.category === 'Trading Cards' || s.category === 'Crossover'));
+    expect(graded.filter((s) => /Priority/.test(s.name)).length).toBeGreaterThan(0);
+    for (const s of graded) expect(s.maxInsuredValue, s.name).toBe(tier(s.name));
+    for (const s of graded.filter((s) => /Priority/.test(s.name))) expect(s.active, s.name).toBe(false);
+    // The copy states the same figure as the tile.
+    expect(copyFor('BGS Base').description).toContain('$500.00 of insured value');
+    expect(copyFor('BGS Standard').description).toContain('$1,000.00 of insured value');
     for (const n of ['BGS Base', 'BGS Base w/Auto', 'BGS Standard', 'BGS Standard w/Auto', 'BGS Crossover', 'BGS Crossover w/Auto']) {
       expect(priceOf(n).status).toBe('NEW / CHANGED');
     }
